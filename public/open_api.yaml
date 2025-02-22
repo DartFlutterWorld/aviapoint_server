@@ -1,0 +1,46 @@
+openapi: 3.0.0
+info:
+  title: Api
+  version: 0.0.0
+servers:
+  - url: "http://localhost:8080"
+paths:
+  /user:
+    post:
+      tags:
+        - ProfileController
+      summary: Создание пользователя
+      description: Возвращает в ответе данные пользователя
+      operationId: createUser
+      responses:
+        200:
+          description: "Operation completed!"
+  /profiles:
+    get:
+      tags:
+        - ProfileController
+      summary: Получение профилей пользователей
+      description: Получение всех профилей пользователей
+      operationId: getUsers
+      responses:
+        200:
+          description: "Operation completed!"
+  /user/<userId>:
+    delete:
+      tags:
+        - ProfileController
+      summary: Удаление пользователя
+      description: Удаление пользователя по userId
+      operationId: deleteUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+components: { }
+tags:
+  - name: ProfileController
