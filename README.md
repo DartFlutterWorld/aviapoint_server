@@ -1,3 +1,5 @@
 # airpoint_server
+docker compose up -d
+docker compose down
 
-A new Flutter project.
+fvm dart pub run build_runner build --delete-conflicting-outputs

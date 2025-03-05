@@ -25,6 +25,7 @@ dependencies:
   postgres: ^3.4.2
   uuid: ^4.5.1
   logger: ^2.5.0
+  get_it: ^7.6.0
 
 dev_dependencies:
   dart_flutter_team_lints: ^3.0.0
@@ -36,3 +37,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/
+    - assets/pdf/
+    # - assets/video/video_for_students.mp4
+    - assets/photo/
+    - public/

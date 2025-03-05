@@ -5,6 +5,32 @@ info:
 servers:
   - url: "http://localhost:8080"
 paths:
+  /learning/video_for_students:
+    get:
+      tags:
+        - VideoForStudentsController
+      summary: Получение всех видео для студентов
+      description: Получение всех обучающих видео для студентов
+      operationId: getVideoForStudents
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/video_for_students/<id>:
+    get:
+      tags:
+        - VideoForStudentsController
+      summary: Получение конкретного видео для студентов
+      description: Получение конкретного обучающих видео для студентов
+      operationId: getVideoById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
   /user:
     post:
       tags:
@@ -41,6 +67,28 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /learning/hand_book/main_categories:
+    get:
+      tags:
+        - HandBookController
+      summary: Hand Book. Получение основных категорий
+      description: Получение всех основных категорий в Hand Book
+      operationId: fetchHandBookCategoties
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/hand_book/preflight_inspection_categories:
+    get:
+      tags:
+        - HandBookController
+      summary: Hand Book. Получение категорий для Предполётных процедур
+      description: Hand Book. Получение категорий для Предполётных процедур
+      operationId: fetchPreflightInspectionCaegoriesModel
+      responses:
+        200:
+          description: "Operation completed!"
 components: { }
 tags:
+  - name: VideoForStudentsController
   - name: ProfileController
+  - name: HandBookController
