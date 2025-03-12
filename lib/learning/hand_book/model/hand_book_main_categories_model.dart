@@ -4,7 +4,7 @@ part 'hand_book_main_categories_model.g.dart';
 
 @JsonSerializable(
   includeIfNull: false,
-  fieldRename: FieldRename.none,
+  fieldRename: FieldRename.snake,
   createToJson: true,
 )
 class HandBookMainCategoriesModel {

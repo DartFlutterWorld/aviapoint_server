@@ -16,7 +16,17 @@ Router _$HandBookControllerRouter(HandBookController service) {
   router.add(
     'GET',
     r'/learning/hand_book/preflight_inspection_categories',
-    service.fetchPreflightInspectionCaegoriesModel,
+    service.fetchPreflightInspectionCaegories,
+  );
+  router.add(
+    'GET',
+    r'/learning/hand_book/preflight_inspection_categories/check_list',
+    service.fetchPreflightInspectionCheckList,
+  );
+  router.add(
+    'GET',
+    r'/learning/hand_book/preflight_inspection_categories/check_list/<id>',
+    service.fetchPreflightInspectionCheckListById,
   );
   return router;
 }

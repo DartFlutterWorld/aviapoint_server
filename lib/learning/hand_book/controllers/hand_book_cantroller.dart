@@ -44,8 +44,8 @@ class HandBookController {
 
   @Route.get('/learning/hand_book/preflight_inspection_categories')
   @OpenApiRoute()
-  Future<Response> fetchPreflightInspectionCaegoriesModel(Request request) async {
-    final body = await _handBookRepository.fetchPreflightInspectionCategoriesModel();
+  Future<Response> fetchPreflightInspectionCaegories(Request request) async {
+    final body = await _handBookRepository.fetchPreflightInspectionCategories();
 
     return wrapResponse(
       () async {
@@ -57,25 +57,46 @@ class HandBookController {
     );
   }
 
-  // ///
-  // /// Получение конкретной проверки из чеклиста
-  // ///
-  // /// Получение конкретной проверки из чеклиста по id
-  // ///
+  ///
+  /// Hand Book. Получение чек листа в Preflight inspetion
+  ///
+  /// Hand Book. Получение чек листа для Предполётных процедур
+  ///
 
-  // @Route.get('/learning/check_list/{id}')
-  // @OpenApiRoute()
-  // Future<Response> fetchCheckListById(Request request) async {
-  //   return wrapResponse(
-  //     () async {
-  //       // final id = request.context['id'] as String;
-  //       final id = int.parse(request.params['id']!);
+  @Route.get('/learning/hand_book/preflight_inspection_categories/check_list')
+  @OpenApiRoute()
+  Future<Response> fetchPreflightInspectionCheckList(Request request) async {
+    final body = await _handBookRepository.fetchPreflightInspectionCheckList();
 
-  //       return Response.ok(
-  //         jsonEncode(await _checkListRepository.fetchCheckListById(id)),
-  //         headers: jsonContentHeaders,
-  //       );
-  //     },
-  //   );
-  // }
+    return wrapResponse(
+      () async {
+        return Response.ok(
+          jsonEncode(body),
+          headers: jsonContentHeaders,
+        );
+      },
+    );
+  }
+
+  ///
+  /// Получение конкретной проверки из чеклиста
+  ///
+  /// Получение конкретной проверки из чеклиста по id
+  ///
+
+  @Route.get('/learning/hand_book/preflight_inspection_categories/check_list/<id>')
+  @OpenApiRoute()
+  Future<Response> fetchPreflightInspectionCheckListById(Request request, String id) async {
+    return wrapResponse(
+      () async {
+        // final id = request.context['id'] as String;
+        // final id2 = int.parse(request.params['id']!);
+
+        return Response.ok(
+          jsonEncode(await _handBookRepository.fetchPreflightInspectionCheckListById(int.parse(id))),
+          headers: jsonContentHeaders,
+        );
+      },
+    );
+  }
 }

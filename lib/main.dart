@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:airpoint_server/core/config/config.dart';
-import 'package:airpoint_server/core/service_locator.dart/service_locator.dart';
 import 'package:airpoint_server/core/setup_dependencies/setup_dependencies.dart';
 import 'package:airpoint_server/learning/hand_book/controllers/hand_book_cantroller.dart';
 import 'package:airpoint_server/profiles/controller/profile_cantroller.dart';

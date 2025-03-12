@@ -4,7 +4,7 @@ part 'video_for_students_model.g.dart';
 
 @JsonSerializable(
   includeIfNull: false,
-  fieldRename: FieldRename.none,
+  fieldRename: FieldRename.snake,
   createToJson: true,
 )
 class VideoForStudentsModel {

@@ -41,3 +41,5 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+public/video_for_students/ffmpeg2pass-0.log.mbtree
+public/video_for_students/video_for_students.mp4

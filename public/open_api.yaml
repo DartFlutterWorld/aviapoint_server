@@ -83,7 +83,33 @@ paths:
         - HandBookController
       summary: Hand Book. Получение категорий для Предполётных процедур
       description: Hand Book. Получение категорий для Предполётных процедур
-      operationId: fetchPreflightInspectionCaegoriesModel
+      operationId: fetchPreflightInspectionCaegories
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/hand_book/preflight_inspection_categories/check_list:
+    get:
+      tags:
+        - HandBookController
+      summary: Hand Book. Получение чек листа в Preflight inspetion
+      description: Hand Book. Получение чек листа для Предполётных процедур
+      operationId: fetchPreflightInspectionCheckList
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/hand_book/preflight_inspection_categories/check_list/<id>:
+    get:
+      tags:
+        - HandBookController
+      summary: Получение конкретной проверки из чеклиста
+      description: Получение конкретной проверки из чеклиста по id
+      operationId: fetchPreflightInspectionCheckListById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: "Operation completed!"

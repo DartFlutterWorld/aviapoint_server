@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:airpoint_server/core/config/config.dart';
-import 'package:airpoint_server/core/service_locator.dart/service_locator.dart';
 import 'package:airpoint_server/learning/hand_book/controllers/hand_book_cantroller.dart';
 import 'package:airpoint_server/learning/hand_book/repositories/hand_book_repository.dart';
 import 'package:airpoint_server/learning/video_for_students/controllers/video_for_students_cantroller.dart';
@@ -10,6 +9,9 @@ import 'package:airpoint_server/logger/logger.dart';
 import 'package:airpoint_server/profiles/controller/profile_cantroller.dart';
 import 'package:airpoint_server/profiles/data/repositories/profile_repository.dart';
 import 'package:postgres/postgres.dart';
+import 'package:get_it/get_it.dart';
+
+final GetIt getIt = GetIt.instance;
 
 Future<void> setupDependencies() async {
   // Регистрируем соединение с базой данных

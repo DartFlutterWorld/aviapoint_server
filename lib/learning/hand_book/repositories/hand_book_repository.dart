@@ -1,5 +1,6 @@
 import 'package:airpoint_server/learning/hand_book/model/hand_book_main_categories_model.dart';
 import 'package:airpoint_server/learning/hand_book/model/preflight_inspection_categories_model.dart';
+import 'package:airpoint_server/learning/hand_book/model/preflight_inspetion_check_list_model.dart';
 import 'package:airpoint_server/logger/logger.dart';
 import 'package:postgres/postgres.dart';
 
@@ -14,7 +15,7 @@ class HandBookRepository {
   Future<List<HandBookMainCategoriesModel>> fetchHandBookMainCategoties() async {
     try {
       final result = await _connection.execute(
-        Sql.named('SELECT * FROM hand_book_main_categories'),
+        Sql.named('SELECT * FROM hand_book_main_categories ORDER by main_category_id'),
       );
       // logger.info(result.first.toColumnMap());
       logger.info(result.toList().map((f) => f.toColumnMap()));
@@ -22,16 +23,16 @@ class HandBookRepository {
       final models = result.map((e) => HandBookMainCategoriesModel.fromJson(e.toColumnMap())).toList();
       return models;
     } catch (e) {
-      logger.severe('Failed to hand_book_main_categories: $e');
+      logger.severe('Failed to fetchHandBookMainCategoties: $e');
       throw e;
     }
   }
 
   // /// Получить все суб категории для предполётные процедуры
-  Future<List<PreflightInspectionCategoriesModel>> fetchPreflightInspectionCategoriesModel() async {
+  Future<List<PreflightInspectionCategoriesModel>> fetchPreflightInspectionCategories() async {
     try {
       final result = await _connection.execute(
-        Sql.named('SELECT * FROM preflight_inspection_categories'),
+        Sql.named('SELECT * FROM preflight_inspection_categories ORDER by id'),
       );
       // logger.info(result.first.toColumnMap());
       logger.info(result.toList().map((f) => f.toColumnMap()));
@@ -39,24 +40,43 @@ class HandBookRepository {
       final models = result.map((e) => PreflightInspectionCategoriesModel.fromJson(e.toColumnMap())).toList();
       return models;
     } catch (e) {
-      logger.severe('Failed to preflight_inspection_categories: $e');
+      logger.severe('Failed to fetchPreflightInspectionCategories: $e');
       throw e;
     }
   }
 
-  // Future<CheckListModel> fetchCheckListById(int id) async {
-  //   try {
-  //     final result = await _connection.execute(Sql.named('SELECT * FROM checklist WHERE id = @id'), parameters: {
-  //       'id': id,
-  //     });
-  //     // logger.info(result.first.toColumnMap());
-  //     logger.info(result.toList().map((f) => f.toColumnMap()));
+  // /// Получить всех челистов для предполётные процедуры
+  Future<List<PreflightInspectionCheckLisModel>> fetchPreflightInspectionCheckList() async {
+    try {
+      final result = await _connection.execute(
+        Sql.named('SELECT * FROM preflight_inspection_check_list'),
+      );
+      // logger.info(result.first.toColumnMap());
+      logger.info(result.toList().map((f) => f.toColumnMap()));
 
-  //     final models = CheckListModel.fromJson(result.first.toColumnMap());
-  //     return models;
-  //   } catch (e) {
-  //     logger.severe('Failed to fetchCheckListById: $e');
-  //     throw e;
-  //   }
-  // }
+      final models = result.map((e) => PreflightInspectionCheckLisModel.fromJson(e.toColumnMap())).toList();
+      return models;
+    } catch (e) {
+      logger.severe('Failed to fetchPreflightInspectionCheckList: $e');
+      throw e;
+    }
+  }
+
+// Получить чек лист по конкретной категории из предполётных процедур
+  Future<List<PreflightInspectionCheckLisModel>> fetchPreflightInspectionCheckListById(int id) async {
+    try {
+      final result = await _connection.execute(Sql.named('SELECT * FROM preflight_inspection_check_list WHERE preflight_inspection_category_id = @id ORDER by id'), parameters: {
+        'id': id,
+      });
+      // logger.info(result.first.toColumnMap());
+      logger.info(result.toList().map((f) => f.toColumnMap()));
+
+      final models = result.map((e) => PreflightInspectionCheckLisModel.fromJson(e.toColumnMap())).toList();
+
+      return models;
+    } catch (e) {
+      logger.severe('Failed to fetchPreflightInspectionCheckListById: $e');
+      throw e;
+    }
+  }
 }
