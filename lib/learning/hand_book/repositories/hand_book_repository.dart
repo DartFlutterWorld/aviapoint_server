@@ -1,4 +1,6 @@
 import 'package:airpoint_server/learning/hand_book/model/hand_book_main_categories_model.dart';
+import 'package:airpoint_server/learning/hand_book/model/normal_categories_model.dart';
+import 'package:airpoint_server/learning/hand_book/model/normal_check_list_model.dart';
 import 'package:airpoint_server/learning/hand_book/model/preflight_inspection_categories_model.dart';
 import 'package:airpoint_server/learning/hand_book/model/preflight_inspetion_check_list_model.dart';
 import 'package:airpoint_server/logger/logger.dart';
@@ -76,6 +78,58 @@ class HandBookRepository {
       return models;
     } catch (e) {
       logger.severe('Failed to fetchPreflightInspectionCheckListById: $e');
+      throw e;
+    }
+  }
+
+  // /// Получить все суб категории для Нормальных процедур
+  Future<List<NormalCategoriesModel>> fetchNormalCategories() async {
+    try {
+      final result = await _connection.execute(
+        Sql.named('SELECT * FROM normal_categories ORDER by id'),
+      );
+      // logger.info(result.first.toColumnMap());
+      logger.info(result.toList().map((f) => f.toColumnMap()));
+
+      final models = result.map((e) => NormalCategoriesModel.fromJson(e.toColumnMap())).toList();
+      return models;
+    } catch (e) {
+      logger.severe('Failed to fetchNormalCategories: $e');
+      throw e;
+    }
+  }
+
+  // /// Получить всех челистов для предполётные процедуры
+  Future<List<NormalCheckLisModel>> fetchNormalCheckList() async {
+    try {
+      final result = await _connection.execute(
+        Sql.named('SELECT * FROM normal_check_list'),
+      );
+      // logger.info(result.first.toColumnMap());
+      logger.info(result.toList().map((f) => f.toColumnMap()));
+
+      final models = result.map((e) => NormalCheckLisModel.fromJson(e.toColumnMap())).toList();
+      return models;
+    } catch (e) {
+      logger.severe('Failed to fetchNormalCheckList: $e');
+      throw e;
+    }
+  }
+
+// Получить чек лист по конкретной категории из предполётных процедур
+  Future<List<NormalCheckLisModel>> fetchNormalCheckListById(int id) async {
+    try {
+      final result = await _connection.execute(Sql.named('SELECT * FROM normal_check_list WHERE normal_category_id = @id ORDER by id'), parameters: {
+        'id': id,
+      });
+      // logger.info(result.first.toColumnMap());
+      logger.info(result.toList().map((f) => f.toColumnMap()));
+
+      final models = result.map((e) => NormalCheckLisModel.fromJson(e.toColumnMap())).toList();
+
+      return models;
+    } catch (e) {
+      logger.severe('Failed to fetchNormalCheckListById: $e');
       throw e;
     }
   }

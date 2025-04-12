@@ -28,5 +28,20 @@ Router _$HandBookControllerRouter(HandBookController service) {
     r'/learning/hand_book/preflight_inspection_categories/check_list/<id>',
     service.fetchPreflightInspectionCheckListById,
   );
+  router.add(
+    'GET',
+    r'/learning/hand_book/normal_categories',
+    service.fetchNormalCaegories,
+  );
+  router.add(
+    'GET',
+    r'/learning/hand_book/normal_categories/check_list',
+    service.fetchNormalCheckList,
+  );
+  router.add(
+    'GET',
+    r'/learning/hand_book/normal_categories/check_list/<id>',
+    service.fetchNormalCheckListById,
+  );
   return router;
 }

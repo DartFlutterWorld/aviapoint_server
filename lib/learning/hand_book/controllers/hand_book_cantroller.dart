@@ -99,4 +99,68 @@ class HandBookController {
       },
     );
   }
+
+  ///
+  /// Hand Book. Получение категорий для Нормальных процедур
+  ///
+  /// Hand Book. Получение категорий для Нормальных процедур
+  ///
+
+  @Route.get('/learning/hand_book/normal_categories')
+  @OpenApiRoute()
+  Future<Response> fetchNormalCaegories(Request request) async {
+    final body = await _handBookRepository.fetchNormalCategories();
+
+    return wrapResponse(
+      () async {
+        return Response.ok(
+          jsonEncode(body),
+          headers: jsonContentHeaders,
+        );
+      },
+    );
+  }
+
+  ///
+  /// Hand Book. Получение чек листа в Normal
+  ///
+  /// Hand Book. Получение чек листа для Предполётных процедур
+  ///
+
+  @Route.get('/learning/hand_book/normal_categories/check_list')
+  @OpenApiRoute()
+  Future<Response> fetchNormalCheckList(Request request) async {
+    final body = await _handBookRepository.fetchNormalCheckList();
+
+    return wrapResponse(
+      () async {
+        return Response.ok(
+          jsonEncode(body),
+          headers: jsonContentHeaders,
+        );
+      },
+    );
+  }
+
+  ///
+  /// Получение конкретной проверки из чеклиста Normal
+  ///
+  /// Получение конкретной проверки из чеклиста Normal по id
+  ///
+
+  @Route.get('/learning/hand_book/normal_categories/check_list/<id>')
+  @OpenApiRoute()
+  Future<Response> fetchNormalCheckListById(Request request, String id) async {
+    return wrapResponse(
+      () async {
+        // final id = request.context['id'] as String;
+        // final id2 = int.parse(request.params['id']!);
+
+        return Response.ok(
+          jsonEncode(await _handBookRepository.fetchNormalCheckListById(int.parse(id))),
+          headers: jsonContentHeaders,
+        );
+      },
+    );
+  }
 }

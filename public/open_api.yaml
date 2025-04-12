@@ -113,6 +113,42 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /learning/hand_book/normal_categories:
+    get:
+      tags:
+        - HandBookController
+      summary: Hand Book. Получение категорий для Нормальных процедур
+      description: Hand Book. Получение категорий для Нормальных процедур
+      operationId: fetchNormalCaegories
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/hand_book/normal_categories/check_list:
+    get:
+      tags:
+        - HandBookController
+      summary: Hand Book. Получение чек листа в Normal
+      description: Hand Book. Получение чек листа для Предполётных процедур
+      operationId: fetchNormalCheckList
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/hand_book/normal_categories/check_list/<id>:
+    get:
+      tags:
+        - HandBookController
+      summary: Получение конкретной проверки из чеклиста Normal
+      description: Получение конкретной проверки из чеклиста Normal по id
+      operationId: fetchNormalCheckListById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
 components: { }
 tags:
   - name: VideoForStudentsController
