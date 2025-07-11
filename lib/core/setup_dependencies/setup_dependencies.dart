@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:airpoint_server/auth/controller/auth_controller.dart';
+import 'package:airpoint_server/auth/token/token_service.dart';
 import 'package:airpoint_server/core/config/config.dart';
 import 'package:airpoint_server/learning/hand_book/controllers/hand_book_cantroller.dart';
 import 'package:airpoint_server/learning/hand_book/repositories/hand_book_repository.dart';
@@ -60,5 +62,20 @@ Future<void> setupDependencies() async {
   getIt.registerSingletonAsync<HandBookController>(() async {
     final handBookRepository = await getIt.getAsync<HandBookRepository>();
     return HandBookController(handBookRepository: handBookRepository);
+  });
+  getIt.registerSingletonAsync<TokenService>(() async {
+    return TokenService(
+      secretKey: '9032baabbeace5abe5e440798545c0edd21c3c25766637b07942ab70fa922b7b', // Используйте надежный ключ
+      accessTokenExpiry: Duration(minutes: 1),
+      refreshTokenExpiry: Duration(days: 30),
+    );
+  });
+
+  getIt.registerSingletonAsync<AuthController>(() async {
+    final profileRepository = await getIt.getAsync<ProfileRepository>();
+    return AuthController(
+      profileRepository: profileRepository,
+      tokenService: await getIt.getAsync<TokenService>(),
+    );
   });
 }

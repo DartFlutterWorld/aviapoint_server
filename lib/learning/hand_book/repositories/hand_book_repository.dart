@@ -1,3 +1,4 @@
+import 'package:airpoint_server/learning/hand_book/model/emergency_categories_model.dart';
 import 'package:airpoint_server/learning/hand_book/model/hand_book_main_categories_model.dart';
 import 'package:airpoint_server/learning/hand_book/model/normal_categories_model.dart';
 import 'package:airpoint_server/learning/hand_book/model/normal_check_list_model.dart';
@@ -130,6 +131,23 @@ class HandBookRepository {
       return models;
     } catch (e) {
       logger.severe('Failed to fetchNormalCheckListById: $e');
+      throw e;
+    }
+  }
+
+  // /// Получить все суб категории для Аварийных процедур
+  Future<List<EmergencyCategoriesModel>> fetchEmergencyCategories() async {
+    try {
+      final result = await _connection.execute(
+        Sql.named('SELECT * FROM emergency_categories ORDER by id'),
+      );
+      // logger.info(result.first.toColumnMap());
+      logger.info(result.toList().map((f) => f.toColumnMap()));
+
+      final models = result.map((e) => EmergencyCategoriesModel.fromJson(e.toColumnMap())).toList();
+      return models;
+    } catch (e) {
+      logger.severe('Failed to fetchEmergencyCategories: $e');
       throw e;
     }
   }

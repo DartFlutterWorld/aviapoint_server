@@ -108,7 +108,7 @@ class HandBookController {
 
   @Route.get('/learning/hand_book/normal_categories')
   @OpenApiRoute()
-  Future<Response> fetchNormalCaegories(Request request) async {
+  Future<Response> fetchNormalCategories(Request request) async {
     final body = await _handBookRepository.fetchNormalCategories();
 
     return wrapResponse(
@@ -158,6 +158,27 @@ class HandBookController {
 
         return Response.ok(
           jsonEncode(await _handBookRepository.fetchNormalCheckListById(int.parse(id))),
+          headers: jsonContentHeaders,
+        );
+      },
+    );
+  }
+
+  ///
+  /// Hand Book. Получение категорий для Аварийных процедур
+  ///
+  /// Hand Book. Получение категорий для Аварийных процедур
+  ///
+
+  @Route.get('/learning/hand_book/emergency_categories')
+  @OpenApiRoute()
+  Future<Response> fetchEmergencyCategories(Request request) async {
+    final body = await _handBookRepository.fetchEmergencyCategories();
+
+    return wrapResponse(
+      () async {
+        return Response.ok(
+          jsonEncode(body),
           headers: jsonContentHeaders,
         );
       },

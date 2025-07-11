@@ -19,9 +19,9 @@ Router _$ProfileControllerRouter(ProfileController service) {
     service.getUsers,
   );
   router.add(
-    'DELETE',
-    r'/user/<userId>',
-    service.deleteUser,
+    'POST',
+    r'/profile',
+    service.getProfile,
   );
   return router;
 }

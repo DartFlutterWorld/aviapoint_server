@@ -5,6 +5,35 @@ info:
 servers:
   - url: "http://localhost:8080"
 paths:
+  /auth/sms:
+    post:
+      tags:
+        - AuthController
+      summary: Отправление sms
+      description: Отправление sms пользователю на телефон
+      operationId: sendSms
+      responses:
+        200:
+          description: "Operation completed!"
+  /auth/login:
+    post:
+      tags:
+        - AuthController
+      summary: Логин
+      description: Логин по телефону и смс
+      operationId: login
+      responses:
+        200:
+          description: "Operation completed!"
+  /auth/refresh:
+    post:
+      tags:
+        - AuthController
+      summary: refreshToken
+      operationId: refreshToken
+      responses:
+        200:
+          description: "Operation completed!"
   /learning/video_for_students:
     get:
       tags:
@@ -24,42 +53,6 @@ paths:
       operationId: getVideoById
       parameters:
         - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        200:
-          description: "Operation completed!"
-  /user:
-    post:
-      tags:
-        - ProfileController
-      summary: Создание пользователя
-      description: Возвращает в ответе данные пользователя
-      operationId: createUser
-      responses:
-        200:
-          description: "Operation completed!"
-  /profiles:
-    get:
-      tags:
-        - ProfileController
-      summary: Получение профилей пользователей
-      description: Получение всех профилей пользователей
-      operationId: getUsers
-      responses:
-        200:
-          description: "Operation completed!"
-  /user/<userId>:
-    delete:
-      tags:
-        - ProfileController
-      summary: Удаление пользователя
-      description: Удаление пользователя по userId
-      operationId: deleteUser
-      parameters:
-        - name: userId
           in: path
           required: true
           schema:
@@ -119,7 +112,7 @@ paths:
         - HandBookController
       summary: Hand Book. Получение категорий для Нормальных процедур
       description: Hand Book. Получение категорий для Нормальных процедур
-      operationId: fetchNormalCaegories
+      operationId: fetchNormalCategories
       responses:
         200:
           description: "Operation completed!"
@@ -149,8 +142,49 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /learning/hand_book/emergency_categories:
+    get:
+      tags:
+        - HandBookController
+      summary: Hand Book. Получение категорий для Аварийных процедур
+      description: Hand Book. Получение категорий для Аварийных процедур
+      operationId: fetchEmergencyCategories
+      responses:
+        200:
+          description: "Operation completed!"
+  /user:
+    post:
+      tags:
+        - ProfileController
+      summary: Создание пользователя
+      description: Возвращает в ответе данные пользователя
+      operationId: createUser
+      responses:
+        200:
+          description: "Operation completed!"
+  /profiles:
+    get:
+      tags:
+        - ProfileController
+      summary: Получение профилей пользователей
+      description: Получение всех профилей пользователей
+      operationId: getUsers
+      responses:
+        200:
+          description: "Operation completed!"
+  /profile:
+    post:
+      tags:
+        - ProfileController
+      summary: Получение профиля
+      description: Получение всех профиля пользователя
+      operationId: getProfile
+      responses:
+        200:
+          description: "Operation completed!"
 components: { }
 tags:
+  - name: AuthController
   - name: VideoForStudentsController
-  - name: ProfileController
   - name: HandBookController
+  - name: ProfileController

@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:airpoint_server/auth/controller/auth_controller.dart';
+import 'package:airpoint_server/auth/token/token_service.dart';
 import 'package:airpoint_server/core/config/config.dart';
 import 'package:airpoint_server/core/setup_dependencies/setup_dependencies.dart';
 import 'package:airpoint_server/learning/hand_book/controllers/hand_book_cantroller.dart';
@@ -28,6 +31,7 @@ Future<void> main() async {
       .add(getIt<ProfileController>().router)
       .add(getIt<VideoForStudentsController>().router)
       .add(getIt<HandBookController>().router)
+      .add(getIt<AuthController>().router)
       .add(createStaticHandler('public/', listDirectories: true))
       .add(
         Router()
@@ -42,6 +46,35 @@ Future<void> main() async {
           ),
       )
       .handler;
+
+  Middleware checkAuth() {
+    return (Handler innerHandler) {
+      return (Request request) async {
+        // Здесь проверяем аутентификацию
+        // Например, проверяем заголовок Authorization
+        final authHeader = request.headers['Authorization'];
+
+        if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+          return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+        }
+
+        // Извлекаем токен
+        final token = authHeader.substring(7);
+
+        // Здесь должна быть логика проверки токена (например, через JWT)
+        // Это пример - замените на свою реальную проверку
+
+        final isValid = getIt.get<TokenService>().validateToken(token); // Ваша функция проверки токена
+
+        if (!isValid) {
+          return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+        }
+
+        // Если всё ок, передаем запрос дальше
+        return innerHandler(request);
+      };
+    };
+  }
 
   Middleware logDatabaseRequests() {
     return (Handler handler) {

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:airpoint_server/auth/token/token_service.dart';
+import 'package:airpoint_server/core/setup_dependencies/setup_dependencies.dart';
 import 'package:airpoint_server/profiles/api/create_user_request.dart';
 import 'package:airpoint_server/core/wrap_response.dart';
 import 'package:airpoint_server/profiles/data/repositories/profile_repository.dart';
@@ -39,9 +41,9 @@ class ProfileController {
 
         return Response.ok(
           jsonEncode(
-            await _profileRepository.create(
-              id: 1,
-              name: createTodoRequest.name,
+            await _profileRepository.createUser(
+              // id: 1,
+              // name: createTodoRequest.name,
               phone: createTodoRequest.email,
             ),
           ),
@@ -73,11 +75,40 @@ class ProfileController {
   }
 
   ///
-  /// Удаление пользователя
+  /// Получение профиля
   ///
-  /// Удаление пользователя по userId
+  /// Получение всех профиля пользователя
   ///
-  @Route.delete('/user/<userId>')
+
+  @Route.post('/profile')
   @OpenApiRoute()
-  Future<Response> deleteUser(Request request) async => Response.ok('');
+  Future<Response> getProfile(Request request) async {
+    // Проверяем аутентификацию в самом методе
+    final authHeader = request.headers['Authorization'];
+    if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+      return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+    }
+
+    final token = authHeader.substring(7);
+    final payload = getIt.get<TokenService>().validateToken(token);
+    if (payload == false) {
+      return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+    }
+
+    // final body = await request.readAsString();
+    // final json = jsonDecode(body) as Map<String, dynamic>;
+    final id = getIt.get<TokenService>().getUserIdFromToken(token);
+
+    // final body = await request.readAsString();
+    final result = await _profileRepository.fetchProfileById(int.parse(id ?? ''));
+
+    return wrapResponse(
+      () async {
+        return Response.ok(
+          jsonEncode(result),
+          headers: jsonContentHeaders,
+        );
+      },
+    );
+  }
 }

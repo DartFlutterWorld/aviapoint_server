@@ -31,7 +31,7 @@ Router _$HandBookControllerRouter(HandBookController service) {
   router.add(
     'GET',
     r'/learning/hand_book/normal_categories',
-    service.fetchNormalCaegories,
+    service.fetchNormalCategories,
   );
   router.add(
     'GET',
@@ -42,6 +42,11 @@ Router _$HandBookControllerRouter(HandBookController service) {
     'GET',
     r'/learning/hand_book/normal_categories/check_list/<id>',
     service.fetchNormalCheckListById,
+  );
+  router.add(
+    'GET',
+    r'/learning/hand_book/emergency_categories',
+    service.fetchEmergencyCategories,
   );
   return router;
 }

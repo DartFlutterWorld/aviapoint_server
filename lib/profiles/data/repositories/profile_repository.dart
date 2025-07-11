@@ -9,14 +9,24 @@ class ProfileRepository {
     required Connection connection,
   }) : _connection = connection;
 
-  // /// Получить из хранилища все задачи в отсортированном порядке
-  Future<Iterable<ProfileModel>> fetchAllOrders(String userId) async {
-    final result = await _connection.execute(
-      Sql.named('SELECT * FROM profile ORDER BY id ASC'),
-    );
+  // /// Получить профиль пользователя
+  Future<ProfileModel> fetchProfileByPhone(String phone) async {
+    final result = await _connection.execute(Sql.named('SELECT * FROM profiles WHERE phone = @phone'), parameters: {
+      'phone': phone,
+    });
 
-    final models = result.map((e) => ProfileModel.fromJson(e.toColumnMap())).toList();
-    return models;
+    final serializedState = result.first.toColumnMap();
+    return ProfileModel.fromJson(serializedState);
+  }
+
+  // /// Получить профиль пользователя
+  Future<ProfileModel> fetchProfileById(int id) async {
+    final result = await _connection.execute(Sql.named('SELECT * FROM profiles WHERE id = @id'), parameters: {
+      'id': id,
+    });
+
+    final serializedState = result.first.toColumnMap();
+    return ProfileModel.fromJson(serializedState);
   }
 
   // /// Получить Profiles
@@ -32,19 +42,15 @@ class ProfileRepository {
   }
 
   /// Создать нового юзера
-  Future<ProfileModel> create({
-    required int id,
-    required String name,
+  Future<ProfileModel> createUser({
     required String phone,
     bool isCompleted = false,
   }) async {
     final result = await _connection.execute(
-        Sql.named('INSERT INTO profile (id, name, phone) '
-            'VALUES (@id, @name, @phone) '
+        Sql.named('INSERT INTO profiles (phone)'
+            'VALUES ( @phone)'
             'RETURNING *'),
         parameters: {
-          'id': id,
-          'name': name,
           'phone': phone,
         });
     final serializedState = result.first.toColumnMap();
