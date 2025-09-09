@@ -182,9 +182,134 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /stories:
+    get:
+      tags:
+        - StoriesController
+      summary: Получение всех видео сториков
+      description: Получение всех видео сториков
+      operationId: getStories
+      responses:
+        200:
+          description: "Operation completed!"
+  /stories/<id>:
+    get:
+      tags:
+        - StoriesController
+      summary: Получение конкретного сторика
+      description: Получение конкретного сторика
+      operationId: getStory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /category_news:
+    get:
+      tags:
+        - NewsController
+      summary: Получение всех категорий для новостей
+      description: Получение всех категорий для новостей
+      operationId: getCategoryNews
+      responses:
+        200:
+          description: "Operation completed!"
+  /news:
+    get:
+      tags:
+        - NewsController
+      summary: Получение всех видео сториков
+      description: Получение всех видео сториков
+      operationId: getnews
+      responses:
+        200:
+          description: "Operation completed!"
+  /news/<id>:
+    get:
+      tags:
+        - NewsController
+      summary: Получение конкретной новости
+      description: Получение конкретной новости
+      operationId: getNewsById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /news/category/<id>:
+    get:
+      tags:
+        - NewsController
+      summary: Получение новостей по конкретной категории
+      description: Получение новостей по конкретной категории
+      operationId: getNewsByCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/ros_avia_test/type_sertificates:
+    get:
+      tags:
+        - RosAviaTestController
+      summary: РосАвиаТест. Получение типов свидетельтв
+      description: Получение всех Получение типов свидетельтв в РосАвиаТест
+      operationId: fetchTypeSertificates
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/ros_avia_test/type_correct_answers:
+    get:
+      tags:
+        - RosAviaTestController
+      summary: РосАвиаТест. Получение типов корректности ответа
+      description: Получение всех Получение типов корректности ответа
+      operationId: fetchTypeCorrectAnswer
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/ros_avia_test/privat_pilot_plane_category:
+    get:
+      tags:
+        - RosAviaTestController
+      summary: fetchPrivatPilotPlaneCategory
+      operationId: fetchPrivatPilotPlaneCategory
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/ros_avia_test/<typeCertificateId>:
+    get:
+      tags:
+        - RosAviaTestController
+      summary: fetchRosAviaTestCategoryWithQuestions
+      operationId: fetchRosAviaTestCategoryWithQuestions
+      parameters:
+        - name: typeCertificateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
 components: { }
 tags:
   - name: AuthController
   - name: VideoForStudentsController
   - name: HandBookController
   - name: ProfileController
+  - name: StoriesController
+  - name: NewsController
+  - name: RosAviaTestController

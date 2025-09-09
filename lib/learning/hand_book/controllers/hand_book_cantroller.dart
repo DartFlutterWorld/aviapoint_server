@@ -55,6 +55,14 @@ class HandBookController {
         );
       },
     );
+    // return wrapResponse(
+    //   () async {
+    //     return Response.badRequest(
+    //       // jsonEncode(body),
+    //       headers: jsonContentHeaders,
+    //     );
+    //   },
+    // );
   }
 
   ///

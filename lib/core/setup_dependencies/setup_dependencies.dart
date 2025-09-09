@@ -5,11 +5,17 @@ import 'package:airpoint_server/auth/token/token_service.dart';
 import 'package:airpoint_server/core/config/config.dart';
 import 'package:airpoint_server/learning/hand_book/controllers/hand_book_cantroller.dart';
 import 'package:airpoint_server/learning/hand_book/repositories/hand_book_repository.dart';
+import 'package:airpoint_server/learning/ros_avia_test/controllers/ros_avia_test_cantroller.dart';
+import 'package:airpoint_server/learning/ros_avia_test/repositories/ros_avia_test_repository.dart';
 import 'package:airpoint_server/learning/video_for_students/controllers/video_for_students_cantroller.dart';
 import 'package:airpoint_server/learning/video_for_students/repositories/video_for_students_repository.dart';
 import 'package:airpoint_server/logger/logger.dart';
+import 'package:airpoint_server/news/controllers/news_controller.dart';
+import 'package:airpoint_server/news/repositories/news_repository.dart';
 import 'package:airpoint_server/profiles/controller/profile_cantroller.dart';
 import 'package:airpoint_server/profiles/data/repositories/profile_repository.dart';
+import 'package:airpoint_server/stories/controllers/stories_controller.dart';
+import 'package:airpoint_server/stories/repositories/stories_repository.dart';
 import 'package:postgres/postgres.dart';
 import 'package:get_it/get_it.dart';
 
@@ -76,6 +82,41 @@ Future<void> setupDependencies() async {
     return AuthController(
       profileRepository: profileRepository,
       tokenService: await getIt.getAsync<TokenService>(),
+    );
+  });
+
+  getIt.registerSingletonAsync<StoriesRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return StoriesRepository(connection: connection);
+  });
+
+  getIt.registerSingletonAsync<StoriesController>(() async {
+    final storiesRepository = await getIt.getAsync<StoriesRepository>();
+    return StoriesController(
+      storiesRepository: storiesRepository,
+    );
+  });
+
+  getIt.registerSingletonAsync<NewsRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return NewsRepository(connection: connection);
+  });
+  getIt.registerSingletonAsync<NewsController>(() async {
+    final newsRepository = await getIt.getAsync<NewsRepository>();
+    return NewsController(
+      newsRepository: newsRepository,
+    );
+  });
+
+  getIt.registerSingletonAsync<RosAviaTestRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return RosAviaTestRepository(connection: connection);
+  });
+
+  getIt.registerSingletonAsync<RosAviaTestController>(() async {
+    final rosAviaTestRepository = await getIt.getAsync<RosAviaTestRepository>();
+    return RosAviaTestController(
+      rosAviaTestRepository: rosAviaTestRepository,
     );
   });
 }
