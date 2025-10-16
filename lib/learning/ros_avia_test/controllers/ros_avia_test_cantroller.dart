@@ -63,10 +63,11 @@ class RosAviaTestController {
   // /// РосАвиаТест. Получение категорий для Частного пилота (самолёт)
   // ///
 
-  @Route.get('/learning/ros_avia_test/privat_pilot_plane_category')
+  @Route.get('/learning/ros_avia_test/categories/<typeCertificateId>')
   @OpenApiRoute()
-  Future<Response> fetchPrivatPilotPlaneCategory(Request request) async {
-    final body = await _rosAviaTestRepository.fetchPrivatPilotPlaneCategory();
+  Future<Response> fetchRosAviaTestCategories(Request request) async {
+    final id = request.params['typeCertificateId']!;
+    final body = await _rosAviaTestRepository.fetchRosAviaTestCategories(int.parse(id));
 
     return wrapResponse(
       () async {

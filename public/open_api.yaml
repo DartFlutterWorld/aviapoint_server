@@ -280,12 +280,18 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/ros_avia_test/privat_pilot_plane_category:
+  /learning/ros_avia_test/categories/<typeCertificateId>:
     get:
       tags:
         - RosAviaTestController
-      summary: fetchPrivatPilotPlaneCategory
-      operationId: fetchPrivatPilotPlaneCategory
+      summary: fetchRosAviaTestCategories
+      operationId: fetchRosAviaTestCategories
+      parameters:
+        - name: typeCertificateId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         200:
           description: "Operation completed!"

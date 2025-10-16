@@ -1,5 +1,5 @@
 import 'package:airpoint_server/learning/ros_avia_test/model/answer_model.dart';
-import 'package:airpoint_server/learning/ros_avia_test/model/privat_pilot_plane_category_model.dart';
+import 'package:airpoint_server/learning/ros_avia_test/model/ros_avia_test_category_model.dart';
 import 'package:airpoint_server/learning/ros_avia_test/model/question_with_answers_model.dart';
 import 'package:airpoint_server/learning/ros_avia_test/model/ros_avia_test_category_with_questions_model.dart';
 import 'package:airpoint_server/learning/ros_avia_test/model/type_correct_answer_model.dart';
@@ -48,20 +48,45 @@ class RosAviaTestRepository {
     }
   }
 
-  // /// Получить все  категории для Частного пилота (самолёт)
-  Future<List<PrivatPilotPlaneCategoryModel>> fetchPrivatPilotPlaneCategory() async {
-    try {
-      final result = await _connection.execute(
-        Sql.named('SELECT * FROM privat_pilot_plane_category ORDER by id'),
-      );
-      // logger.info(result.first.toColumnMap());
-      logger.info(result.toList().map((f) => f.toColumnMap()));
+  // Future<List<RosAviaTestCategoryModel>> fetchRosAviaTestCategory() async {
+  //   try {
+  //     final result = await _connection.execute(
+  //       Sql.named('SELECT * FROM rosaviatest_category ORDER by id'),
+  //     );
+  //     // logger.info(result.first.toColumnMap());
+  //     logger.info(result.toList().map((f) => f.toColumnMap()));
 
-      final models = result.map((e) => PrivatPilotPlaneCategoryModel.fromJson(e.toColumnMap())).toList();
+  //     final models = result.map((e) => RosAviaTestCategoryModel.fromJson(e.toColumnMap())).toList();
+  //     return models;
+  //   } catch (e) {
+  //     logger.severe('Failed to fetchRosaviatestCategory: $e');
+  //     throw e;
+  //   }
+  // }
+
+  // Получить чек лист по конкретной категории
+  Future<List<RosAviaTestCategoryModel>> fetchRosAviaTestCategories(int typeCertificateId) async {
+    try {
+      final sql = Sql.named(r'''
+      SELECT DISTINCT c.id, c.title, c.image
+      FROM question_type_certificates qtc
+      JOIN rosaviatest_category c ON c.id = qtc.category_id
+      WHERE qtc.type_certificate_id = @typeCertificateId
+      ORDER BY c.title
+    ''');
+
+      final result = await _connection.execute(
+        sql,
+        parameters: {'typeCertificateId': typeCertificateId},
+      );
+
+      logger.info(result.toList().map((f) => f.toColumnMap()));
+      final models = result.map((row) => RosAviaTestCategoryModel.fromJson(row.toColumnMap())).toList();
+
       return models;
     } catch (e) {
-      logger.severe('Failed to fetchPrivatPilotPlaneCategory: $e');
-      throw e;
+      logger.severe('Failed to fetchRosAviaTestCategory: $e');
+      rethrow;
     }
   }
 

@@ -20,8 +20,8 @@ Router _$RosAviaTestControllerRouter(RosAviaTestController service) {
   );
   router.add(
     'GET',
-    r'/learning/ros_avia_test/privat_pilot_plane_category',
-    service.fetchPrivatPilotPlaneCategory,
+    r'/learning/ros_avia_test/categories/<typeCertificateId>',
+    service.fetchRosAviaTestCategories,
   );
   router.add(
     'GET',
