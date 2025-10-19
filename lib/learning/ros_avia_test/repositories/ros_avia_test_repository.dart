@@ -1,18 +1,21 @@
-import 'package:airpoint_server/learning/ros_avia_test/model/answer_model.dart';
 import 'package:airpoint_server/learning/ros_avia_test/model/ros_avia_test_category_model.dart';
 import 'package:airpoint_server/learning/ros_avia_test/model/question_with_answers_model.dart';
 import 'package:airpoint_server/learning/ros_avia_test/model/ros_avia_test_category_with_questions_model.dart';
 import 'package:airpoint_server/learning/ros_avia_test/model/type_correct_answer_model.dart';
 import 'package:airpoint_server/learning/ros_avia_test/model/type_sertificates_model.dart';
-import 'package:airpoint_server/logger/logger.dart';
 import 'package:postgres/postgres.dart';
+import 'package:talker/talker.dart';
+import 'package:get_it/get_it.dart';
 
 class RosAviaTestRepository {
   final Connection _connection;
+  final Talker _talker;
 
   RosAviaTestRepository({
     required Connection connection,
-  }) : _connection = connection;
+    Talker? talker,
+  })  : _connection = connection,
+        _talker = talker ?? GetIt.instance<Talker>();
 
   // /// Получить все главные категории
   Future<List<TypeSertificatesModel>> fetchTypeSertificates() async {
@@ -21,12 +24,12 @@ class RosAviaTestRepository {
         Sql.named('SELECT * FROM type_certificates ORDER by id'),
       );
       // logger.info(result.first.toColumnMap());
-      logger.info(result.toList().map((f) => f.toColumnMap()));
+      _talker.info(result.toList().map((f) => f.toColumnMap()));
 
       final models = result.map((e) => TypeSertificatesModel.fromJson(e.toColumnMap())).toList();
       return models;
     } catch (e) {
-      logger.severe('Failed to fetchTypeSertificates: $e');
+      _talker.error('Failed to fetchTypeSertificates: $e');
       throw e;
     }
   }
@@ -38,12 +41,12 @@ class RosAviaTestRepository {
         Sql.named('SELECT * FROM type_correct_answers ORDER by id'),
       );
       // logger.info(result.first.toColumnMap());
-      logger.info(result.toList().map((f) => f.toColumnMap()));
+      _talker.info(result.toList().map((f) => f.toColumnMap()));
 
       final models = result.map((e) => TypeCorrectAnswerModel.fromJson(e.toColumnMap())).toList();
       return models;
     } catch (e) {
-      logger.severe('Failed to fetchTypeCorrectAnswer: $e');
+      _talker.error('Failed to fetchTypeCorrectAnswer: $e');
       throw e;
     }
   }
@@ -80,12 +83,12 @@ class RosAviaTestRepository {
         parameters: {'typeCertificateId': typeCertificateId},
       );
 
-      logger.info(result.toList().map((f) => f.toColumnMap()));
+      _talker.info(result.toList().map((f) => f.toColumnMap()));
       final models = result.map((row) => RosAviaTestCategoryModel.fromJson(row.toColumnMap())).toList();
 
       return models;
     } catch (e) {
-      logger.severe('Failed to fetchRosAviaTestCategory: $e');
+      _talker.error('Failed to fetchRosAviaTestCategory: $e');
       rethrow;
     }
   }
@@ -175,7 +178,91 @@ class RosAviaTestRepository {
 
       return categoriesMap.values.toList();
     } catch (e) {
-      logger.severe('Failed to fetchRosAviaTestCategoryWithQuestions: $e');
+      _talker.error('Failed to fetchRosAviaTestCategoryWithQuestions: $e');
+      rethrow;
+    }
+  }
+
+  // Получить все вопросы и ответы по выбранным category_id и type_certificate_id
+  Future<List<QuestionWithAnswersModel>> fetchQuestionsWithAnswersByCategoryAndTypeCertificate({
+    required Set<int> categoryIds,
+    required int typeCertificateId,
+    required bool mixAnswers,
+    required bool mixQuestions,
+  }) async {
+    try {
+      final result = await _connection.execute(
+        Sql.named('''
+          SELECT 
+            q.id AS question_id,
+            q.title AS question_text,
+            q.explanation,
+            q.correct_answer,
+            c.id AS category_id,
+            c.title AS category_title,
+            tc.id AS type_certificate_id,
+            JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'answer_id', a.id,
+                'answer_text', a.answer_text,
+                'is_correct', a.is_correct,
+                'is_official', a.is_official,
+                'position', a.position
+              ) ORDER BY a.position
+            ) AS answers
+          FROM 
+            question_type_certificates qtc
+          INNER JOIN 
+            rosaviatest_questions q ON qtc.question_id = q.id
+          INNER JOIN 
+            rosaviatest_answers a ON a.question_id = q.id
+          INNER JOIN 
+            rosaviatest_category c ON qtc.category_id = c.id
+          INNER JOIN 
+            type_certificates tc ON qtc.type_certificate_id = tc.id
+          WHERE 
+            qtc.category_id = ANY(@category_ids) 
+            AND qtc.type_certificate_id = @type_certificate_id
+          GROUP BY 
+            q.id, q.title, q.explanation, q.correct_answer, c.id, c.title, tc.id
+          ORDER BY 
+            q.id ASC;
+        '''),
+        parameters: {
+          'category_ids': categoryIds.toList(),
+          'type_certificate_id': typeCertificateId,
+        },
+      );
+
+      _talker.info(result.toList().map((f) => f.toColumnMap()));
+
+      final models = result.map((row) {
+        final map = row.toColumnMap();
+        return QuestionWithAnswersModel.fromJson({
+          'question_id': map['question_id'],
+          'question_text': map['question_text'],
+          'explanation': map['explanation'],
+          'correct_answer': map['correct_answer'],
+          'answers': map['answers'],
+          'category_title': map['category_title'],
+        });
+      }).toList();
+
+      // Перемешиваем ответы если mixAnswers = true
+      if (mixAnswers) {
+        for (final model in models) {
+          model.answers.shuffle();
+        }
+      }
+
+      // Перемешиваем вопросы если mixQuestions = true
+      if (mixQuestions) {
+        models.shuffle();
+      }
+
+      return models;
+    } catch (e) {
+      _talker.error('Failed to fetchQuestionsWithAnswersByCategoryAndType: $e');
       rethrow;
     }
   }
@@ -187,7 +274,7 @@ class RosAviaTestRepository {
 //         Sql.named('SELECT * FROM preflight_inspection_check_list'),
 //       );
 //       // logger.info(result.first.toColumnMap());
-//       logger.info(result.toList().map((f) => f.toColumnMap()));
+//       _talker.info(result.toList().map((f) => f.toColumnMap()));
 
 //       final models = result.map((e) => PreflightInspectionCheckLisModel.fromJson(e.toColumnMap())).toList();
 //       return models;
@@ -204,7 +291,7 @@ class RosAviaTestRepository {
 //         'id': id,
 //       });
 //       // logger.info(result.first.toColumnMap());
-//       logger.info(result.toList().map((f) => f.toColumnMap()));
+//       _talker.info(result.toList().map((f) => f.toColumnMap()));
 
 //       final models = result.map((e) => PreflightInspectionCheckLisModel.fromJson(e.toColumnMap())).toList();
 
@@ -222,7 +309,7 @@ class RosAviaTestRepository {
 //         Sql.named('SELECT * FROM normal_categories ORDER by id'),
 //       );
 //       // logger.info(result.first.toColumnMap());
-//       logger.info(result.toList().map((f) => f.toColumnMap()));
+//       _talker.info(result.toList().map((f) => f.toColumnMap()));
 
 //       final models = result.map((e) => NormalCategoriesModel.fromJson(e.toColumnMap())).toList();
 //       return models;
@@ -239,7 +326,7 @@ class RosAviaTestRepository {
 //         Sql.named('SELECT * FROM normal_check_list'),
 //       );
 //       // logger.info(result.first.toColumnMap());
-//       logger.info(result.toList().map((f) => f.toColumnMap()));
+//       _talker.info(result.toList().map((f) => f.toColumnMap()));
 
 //       final models = result.map((e) => NormalCheckLisModel.fromJson(e.toColumnMap())).toList();
 //       return models;
@@ -256,7 +343,7 @@ class RosAviaTestRepository {
 //         'id': id,
 //       });
 //       // logger.info(result.first.toColumnMap());
-//       logger.info(result.toList().map((f) => f.toColumnMap()));
+//       _talker.info(result.toList().map((f) => f.toColumnMap()));
 
 //       final models = result.map((e) => NormalCheckLisModel.fromJson(e.toColumnMap())).toList();
 
@@ -274,7 +361,7 @@ class RosAviaTestRepository {
 //         Sql.named('SELECT * FROM emergency_categories ORDER by id'),
 //       );
 //       // logger.info(result.first.toColumnMap());
-//       logger.info(result.toList().map((f) => f.toColumnMap()));
+//       _talker.info(result.toList().map((f) => f.toColumnMap()));
 
 //       final models = result.map((e) => EmergencyCategoriesModel.fromJson(e.toColumnMap())).toList();
 //       return models;

@@ -10,12 +10,13 @@ part 'question_with_answers_model.g.dart';
 )
 // Модель Воздушные скорости в аварифных ситуациях
 class QuestionWithAnswersModel {
-  QuestionWithAnswersModel(
-    this.correctAnswer, {
+  QuestionWithAnswersModel({
+    this.correctAnswer,
     required this.questionId,
     required this.questionText,
     this.explanation,
     required this.answers,
+    this.categoryTitle,
   });
 
   final int questionId;
@@ -23,6 +24,7 @@ class QuestionWithAnswersModel {
   final String? explanation;
   final int? correctAnswer;
   final List<AnswerModel> answers;
+  final String? categoryTitle;
 
   factory QuestionWithAnswersModel.fromJson(Map<String, dynamic> json) => _$QuestionWithAnswersModelFromJson(json);
 

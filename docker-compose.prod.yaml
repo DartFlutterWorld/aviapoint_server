@@ -1,0 +1,70 @@
+version: '3.9'
+
+services:
+  db:
+    container_name: aviapoint-postgres
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRESQL_DB:-aviapoint}
+      POSTGRES_USER: ${POSTGRESQL_USER:-postgres}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRESQL_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aviapoint-server
+    restart: always
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    environment:
+      POSTGRESQL_HOST: db
+      POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD:-password}
+      POSTGRESQL_DB: ${POSTGRESQL_DB:-aviapoint}
+      POSTGRESQL_USER: ${POSTGRESQL_USER:-postgres}
+      DART_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/openapi"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    container_name: aviapoint-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./public:/app/public:ro
+    depends_on:
+      - app
+    networks:
+      - backend
+
+volumes:
+  db_data:
+
+networks:
+  backend:
+    driver: bridge

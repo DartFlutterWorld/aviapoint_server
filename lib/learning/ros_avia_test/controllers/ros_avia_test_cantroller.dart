@@ -16,9 +16,9 @@ class RosAviaTestController {
   Router get router => _$RosAviaTestControllerRouter(this);
 
   ///
-  /// РосАвиаТест. Получение типов свидетельтв
+  /// РосАвиаТест. Получение типов свидетельств
   ///
-  /// Получение всех Получение типов свидетельтв в РосАвиаТест
+  /// Получение всех Получение типов свидетельств в РосАвиаТест
   ///
 
   @Route.get('/learning/ros_avia_test/type_sertificates')
@@ -57,11 +57,11 @@ class RosAviaTestController {
     );
   }
 
-  // ///
-  // /// РосАвиаТест. Получение категорий для Частного пилота (самолёт)
-  // ///
-  // /// РосАвиаТест. Получение категорий для Частного пилота (самолёт)
-  // ///
+  ///
+  /// РосАвиаТест. Получение категорий
+  ///
+  /// РосАвиаТест. Получение категорий
+  ///
 
   @Route.get('/learning/ros_avia_test/categories/<typeCertificateId>')
   @OpenApiRoute()
@@ -78,17 +78,62 @@ class RosAviaTestController {
       },
     );
   }
-  // ///
-  // /// РосАвиаТест. Получение категорий для Частного пилота (самолёт)
-  // ///
-  // /// РосАвиаТест. Получение категорий для Частного пилота (самолёт)
-  // ///
+
+  ///
+  /// РосАвиаТест. Получение категорий с вопросами отфильтрованным по типу сертификата
+  ///
+  /// РосАвиаТест. Получение категорий с вопросами отфильтрованным по типу сертификата
+  ///
 
   @Route.get('/learning/ros_avia_test/<typeCertificateId>')
   @OpenApiRoute()
   Future<Response> fetchRosAviaTestCategoryWithQuestions(Request request) async {
     final id = request.params['typeCertificateId']!;
     final body = await _rosAviaTestRepository.fetchRosAviaTestCategoryWithQuestions(int.parse(id));
+
+    return wrapResponse(
+      () async {
+        return Response.ok(
+          jsonEncode(body),
+          headers: jsonContentHeaders,
+        );
+      },
+    );
+  }
+
+  ///
+  /// РосАвиаТест. Получение всех вопросов по выбранному сертификату и темам
+  ///
+  /// РосАвиаТест. Получение всех вопросов по выбранному сертификату и темам
+  ///
+
+  @Route.get('/learning/ros_avia_test/questions/<typeCertificateId>')
+  @OpenApiRoute()
+  Future<Response> fetchQuestionsWithAnswersByCategoryAndTypeCertificate(Request request) async {
+    final typeCertificateId = request.params['typeCertificateId']!;
+
+    // Извлекаем categoryIds из query параметров (например: ?categoryIds=1,2,3)
+    final categoryIdsParam = request.url.queryParameters['categoryIds'] ?? '';
+    final mixAnswersParam = request.url.queryParameters['mixAnswers'] ?? 'true';
+    final mixQuestionsParam = request.url.queryParameters['mixQuestions'] ?? 'true';
+
+    // Парсим categoryIds из строки в Set<int>
+    final categoryIds = categoryIdsParam.split(',').where((id) => id.trim().isNotEmpty).map((id) => int.parse(id.trim())).toSet();
+
+    // Проверяем, что categoryIds не пустой
+    if (categoryIds.isEmpty) {
+      return Response.badRequest(
+        body: jsonEncode({'error': 'categoryIds parameter is required'}),
+        headers: jsonContentHeaders,
+      );
+    }
+
+    final body = await _rosAviaTestRepository.fetchQuestionsWithAnswersByCategoryAndTypeCertificate(
+      categoryIds: categoryIds,
+      typeCertificateId: int.parse(typeCertificateId),
+      mixAnswers: bool.parse(mixAnswersParam),
+      mixQuestions: bool.parse(mixQuestionsParam),
+    );
 
     return wrapResponse(
       () async {

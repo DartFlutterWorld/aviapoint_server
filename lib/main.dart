@@ -13,6 +13,7 @@ import 'package:airpoint_server/learning/video_for_students/controllers/video_fo
 import 'package:airpoint_server/logger/logger.dart';
 import 'package:airpoint_server/stories/controllers/stories_controller.dart';
 import 'package:postgres/postgres.dart';
+import 'package:talker/talker.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
 import 'package:shelf_cors_headers/shelf_cors_headers.dart' as cors;
@@ -25,6 +26,18 @@ import 'package:shelf_swagger_ui/shelf_swagger_ui.dart';
 // http://localhost:8082/?pgsql=db&username=postgres
 
 Future<void> main() async {
+  // Инициализация Talker
+  final talker = Talker(
+    settings: TalkerSettings(
+      useConsoleLogs: true,
+      useHistory: true,
+      maxHistoryItems: 100,
+    ),
+  );
+
+  // Регистрируем Talker в GetIt для использования в приложении
+  getIt.registerSingleton<Talker>(talker);
+
   await LoggerSettings.initLogging(instancePrefix: 'Server');
 
   await setupDependencies();
@@ -86,12 +99,14 @@ Future<void> main() async {
     return (Handler handler) {
       return (Request request) async {
         final startTime = DateTime.now();
-        logger.info('Request started: ${request.method} ${request.url}');
+        final talker = getIt<Talker>();
+
+        talker.info('Request started: ${request.method} ${request.url}');
         final response = await handler(request);
         final endTime = DateTime.now();
         final duration = endTime.difference(startTime);
 
-        logger.info('Request completed: ${request.method} ${request.url} took ${duration.inMilliseconds}ms');
+        talker.info('Request completed: ${request.method} ${request.url} took ${duration.inMilliseconds}ms');
 
         return response;
       };
@@ -104,7 +119,8 @@ Future<void> main() async {
         try {
           return await handler(request);
         } catch (e, stackTrace) {
-          logger.severe('Error handling request: $e', e, stackTrace);
+          final talker = getIt<Talker>();
+          talker.error('Error handling request: $e', e, stackTrace);
           return Response.internalServerError(body: 'Internal Server Error');
         }
       };

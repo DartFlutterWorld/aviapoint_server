@@ -28,6 +28,7 @@ dependencies:
   get_it: ^7.6.0
   dio: ^5.8.0+1
   jwt_decoder: ^2.0.1
+  talker: ^3.1.0
 
 dev_dependencies:
   dart_flutter_team_lints: ^3.0.0

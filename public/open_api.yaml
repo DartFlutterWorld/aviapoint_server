@@ -60,6 +60,74 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /learning/ros_avia_test/type_sertificates:
+    get:
+      tags:
+        - RosAviaTestController
+      summary: РосАвиаТест. Получение типов свидетельств
+      description: Получение всех Получение типов свидетельств в РосАвиаТест
+      operationId: fetchTypeSertificates
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/ros_avia_test/type_correct_answers:
+    get:
+      tags:
+        - RosAviaTestController
+      summary: РосАвиаТест. Получение типов корректности ответа
+      description: Получение всех Получение типов корректности ответа
+      operationId: fetchTypeCorrectAnswer
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/ros_avia_test/categories/<typeCertificateId>:
+    get:
+      tags:
+        - RosAviaTestController
+      summary: РосАвиаТест. Получение категорий
+      description: РосАвиаТест. Получение категорий
+      operationId: fetchRosAviaTestCategories
+      parameters:
+        - name: typeCertificateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/ros_avia_test/<typeCertificateId>:
+    get:
+      tags:
+        - RosAviaTestController
+      summary: РосАвиаТест. Получение категорий с вопросами отфильтрованным по типу сертификата
+      description: РосАвиаТест. Получение категорий с вопросами отфильтрованным по типу сертификата
+      operationId: fetchRosAviaTestCategoryWithQuestions
+      parameters:
+        - name: typeCertificateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /learning/ros_avia_test/questions/<typeCertificateId>:
+    get:
+      tags:
+        - RosAviaTestController
+      summary: РосАвиаТест. Получение всех вопросов по выбранному сертификату и темам
+      description: РосАвиаТест. Получение всех вопросов по выбранному сертификату и темам
+      operationId: fetchQuestionsWithAnswersByCategoryAndTypeCertificate
+      parameters:
+        - name: typeCertificateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
   /learning/hand_book/main_categories:
     get:
       tags:
@@ -152,36 +220,6 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /user:
-    post:
-      tags:
-        - ProfileController
-      summary: Создание пользователя
-      description: Возвращает в ответе данные пользователя
-      operationId: createUser
-      responses:
-        200:
-          description: "Operation completed!"
-  /profiles:
-    get:
-      tags:
-        - ProfileController
-      summary: Получение профилей пользователей
-      description: Получение всех профилей пользователей
-      operationId: getUsers
-      responses:
-        200:
-          description: "Operation completed!"
-  /profile:
-    post:
-      tags:
-        - ProfileController
-      summary: Получение профиля
-      description: Получение всех профиля пользователя
-      operationId: getProfile
-      responses:
-        200:
-          description: "Operation completed!"
   /stories:
     get:
       tags:
@@ -260,53 +298,33 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/ros_avia_test/type_sertificates:
-    get:
+  /user:
+    post:
       tags:
-        - RosAviaTestController
-      summary: РосАвиаТест. Получение типов свидетельтв
-      description: Получение всех Получение типов свидетельтв в РосАвиаТест
-      operationId: fetchTypeSertificates
+        - ProfileController
+      summary: Создание пользователя
+      description: Возвращает в ответе данные пользователя
+      operationId: createUser
       responses:
         200:
           description: "Operation completed!"
-  /learning/ros_avia_test/type_correct_answers:
+  /profiles:
     get:
       tags:
-        - RosAviaTestController
-      summary: РосАвиаТест. Получение типов корректности ответа
-      description: Получение всех Получение типов корректности ответа
-      operationId: fetchTypeCorrectAnswer
+        - ProfileController
+      summary: Получение профилей пользователей
+      description: Получение всех профилей пользователей
+      operationId: getUsers
       responses:
         200:
           description: "Operation completed!"
-  /learning/ros_avia_test/categories/<typeCertificateId>:
-    get:
+  /profile:
+    post:
       tags:
-        - RosAviaTestController
-      summary: fetchRosAviaTestCategories
-      operationId: fetchRosAviaTestCategories
-      parameters:
-        - name: typeCertificateId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        200:
-          description: "Operation completed!"
-  /learning/ros_avia_test/<typeCertificateId>:
-    get:
-      tags:
-        - RosAviaTestController
-      summary: fetchRosAviaTestCategoryWithQuestions
-      operationId: fetchRosAviaTestCategoryWithQuestions
-      parameters:
-        - name: typeCertificateId
-          in: path
-          required: true
-          schema:
-            type: string
+        - ProfileController
+      summary: Получение профиля
+      description: Получение всех профиля пользователя
+      operationId: getProfile
       responses:
         200:
           description: "Operation completed!"
@@ -314,8 +332,8 @@ components: { }
 tags:
   - name: AuthController
   - name: VideoForStudentsController
+  - name: RosAviaTestController
   - name: HandBookController
-  - name: ProfileController
   - name: StoriesController
   - name: NewsController
-  - name: RosAviaTestController
+  - name: ProfileController

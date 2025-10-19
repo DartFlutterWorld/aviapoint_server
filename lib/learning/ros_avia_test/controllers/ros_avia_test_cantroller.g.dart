@@ -28,5 +28,10 @@ Router _$RosAviaTestControllerRouter(RosAviaTestController service) {
     r'/learning/ros_avia_test/<typeCertificateId>',
     service.fetchRosAviaTestCategoryWithQuestions,
   );
+  router.add(
+    'GET',
+    r'/learning/ros_avia_test/questions/<typeCertificateId>',
+    service.fetchQuestionsWithAnswersByCategoryAndTypeCertificate,
+  );
   return router;
 }

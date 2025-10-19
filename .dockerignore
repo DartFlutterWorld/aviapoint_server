@@ -1,0 +1,48 @@
+git
+.git
+.gitignore
+.gitattributes
+README.md
+analysis_options.yaml
+*.iml
+.vscode
+.idea
+.flutter-plugins
+.flutter-plugins-dependencies
+*.log
+*.lock
+
+# Development files
+build/
+.dart_tool/
+.packages
+pubspec.lock
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database files (use volumes instead)
+pgdata/
+postgresql_data/
+
+# Local testing
+.env.local
+*.tmp
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# IDE
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Test
+test/
+.dart_tool/
+coverage/

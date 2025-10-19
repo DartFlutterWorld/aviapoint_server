@@ -9,13 +9,14 @@ part of 'question_with_answers_model.dart';
 QuestionWithAnswersModel _$QuestionWithAnswersModelFromJson(
         Map<String, dynamic> json) =>
     QuestionWithAnswersModel(
-      (json['correct_answer'] as num?)?.toInt(),
+      correctAnswer: (json['correct_answer'] as num?)?.toInt(),
       questionId: (json['question_id'] as num).toInt(),
       questionText: json['question_text'] as String,
       explanation: json['explanation'] as String?,
       answers: (json['answers'] as List<dynamic>)
           .map((e) => AnswerModel.fromJson(e as Map<String, dynamic>))
           .toList(),
+      categoryTitle: json['category_title'] as String?,
     );
 
 Map<String, dynamic> _$QuestionWithAnswersModelToJson(
@@ -34,5 +35,6 @@ Map<String, dynamic> _$QuestionWithAnswersModelToJson(
   writeNotNull('explanation', instance.explanation);
   writeNotNull('correct_answer', instance.correctAnswer);
   val['answers'] = instance.answers;
+  writeNotNull('category_title', instance.categoryTitle);
   return val;
 }
