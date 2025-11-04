@@ -1,8 +1,8 @@
-import 'package:airpoint_server/learning/ros_avia_test/model/ros_avia_test_category_model.dart';
-import 'package:airpoint_server/learning/ros_avia_test/model/question_with_answers_model.dart';
-import 'package:airpoint_server/learning/ros_avia_test/model/ros_avia_test_category_with_questions_model.dart';
-import 'package:airpoint_server/learning/ros_avia_test/model/type_correct_answer_model.dart';
-import 'package:airpoint_server/learning/ros_avia_test/model/type_sertificates_model.dart';
+import 'package:aviapoint_server/learning/ros_avia_test/model/ros_avia_test_category_model.dart';
+import 'package:aviapoint_server/learning/ros_avia_test/model/question_with_answers_model.dart';
+import 'package:aviapoint_server/learning/ros_avia_test/model/ros_avia_test_category_with_questions_model.dart';
+import 'package:aviapoint_server/learning/ros_avia_test/model/type_correct_answer_model.dart';
+import 'package:aviapoint_server/learning/ros_avia_test/model/type_sertificates_model.dart';
 import 'package:postgres/postgres.dart';
 import 'package:talker/talker.dart';
 import 'package:get_it/get_it.dart';

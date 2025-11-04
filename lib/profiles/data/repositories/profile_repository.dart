@@ -1,5 +1,5 @@
-import 'package:airpoint_server/profiles/data/model/profile_model.dart';
-import 'package:airpoint_server/logger/logger.dart';
+import 'package:aviapoint_server/profiles/data/model/profile_model.dart';
+import 'package:aviapoint_server/logger/logger.dart';
 import 'package:postgres/postgres.dart';
 
 class ProfileRepository {

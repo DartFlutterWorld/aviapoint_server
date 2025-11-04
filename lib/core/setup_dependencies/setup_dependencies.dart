@@ -1,21 +1,21 @@
 import 'dart:io';
 
-import 'package:airpoint_server/auth/controller/auth_controller.dart';
-import 'package:airpoint_server/auth/token/token_service.dart';
-import 'package:airpoint_server/core/config/config.dart';
-import 'package:airpoint_server/learning/hand_book/controllers/hand_book_cantroller.dart';
-import 'package:airpoint_server/learning/hand_book/repositories/hand_book_repository.dart';
-import 'package:airpoint_server/learning/ros_avia_test/controllers/ros_avia_test_cantroller.dart';
-import 'package:airpoint_server/learning/ros_avia_test/repositories/ros_avia_test_repository.dart';
-import 'package:airpoint_server/learning/video_for_students/controllers/video_for_students_cantroller.dart';
-import 'package:airpoint_server/learning/video_for_students/repositories/video_for_students_repository.dart';
-import 'package:airpoint_server/logger/logger.dart';
-import 'package:airpoint_server/news/controllers/news_controller.dart';
-import 'package:airpoint_server/news/repositories/news_repository.dart';
-import 'package:airpoint_server/profiles/controller/profile_cantroller.dart';
-import 'package:airpoint_server/profiles/data/repositories/profile_repository.dart';
-import 'package:airpoint_server/stories/controllers/stories_controller.dart';
-import 'package:airpoint_server/stories/repositories/stories_repository.dart';
+import 'package:aviapoint_server/auth/controller/auth_controller.dart';
+import 'package:aviapoint_server/auth/token/token_service.dart';
+import 'package:aviapoint_server/core/config/config.dart';
+import 'package:aviapoint_server/learning/hand_book/controllers/hand_book_cantroller.dart';
+import 'package:aviapoint_server/learning/hand_book/repositories/hand_book_repository.dart';
+import 'package:aviapoint_server/learning/ros_avia_test/controllers/ros_avia_test_cantroller.dart';
+import 'package:aviapoint_server/learning/ros_avia_test/repositories/ros_avia_test_repository.dart';
+import 'package:aviapoint_server/learning/video_for_students/controllers/video_for_students_cantroller.dart';
+import 'package:aviapoint_server/learning/video_for_students/repositories/video_for_students_repository.dart';
+import 'package:aviapoint_server/logger/logger.dart';
+import 'package:aviapoint_server/news/controllers/news_controller.dart';
+import 'package:aviapoint_server/news/repositories/news_repository.dart';
+import 'package:aviapoint_server/profiles/controller/profile_cantroller.dart';
+import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
+import 'package:aviapoint_server/stories/controllers/stories_controller.dart';
+import 'package:aviapoint_server/stories/repositories/stories_repository.dart';
 import 'package:postgres/postgres.dart';
 import 'package:get_it/get_it.dart';
 
@@ -24,6 +24,9 @@ final GetIt getIt = GetIt.instance;
 Future<void> setupDependencies() async {
   // Регистрируем соединение с базой данных
   getIt.registerSingletonAsync<Connection>(() async {
+    // Добавляем задержку для инициализации БД
+    await Future.delayed(Duration(seconds: 10));
+
     final connection = await Connection.open(
       Endpoint(
         host: Config.dbHost,

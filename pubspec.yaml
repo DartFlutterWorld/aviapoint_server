@@ -1,10 +1,10 @@
-name: airpoint_server
+name: aviapoint_server
 description: "A new Flutter project."
 publish_to: "none"
 version: 0.1.0
 
 environment:
-  sdk: ^3.5.2
+  sdk: ^3.5.0
 
 dependencies:
   shelf: ^1.4.2

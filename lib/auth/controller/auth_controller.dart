@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:airpoint_server/auth/token/token_service.dart';
-import 'package:airpoint_server/core/wrap_response.dart';
-import 'package:airpoint_server/profiles/data/repositories/profile_repository.dart';
+import 'package:aviapoint_server/auth/token/token_service.dart';
+import 'package:aviapoint_server/core/wrap_response.dart';
+import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
 import 'package:dio/dio.dart' as mydio;
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:shelf/shelf.dart';

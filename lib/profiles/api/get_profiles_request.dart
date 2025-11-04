@@ -1,4 +1,4 @@
-import 'package:airpoint_server/profiles/api/base_rest_api_request.dart';
+import 'package:aviapoint_server/profiles/api/base_rest_api_request.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'get_profiles_request.g.dart';

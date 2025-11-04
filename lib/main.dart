@@ -1,17 +1,17 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:airpoint_server/auth/controller/auth_controller.dart';
-import 'package:airpoint_server/auth/token/token_service.dart';
-import 'package:airpoint_server/core/config/config.dart';
-import 'package:airpoint_server/core/setup_dependencies/setup_dependencies.dart';
-import 'package:airpoint_server/learning/hand_book/controllers/hand_book_cantroller.dart';
-import 'package:airpoint_server/learning/ros_avia_test/controllers/ros_avia_test_cantroller.dart';
-import 'package:airpoint_server/news/controllers/news_controller.dart';
-import 'package:airpoint_server/profiles/controller/profile_cantroller.dart';
-import 'package:airpoint_server/learning/video_for_students/controllers/video_for_students_cantroller.dart';
-import 'package:airpoint_server/logger/logger.dart';
-import 'package:airpoint_server/stories/controllers/stories_controller.dart';
+import 'package:aviapoint_server/auth/controller/auth_controller.dart';
+import 'package:aviapoint_server/auth/token/token_service.dart';
+import 'package:aviapoint_server/core/config/config.dart';
+import 'package:aviapoint_server/core/setup_dependencies/setup_dependencies.dart';
+import 'package:aviapoint_server/learning/hand_book/controllers/hand_book_cantroller.dart';
+import 'package:aviapoint_server/learning/ros_avia_test/controllers/ros_avia_test_cantroller.dart';
+import 'package:aviapoint_server/news/controllers/news_controller.dart';
+import 'package:aviapoint_server/profiles/controller/profile_cantroller.dart';
+import 'package:aviapoint_server/learning/video_for_students/controllers/video_for_students_cantroller.dart';
+import 'package:aviapoint_server/logger/logger.dart';
+import 'package:aviapoint_server/stories/controllers/stories_controller.dart';
 import 'package:postgres/postgres.dart';
 import 'package:talker/talker.dart';
 import 'package:shelf/shelf.dart';
@@ -37,6 +37,10 @@ Future<void> main() async {
 
   // Регистрируем Talker в GetIt для использования в приложении
   getIt.registerSingleton<Talker>(talker);
+
+  // Инициализация конфигурации (выбор локальной или удалённой БД)
+  Config.init();
+  talker.info('Environment: ${Config.environment} (Host: ${Config.dbHost})');
 
   await LoggerSettings.initLogging(instancePrefix: 'Server');
 
@@ -168,4 +172,3 @@ Future<void> main() async {
 //   }
 //   throw AuthenticationException();
 // }
-

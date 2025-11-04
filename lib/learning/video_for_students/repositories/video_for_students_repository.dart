@@ -1,5 +1,5 @@
-import 'package:airpoint_server/learning/video_for_students/model/video_for_students_model.dart';
-import 'package:airpoint_server/logger/logger.dart';
+import 'package:aviapoint_server/learning/video_for_students/model/video_for_students_model.dart';
+import 'package:aviapoint_server/logger/logger.dart';
 import 'package:postgres/postgres.dart';
 
 class VideoForStudentsRepository {

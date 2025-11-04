@@ -1,5 +1,5 @@
 # Build stage
-FROM google/dart:3.5.2 AS builder
+FROM dart:3.9 AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY . .
 RUN dart compile exe lib/main.dart -o bin/server
 
 # Runtime stage
-FROM google/dart:3.5.2-runtime
+FROM dart:3.9
 
 WORKDIR /app
 
@@ -29,10 +29,6 @@ COPY --from=builder /app/assets ./assets
 
 # Expose port
 EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
-    CMD dart bin/server || exit 1
 
 # Run the app
 CMD ["/app/bin/server"]

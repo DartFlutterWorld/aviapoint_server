@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:airpoint_server/auth/token/token_service.dart';
-import 'package:airpoint_server/core/setup_dependencies/setup_dependencies.dart';
-import 'package:airpoint_server/profiles/api/create_user_request.dart';
-import 'package:airpoint_server/core/wrap_response.dart';
-import 'package:airpoint_server/profiles/data/repositories/profile_repository.dart';
+import 'package:aviapoint_server/auth/token/token_service.dart';
+import 'package:aviapoint_server/core/setup_dependencies/setup_dependencies.dart';
+import 'package:aviapoint_server/profiles/api/create_user_request.dart';
+import 'package:aviapoint_server/core/wrap_response.dart';
+import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_open_api/shelf_open_api.dart';
 import 'package:shelf_router/shelf_router.dart';

@@ -1,4 +1,4 @@
-import 'package:airpoint_server/learning/ros_avia_test/model/answer_model.dart';
+import 'package:aviapoint_server/learning/ros_avia_test/model/answer_model.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'question_with_answers_model.g.dart';

@@ -1,13 +1,15 @@
-version: '3.9'
+version: "3.9"
 
 services:
   db:
     container_name: server-side-postgres-database
-    image: postgres
+    image: postgres:15-alpine
     restart: always
     shm_size: 128mb
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+      POSTGRES_DB: aviapoint
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - ./pgdata:/var/lib/postgresql/data/pgdata
@@ -17,6 +19,33 @@ services:
       intranet:
         aliases:
           - postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aviapoint-dart-server
+    restart: always
+    ports:
+      - 8080:8080
+    environment:
+      ENVIRONMENT: local
+      POSTGRESQL_HOST: db
+      POSTGRESQL_PASSWORD: password
+      POSTGRESQL_DB: aviapoint
+      POSTGRESQL_USER: postgres
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - intranet
+    volumes:
+      - ./public:/app/public
 
   adminer:
     container_name: server-side-adminer

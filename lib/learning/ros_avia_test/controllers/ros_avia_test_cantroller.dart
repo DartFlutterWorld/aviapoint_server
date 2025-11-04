@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:airpoint_server/core/wrap_response.dart';
-import 'package:airpoint_server/learning/ros_avia_test/repositories/ros_avia_test_repository.dart';
+import 'package:aviapoint_server/core/wrap_response.dart';
+import 'package:aviapoint_server/learning/ros_avia_test/repositories/ros_avia_test_repository.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_open_api/shelf_open_api.dart';
 import 'package:shelf_router/shelf_router.dart';
