@@ -112,6 +112,8 @@ class RosAviaTestRepository {
             'question_text', q.title,
             'explanation', q.explanation,
             'correct_answer', q.correct_answer,
+            'category_title', c.title,
+            'category_id', c.id,
             'answers', (
               SELECT JSON_AGG(
                 JSONB_BUILD_OBJECT(
@@ -245,6 +247,7 @@ class RosAviaTestRepository {
           'correct_answer': map['correct_answer'],
           'answers': map['answers'],
           'category_title': map['category_title'],
+          'category_id': map['category_id'],
         });
       }).toList();
 

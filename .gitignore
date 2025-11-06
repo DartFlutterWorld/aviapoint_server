@@ -46,3 +46,8 @@ public/video_for_students/video_for_students.mp4
 
 # FVM Version Cache
 .fvm/
+
+# PostgreSQL data
+pgdata/
+.env
+.env.local

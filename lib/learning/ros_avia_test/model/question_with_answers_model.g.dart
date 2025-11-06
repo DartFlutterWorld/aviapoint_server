@@ -16,7 +16,8 @@ QuestionWithAnswersModel _$QuestionWithAnswersModelFromJson(
       answers: (json['answers'] as List<dynamic>)
           .map((e) => AnswerModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      categoryTitle: json['category_title'] as String?,
+      categoryTitle: json['category_title'] as String,
+      categoryId: (json['category_id'] as num).toInt(),
     );
 
 Map<String, dynamic> _$QuestionWithAnswersModelToJson(
@@ -35,6 +36,7 @@ Map<String, dynamic> _$QuestionWithAnswersModelToJson(
   writeNotNull('explanation', instance.explanation);
   writeNotNull('correct_answer', instance.correctAnswer);
   val['answers'] = instance.answers;
-  writeNotNull('category_title', instance.categoryTitle);
+  val['category_title'] = instance.categoryTitle;
+  val['category_id'] = instance.categoryId;
   return val;
 }

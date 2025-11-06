@@ -16,7 +16,8 @@ class QuestionWithAnswersModel {
     required this.questionText,
     this.explanation,
     required this.answers,
-    this.categoryTitle,
+    required this.categoryTitle,
+    required this.categoryId,
   });
 
   final int questionId;
@@ -24,7 +25,8 @@ class QuestionWithAnswersModel {
   final String? explanation;
   final int? correctAnswer;
   final List<AnswerModel> answers;
-  final String? categoryTitle;
+  final String categoryTitle;
+  final int categoryId;
 
   factory QuestionWithAnswersModel.fromJson(Map<String, dynamic> json) => _$QuestionWithAnswersModelFromJson(json);
 
