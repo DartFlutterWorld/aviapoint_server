@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 services:
   db:
@@ -61,6 +61,19 @@ services:
       - app
     networks:
       - backend
+
+  certbot:
+    image: certbot/certbot
+    container_name: aviapoint-certbot
+    restart: unless-stopped
+    volumes:
+      - ./ssl:/etc/letsencrypt
+      - ./public:/var/www/certbot
+    entrypoint: /bin/sh -c "certbot certonly --webroot -w /var/www/certbot -d avia-point.com -d www.avia-point.com --email admin@avia-point.com --agree-tos --non-interactive --renew-hook 'nginx -s reload' || true"
+    networks:
+      - backend
+    depends_on:
+      - nginx
 
 volumes:
   db_data:
