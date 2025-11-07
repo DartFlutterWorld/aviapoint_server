@@ -6,9 +6,9 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRESQL_DB:-aviapoint}
-      POSTGRES_USER: ${POSTGRESQL_USER:-postgres}
+      POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD:-password}
+      POSTGRESQL_DB: ${POSTGRESQL_DB:-aviapoint}
+      POSTGRESQL_USER: ${POSTGRESQL_USER:-postgres}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -54,8 +54,9 @@ services:
       - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/letsencrypt:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro # Стандартное место для обоих проектов
       - ./public:/app/public:ro
+      - ./public:/var/www/certbot:ro # Для certbot верификации
       - /home/aviapoint:/home/aviapoint:ro
     depends_on:
       - app
@@ -67,7 +68,7 @@ services:
     container_name: aviapoint-certbot
     restart: unless-stopped
     volumes:
-      - ./ssl:/etc/letsencrypt
+      - /etc/letsencrypt:/etc/letsencrypt # Стандартное место для обоих проектов
       - ./public:/var/www/certbot
     entrypoint: /bin/sh -c "certbot certonly --webroot -w /var/www/certbot -d avia-point.com -d www.avia-point.com --email admin@avia-point.com --agree-tos --non-interactive || true"
     networks:
