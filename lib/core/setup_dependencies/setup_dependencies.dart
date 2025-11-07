@@ -22,14 +22,11 @@ final GetIt getIt = GetIt.instance;
 Future<void> setupDependencies() async {
   // Регистрируем соединение с базой данных
   getIt.registerSingletonAsync<Connection>(() async {
-    print('=== Starting PostgreSQL connection setup ===');
     logger.info('Starting PostgreSQL connection setup...');
-    print('=== Connecting to PostgreSQL at ${Config.dbHost} ===');
     logger.info('Connecting to PostgreSQL at ${Config.dbHost}, database: ${Config.database}, user: ${Config.username}');
     
     // Добавляем задержку для инициализации БД
     await Future.delayed(Duration(seconds: 10));
-    print('=== Delay completed, attempting connection ===');
     logger.info('Delay completed, attempting connection...');
 
     try {
@@ -43,7 +40,6 @@ Future<void> setupDependencies() async {
         settings: ConnectionSettings(sslMode: SslMode.disable),
       );
 
-      print('=== Successfully connected to PostgreSQL at ${Config.dbHost} ===');
       logger.info('Successfully connected to PostgreSQL at ${Config.dbHost}');
       return connection;
     } catch (error) {
