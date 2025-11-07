@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:aviapoint_server/auth/controller/auth_controller.dart';
 import 'package:aviapoint_server/auth/token/token_service.dart';
 import 'package:aviapoint_server/core/config/config.dart';
@@ -24,23 +22,30 @@ final GetIt getIt = GetIt.instance;
 Future<void> setupDependencies() async {
   // Регистрируем соединение с базой данных
   getIt.registerSingletonAsync<Connection>(() async {
+    logger.info('Starting PostgreSQL connection setup...');
+    logger.info('Connecting to PostgreSQL at ${Config.dbHost}, database: ${Config.database}, user: ${Config.username}');
+
     // Добавляем задержку для инициализации БД
     await Future.delayed(Duration(seconds: 10));
+    logger.info('Delay completed, attempting connection...');
 
-    final connection = await Connection.open(
-      Endpoint(
-        host: Config.dbHost,
-        database: Config.database,
-        username: Config.username,
-        password: Config.dbPassword,
-      ),
-      settings: ConnectionSettings(sslMode: SslMode.disable),
-    ).catchError((error) {
+    try {
+      final connection = await Connection.open(
+        Endpoint(
+          host: Config.dbHost,
+          database: Config.database,
+          username: Config.username,
+          password: Config.dbPassword,
+        ),
+        settings: ConnectionSettings(sslMode: SslMode.disable),
+      );
+
+      logger.info('Successfully connected to PostgreSQL at ${Config.dbHost}');
+      return connection;
+    } catch (error) {
       logger.severe('Failed to connect to PostgreSQL: $error');
-      throw error; // Прерываем выполнение, если соединение не удалось
-    });
-    logger.info('Connected to PostgreSQL at ${Config.dbHost}');
-    return connection;
+      rethrow;
+    }
   });
 
   // Регистрируем репозитории
