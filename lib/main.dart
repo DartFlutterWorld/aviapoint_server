@@ -43,15 +43,20 @@ Future<void> main() async {
   talker.info('Environment: ${Config.environment} (Host: ${Config.dbHost})');
 
   await LoggerSettings.initLogging(instancePrefix: 'Server');
+  print('=== Logger initialized ===');
 
   await setupDependencies();
+  print('=== setupDependencies completed ===');
   logger.info('Waiting for all dependencies to be ready...');
+  print('=== Waiting for allReady ===');
   await getIt.allReady();
+  print('=== allReady completed ===');
   logger.info('All dependencies are ready');
 
   // Проверяем что соединение с БД установлено
   try {
     await getIt.getAsync<Connection>();
+    print('=== Database connection verified: host=${Config.dbHost}, database=${Config.database} ===');
     logger.info('Database connection verified: host=${Config.dbHost}, database=${Config.database}');
   } catch (e) {
     logger.severe('Failed to get database connection: $e');
