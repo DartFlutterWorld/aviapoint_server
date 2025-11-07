@@ -45,7 +45,18 @@ Future<void> main() async {
   await LoggerSettings.initLogging(instancePrefix: 'Server');
 
   await setupDependencies();
+  logger.info('Waiting for all dependencies to be ready...');
   await getIt.allReady();
+  logger.info('All dependencies are ready');
+
+  // Проверяем что соединение с БД установлено
+  try {
+    await getIt.getAsync<Connection>();
+    logger.info('Database connection verified: host=${Config.dbHost}, database=${Config.database}');
+  } catch (e) {
+    logger.severe('Failed to get database connection: $e');
+    rethrow;
+  }
 
   final handler = Cascade()
       .add(getIt<ProfileController>().router)
@@ -149,7 +160,7 @@ Future<void> main() async {
       );
 
   final server = await serve(pipeline, InternetAddress.anyIPv4, Config.serverPort);
-  print('Сервер запущен на http://${server.address.host}:${server.port}');
+  print('Сервер запущен на ${server.address.host}:${server.port}');
 
   ProcessSignal.sigint.watch().listen((_) {
     final connection = getIt<Connection>();
