@@ -24,3 +24,16 @@ docker-compose -f docker-compose.prod.yaml restart nginx
 
 # ЭТА команда не работает используй выше
 docker exec aviapoint-nginx nginx -s reload
+
+
+# папка где лежит сервер
+cd /home/aviapoint_server
+
+
+
+# Запустите
+docker-compose -f docker-compose.prod.yaml build app
+docker-compose -f docker-compose.prod.yaml up -d
+
+# Скрипт для обновления бзы данных (копирует локальную и вставляет на сервер ) uOTC0OWjMVIoaRxI
+./export_and_upload.sh 83.166.246.205
