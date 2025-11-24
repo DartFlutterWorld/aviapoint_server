@@ -17,6 +17,7 @@ StoryModel _$StoryModelFromJson(Map<String, dynamic> json) => StoryModel(
       color_button: json['color_button'] as String,
       logo_story: json['logo_story'] as String,
       text_color: json['text_color'] as String,
+      title: json['title'] as String,
     );
 
 Map<String, dynamic> _$StoryModelToJson(StoryModel instance) {
@@ -39,5 +40,6 @@ Map<String, dynamic> _$StoryModelToJson(StoryModel instance) {
   val['color_button'] = instance.color_button;
   val['logo_story'] = instance.logo_story;
   val['text_color'] = instance.text_color;
+  val['title'] = instance.title;
   return val;
 }

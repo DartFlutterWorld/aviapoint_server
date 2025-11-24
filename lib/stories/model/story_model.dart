@@ -19,6 +19,7 @@ class StoryModel {
     required this.color_button,
     required this.logo_story,
     required this.text_color,
+    required this.title,
   });
 
   final int id;
@@ -31,6 +32,7 @@ class StoryModel {
   final String color_button;
   final String logo_story;
   final String text_color;
+  final String title;
 
   factory StoryModel.fromJson(Map<String, dynamic> json) => _$StoryModelFromJson(json);
 

@@ -159,8 +159,22 @@ Future<void> main() async {
         handler,
       );
 
-  final server = await serve(pipeline, InternetAddress.anyIPv4, Config.serverPort);
-  print('Сервер запущен на ${server.address.host}:${server.port}');
+  HttpServer server;
+  try {
+    server = await serve(pipeline, InternetAddress.anyIPv4, Config.serverPort);
+    print('Сервер запущен на ${server.address.host}:${server.port}');
+  } on SocketException catch (e) {
+    if (e.osError?.errorCode == 48) {
+      logger.severe(
+        'Порт ${Config.serverPort} уже занят другим процессом.\n'
+        'Чтобы найти процесс, используйте: lsof -i :${Config.serverPort}\n'
+        'Чтобы остановить процесс, используйте: kill <PID>',
+      );
+    } else {
+      logger.severe('Ошибка при запуске сервера: $e');
+    }
+    rethrow;
+  }
 
   ProcessSignal.sigint.watch().listen((_) {
     final connection = getIt<Connection>();

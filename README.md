@@ -18,7 +18,7 @@ ENVIRONMENT=local dart run
 # Удалённая база (VPS):
 ENVIRONMENT=remote dart run
 # Перезагрузить nginx
-Через docker-compose (если используете)
+
 docker-compose -f docker-compose.prod.yaml restart nginx
 
 

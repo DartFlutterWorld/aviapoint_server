@@ -38,11 +38,15 @@ docker-compose --version
 
 ```bash
 # Перейдите в домашнюю директорию
-cd /home/aviapoint
+cd /home
 
-# Клонируйте репозиторий
+# Клонируйте репозиторий сервера
 git clone https://github.com/YOUR_USERNAME/aviapoint_server.git
 cd aviapoint_server
+
+# Убедитесь, что структура правильная:
+# /home/aviapoint_server/ - сервер (этот проект)
+# /home/aviapoint/ - веб-приложение (должно быть развернуто отдельно)
 ```
 
 ## Шаг 4: Создайте .env файл
@@ -120,7 +124,7 @@ openssl s_client -connect avia-point.com:443
 crontab -e
 
 # Добавьте эту строку (обновление в 2:00 AM первого числа каждого месяца):
-0 2 1 * * cd /home/aviapoint/aviapoint_server && docker-compose -f docker-compose.prod.yaml exec -T certbot certbot renew --quiet
+0 2 1 * * cd /home/aviapoint_server && docker-compose -f docker-compose.prod.yaml exec -T certbot certbot renew --quiet
 
 # Сохраните (Ctrl+X, Y, Enter в nano)
 ```
@@ -135,6 +139,346 @@ docker-compose -f docker-compose.prod.yaml logs -f
 docker-compose -f docker-compose.prod.yaml logs -f app
 docker-compose -f docker-compose.prod.yaml logs -f certbot
 docker-compose -f docker-compose.prod.yaml logs -f nginx
+```
+
+## Правильная структура файлов на сервере
+
+### Ожидаемая структура
+
+На сервере должна быть следующая структура:
+
+```
+/home/
+├── aviapoint_server/                     # Backend сервер (этот проект)
+│   ├── lib/                             # Dart исходный код
+│   ├── public/                           # Статические файлы сервера
+│   ├── docker-compose.prod.yaml          # Docker конфигурация
+│   ├── Dockerfile                        # Docker образ
+│   ├── nginx.conf                        # Nginx конфигурация
+│   ├── .env                              # Переменные окружения
+│   └── ...                               # Остальные файлы проекта
+│
+└── aviapoint/                            # Веб-приложение Flutter
+    ├── index.html                        # Главная страница
+    ├── main.dart.js                      # Скомпилированный Dart код
+    ├── flutter.js                        # Flutter runtime
+    ├── flutter_bootstrap.js              # Bootstrap скрипт
+    ├── flutter_service_worker.js         # Service worker
+    ├── sqlite3mc.wasm                    # WebAssembly файлы
+    ├── assets/                           # Ресурсы веб-приложения
+    ├── icons/                            # Иконки
+    └── manifest.json                     # Web manifest
+```
+
+### Проверка структуры
+
+```bash
+# Подключитесь к серверу
+ssh root@YOUR_VPS_IP
+
+# Проверьте структуру в /home
+cd /home
+tree -L 2
+
+# Должны видеть:
+# - /home/aviapoint_server/ - серверное приложение
+# - /home/aviapoint/ - веб-приложение
+# - НЕ должно быть вложенной структуры типа aviapoint/aviapoint_server/
+
+# Проверьте веб-файлы
+cd /home/aviapoint
+ls -la | grep -E "(index.html|main.dart.js|flutter.js)"
+
+# Проверьте сервер
+cd /home/aviapoint_server
+ls -la | grep -E "(docker-compose|Dockerfile|nginx.conf)"
+```
+
+### Исправление неправильной структуры
+
+Если структура неправильная (например, сервер находится внутри веб-приложения):
+
+```bash
+# 1. Проверьте текущую структуру
+cd /home
+ls -la
+
+# 2. Если сервер находится в неправильном месте (например, /home/aviapoint/aviapoint_server/):
+# Переместите сервер на правильное место
+mv /home/aviapoint/aviapoint_server /home/aviapoint_server
+
+# 3. Если веб-приложение находится в неправильном месте:
+# Переместите веб-приложение на правильное место
+# (если оно где-то внутри aviapoint_server/)
+mv /home/aviapoint_server/aviapoint /home/aviapoint
+
+# 4. Проверьте результат
+cd /home
+tree -L 2
+
+# Должны видеть:
+# /home/aviapoint_server/ - сервер
+# /home/aviapoint/ - веб-приложение
+```
+
+### Проверка веб-файлов
+
+```bash
+# Убедитесь, что веб-файлы находятся в правильном месте
+cd /home/aviapoint
+ls -la | grep -E "(index.html|main.dart.js|flutter.js)"
+
+# Должны видеть веб-файлы Flutter
+```
+
+### Проверка серверных файлов
+
+```bash
+# Убедитесь, что сервер находится в правильном месте
+cd /home/aviapoint_server
+ls -la | grep -E "(docker-compose|Dockerfile|nginx.conf|lib)"
+
+# Должны видеть файлы сервера
+```
+
+## Просмотр файлов на сервере
+
+### Подключение к серверу
+
+```bash
+# SSH подключение к серверу
+ssh root@YOUR_VPS_IP
+# или
+ssh root@avia-point.com
+```
+
+### Просмотр файлов на хосте (где находится проект)
+
+```bash
+# Перейдите в директорию проекта
+cd /home/aviapoint_server
+
+# Просмотр всех файлов в текущей директории
+ls -la
+
+# Просмотр файлов с детальной информацией (размер, права, дата)
+ls -lah
+
+# Просмотр файлов в дереве (если установлен tree)
+tree -L 2
+
+# Поиск файлов по имени
+find . -name "*.dart"
+find . -name "*.yaml"
+
+# Поиск файлов по содержимому
+grep -r "POSTGRESQL" .
+
+# Просмотр содержимого файла
+cat .env
+cat docker-compose.prod.yaml
+
+# Просмотр файла с прокруткой
+less nginx.conf
+# или
+more nginx.conf
+
+# Просмотр последних строк файла (логи)
+tail -f server.log
+tail -n 100 server.log
+```
+
+### Просмотр файлов внутри Docker контейнеров
+
+```bash
+# Список всех контейнеров
+docker ps -a
+
+# Просмотр файлов в контейнере приложения
+docker exec aviapoint-server ls -la /app
+docker exec aviapoint-server ls -la /app/lib
+
+# Просмотр содержимого файла в контейнере
+docker exec aviapoint-server cat /app/lib/main.dart
+
+# Вход в контейнер (интерактивный режим)
+docker exec -it aviapoint-server sh
+# или для bash
+docker exec -it aviapoint-server bash
+
+# Просмотр файлов в контейнере nginx
+docker exec aviapoint-nginx ls -la /etc/nginx/
+docker exec aviapoint-nginx cat /etc/nginx/nginx.conf
+
+# Просмотр файлов в контейнере базы данных
+docker exec aviapoint-postgres ls -la /var/lib/postgresql/data
+
+# Просмотр файлов SSL сертификатов
+docker exec aviapoint-certbot ls -la /etc/letsencrypt/live/avia-point.com/
+```
+
+### Полезные команды для навигации
+
+```bash
+# Текущая директория
+pwd
+
+# Переход в директорию
+cd /home/aviapoint_server  # сервер
+cd /home/aviapoint         # веб-приложение
+cd ..  # на уровень выше
+cd ~   # в домашнюю директорию
+
+# Размер файлов и директорий
+du -sh *              # размер всех файлов/папок
+du -h --max-depth=1   # размер с глубиной 1 уровень
+
+# Поиск больших файлов
+find . -type f -size +100M
+
+# Просмотр прав доступа
+ls -l
+stat filename
+
+# Подсчет файлов
+find . -type f | wc -l
+find . -type d | wc -l
+```
+
+### Просмотр структуры проекта
+
+```bash
+# В директории проекта
+cd /home/aviapoint_server
+
+# Просмотр основных директорий
+ls -d */
+
+# Просмотр всех файлов с расширениями
+find . -type f -name "*.dart" | head -20
+find . -type f -name "*.yaml" 
+find . -type f -name "*.md"
+
+# Просмотр структуры lib/
+tree lib/ -L 2
+ls -R lib/
+```
+
+### Просмотр структуры файлов (детально)
+
+#### Установка tree (если не установлен)
+
+```bash
+# Ubuntu/Debian
+apt install tree -y
+
+# CentOS/RHEL
+yum install tree -y
+```
+
+#### Команды для просмотра структуры
+
+```bash
+# Перейдите в директорию проекта
+cd /home/aviapoint_server
+
+# Просмотр структуры всего проекта (2 уровня глубины)
+tree -L 2
+
+# Просмотр структуры с размерами файлов
+tree -h -L 2
+
+# Просмотр структуры только директорий
+tree -d -L 3
+
+# Просмотр структуры с полными путями
+tree -f -L 2
+
+# Просмотр структуры конкретной директории
+tree lib/
+tree lib/ -L 3
+
+# Просмотр структуры с игнорированием определенных папок
+tree -I 'node_modules|.git|pgdata' -L 2
+
+# Сохранение структуры в файл
+tree -L 3 > project_structure.txt
+cat project_structure.txt
+```
+
+#### Альтернативные способы (без tree)
+
+```bash
+# Использование find для структуры
+find . -maxdepth 2 -type d | sort
+
+# Структура с отступами
+find . -maxdepth 3 -type d | sed 's|[^/]*/| |g'
+
+# Просмотр структуры с файлами
+find . -maxdepth 2 -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
+
+# Рекурсивный список файлов
+ls -R
+
+# Структура с детальной информацией
+find . -type f -exec ls -lh {} \; | awk '{print $9, $5}'
+```
+
+#### Просмотр структуры в Docker контейнерах
+
+```bash
+# Структура файлов в контейнере приложения
+docker exec aviapoint-server find /app -type d -maxdepth 3 | sort
+
+# Структура с tree в контейнере (если установлен)
+docker exec aviapoint-server tree -L 3 /app
+
+# Структура lib/ в контейнере
+docker exec aviapoint-server find /app/lib -type f | head -30
+
+# Вход в контейнер и просмотр структуры
+docker exec -it aviapoint-server sh
+# Затем внутри контейнера:
+cd /app
+ls -R
+# или
+find . -type d | sort
+```
+
+#### Просмотр структуры с фильтрацией
+
+```bash
+# Только Dart файлы
+find . -name "*.dart" -type f | head -30
+
+# Только конфигурационные файлы
+find . -name "*.yaml" -o -name "*.yml" -o -name "*.json" -o -name ".env*"
+
+# Структура только исходного кода
+find lib/ -type f -name "*.dart" | sort
+
+# Структура с размерами (топ-20 самых больших)
+find . -type f -exec ls -lh {} \; | sort -k5 -hr | head -20
+
+# Структура директорий с количеством файлов
+for dir in */; do echo "$dir: $(find "$dir" -type f | wc -l) файлов"; done
+```
+
+#### Визуализация структуры проекта
+
+```bash
+# Полная структура проекта (сохранить в файл)
+tree -L 4 -I 'node_modules|.git|pgdata|android|ios|linux|macos|windows' > structure.txt
+
+# Структура только важных директорий
+tree -L 3 lib/ bin/ public/ assets/
+
+# Структура с датами изменения
+find . -type f -exec ls -lht {} \; | head -30
+
+# Интерактивный просмотр структуры (с less)
+tree -L 3 | less
 ```
 
 ## Полезные команды
