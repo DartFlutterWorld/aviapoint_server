@@ -9,8 +9,15 @@ COPY pubspec.* ./
 # Get dependencies
 RUN dart pub get
 
-# Copy application code
+# Copy application code (includes public and assets)
 COPY . .
+
+# Ensure public and assets directories exist (create if missing)
+RUN mkdir -p public assets
+
+# Verify directories exist (for debugging)
+RUN ls -la public/ 2>/dev/null || echo "public directory is empty or missing"
+RUN ls -la assets/ 2>/dev/null || echo "assets directory is empty or missing"
 
 # Build release binary
 RUN dart compile exe lib/main.dart -o bin/server
@@ -24,6 +31,10 @@ WORKDIR /app
 COPY --from=builder /app/bin/server /app/bin/server
 
 # Copy public assets and resources
+# Create directories first to ensure they exist
+RUN mkdir -p ./public ./assets
+
+# Copy directories (will fail if they don't exist in builder, but that's OK - they'll be empty)
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/assets ./assets
 
