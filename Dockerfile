@@ -30,13 +30,9 @@ WORKDIR /app
 # Copy the compiled binary from builder
 COPY --from=builder /app/bin/server /app/bin/server
 
-# Copy public assets and resources
-# Create directories first to ensure they exist
+# Create directories for public and assets (they will be mounted as volumes)
+# We don't copy them into the image to save space - they're mounted from host
 RUN mkdir -p ./public ./assets
-
-# Copy directories (will fail if they don't exist in builder, but that's OK - they'll be empty)
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/assets ./assets
 
 # Expose port
 EXPOSE 8080

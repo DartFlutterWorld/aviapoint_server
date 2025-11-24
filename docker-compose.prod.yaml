@@ -33,6 +33,9 @@ services:
       POSTGRESQL_DB: ${POSTGRESQL_DB:-aviapoint}
       POSTGRESQL_USER: ${POSTGRESQL_USER:-postgres}
       DART_ENV: production
+    volumes:
+      - ./public:/app/public:ro
+      - ./assets:/app/assets:ro
     depends_on:
       db:
         condition: service_healthy

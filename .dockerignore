@@ -46,3 +46,8 @@ postgresql_data/
 test/
 .dart_tool/
 coverage/
+
+# Public and assets directories (mounted as volumes instead of copying into image)
+# This saves disk space during build
+public/
+assets/
