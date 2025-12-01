@@ -328,6 +328,72 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /payments/create:
+    post:
+      tags:
+        - PaymentController
+      summary: Создание платежа
+      description: Создает платеж в ЮKassa и возвращает paymentUrl
+      operationId: createPayment
+      responses:
+        200:
+          description: "Operation completed!"
+  /payments/<paymentId>/status:
+    get:
+      tags:
+        - PaymentController
+      summary: Получение статуса платежа
+      description: Проверяет статус платежа по ID
+      operationId: getPaymentStatus
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /payments/webhook:
+    post:
+      tags:
+        - PaymentController
+      summary: Webhook от ЮKassa
+      description: Получает уведомления о статусе платежа от ЮKassa
+      operationId: webhook
+      responses:
+        200:
+          description: "Operation completed!"
+  /subscriptions/status:
+    get:
+      tags:
+        - SubscriptionController
+      summary: Получение статуса подписки текущего пользователя
+      description: Проверяет наличие активной подписки у пользователя
+      operationId: getSubscriptionStatus
+      responses:
+        200:
+          description: "Operation completed!"
+  /subscriptions/active:
+    get:
+      tags:
+        - SubscriptionController
+      summary: Получение активной подписки пользователя
+      description: "Возвращает информацию об активной подписке пользователя.\nИспользует токен авторизации для определения пользователя.\nВозвращает 404, если активной подписки нет."
+      operationId: getActiveSubscription
+      responses:
+        200:
+          description: "Operation completed!"
+  /subscriptions/history:
+    get:
+      tags:
+        - SubscriptionController
+      summary: Получение всех подписок пользователя
+      description: Возвращает историю всех подписок пользователя
+      operationId: getSubscriptionHistory
+      responses:
+        200:
+          description: "Operation completed!"
 components: { }
 tags:
   - name: AuthController
@@ -337,3 +403,5 @@ tags:
   - name: StoriesController
   - name: NewsController
   - name: ProfileController
+  - name: PaymentController
+  - name: SubscriptionController

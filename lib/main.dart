@@ -12,6 +12,8 @@ import 'package:aviapoint_server/profiles/controller/profile_cantroller.dart';
 import 'package:aviapoint_server/learning/video_for_students/controllers/video_for_students_cantroller.dart';
 import 'package:aviapoint_server/logger/logger.dart';
 import 'package:aviapoint_server/stories/controllers/stories_controller.dart';
+import 'package:aviapoint_server/payments/controllers/payment_controller.dart';
+import 'package:aviapoint_server/subscriptions/controllers/subscription_controller.dart';
 import 'package:postgres/postgres.dart';
 import 'package:talker/talker.dart';
 import 'package:shelf/shelf.dart';
@@ -40,7 +42,7 @@ Future<void> main() async {
 
   // Инициализация конфигурации (выбор локальной или удалённой БД)
   Config.init();
-  talker.info('Environment: ${Config.environment} (Host: ${Config.dbHost})');
+  talker.info('Environment: ${Config.environment} (Host: ${Config.dbHost}:${Config.dbPort})');
 
   await LoggerSettings.initLogging(instancePrefix: 'Server');
 
@@ -66,6 +68,8 @@ Future<void> main() async {
       .add(getIt<StoriesController>().router)
       .add(getIt<NewsController>().router)
       .add(getIt<RosAviaTestController>().router)
+      .add(getIt<PaymentController>().router)
+      .add(getIt<SubscriptionController>().router)
       .add(createStaticHandler('public/', listDirectories: true))
       .add(
         Router()
@@ -161,9 +165,11 @@ Future<void> main() async {
 
   HttpServer server;
   try {
+    logger.info('Попытка запуска HTTP сервера на порту ${Config.serverPort}...');
     server = await serve(pipeline, InternetAddress.anyIPv4, Config.serverPort);
+    logger.info('Сервер успешно запущен на ${server.address.host}:${server.port}');
     print('Сервер запущен на ${server.address.host}:${server.port}');
-  } on SocketException catch (e) {
+  } on SocketException catch (e, stackTrace) {
     if (e.osError?.errorCode == 48) {
       logger.severe(
         'Порт ${Config.serverPort} уже занят другим процессом.\n'
@@ -172,14 +178,25 @@ Future<void> main() async {
       );
     } else {
       logger.severe('Ошибка при запуске сервера: $e');
+      logger.severe('Код ошибки ОС: ${e.osError?.errorCode}');
+      logger.severe('Сообщение ОС: ${e.osError?.message}');
+      logger.severe('Stack trace: $stackTrace');
     }
+    rethrow;
+  } catch (e, stackTrace) {
+    logger.severe('Неожиданная ошибка при запуске сервера: $e');
+    logger.severe('Stack trace: $stackTrace');
     rethrow;
   }
 
-  ProcessSignal.sigint.watch().listen((_) {
-    final connection = getIt<Connection>();
-    connection.close();
-    logger.info('Connection to PostgreSQL closed');
+  ProcessSignal.sigint.watch().listen((_) async {
+    try {
+      final connection = await getIt.getAsync<Connection>();
+      await connection.close();
+      logger.info('Connection to PostgreSQL closed');
+    } catch (e) {
+      logger.info('Ошибка при закрытии подключения: $e');
+    }
     exit(0);
   });
 }

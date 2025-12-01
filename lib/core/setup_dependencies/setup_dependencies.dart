@@ -14,6 +14,11 @@ import 'package:aviapoint_server/profiles/controller/profile_cantroller.dart';
 import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
 import 'package:aviapoint_server/stories/controllers/stories_controller.dart';
 import 'package:aviapoint_server/stories/repositories/stories_repository.dart';
+import 'package:aviapoint_server/payments/controllers/payment_controller.dart';
+import 'package:aviapoint_server/payments/repositories/payment_repository.dart';
+import 'package:aviapoint_server/payments/services/yookassa_service.dart';
+import 'package:aviapoint_server/subscriptions/controllers/subscription_controller.dart';
+import 'package:aviapoint_server/subscriptions/repositories/subscription_repository.dart';
 import 'package:postgres/postgres.dart';
 import 'package:get_it/get_it.dart';
 
@@ -24,7 +29,7 @@ Future<void> setupDependencies() async {
   getIt.registerSingletonAsync<Connection>(() async {
     logger.info('Starting PostgreSQL connection setup...');
     logger.info('Connecting to PostgreSQL at ${Config.dbHost}, database: ${Config.database}, user: ${Config.username}');
-    
+
     // Добавляем задержку для инициализации БД
     await Future.delayed(Duration(seconds: 10));
     logger.info('Delay completed, attempting connection...');
@@ -33,6 +38,7 @@ Future<void> setupDependencies() async {
       final connection = await Connection.open(
         Endpoint(
           host: Config.dbHost,
+          port: Config.dbPort,
           database: Config.database,
           username: Config.username,
           password: Config.dbPassword,
@@ -40,10 +46,11 @@ Future<void> setupDependencies() async {
         settings: ConnectionSettings(sslMode: SslMode.disable),
       );
 
-      logger.info('Successfully connected to PostgreSQL at ${Config.dbHost}');
+      logger.info('Successfully connected to PostgreSQL at ${Config.dbHost}:${Config.dbPort}');
       return connection;
-    } catch (error) {
-      logger.severe('Failed to connect to PostgreSQL: $error');
+    } catch (error, stackTrace) {
+      logger.severe('Failed to connect to PostgreSQL at ${Config.dbHost}:${Config.dbPort}: $error');
+      logger.severe('Stack trace: $stackTrace');
       rethrow;
     }
   });
@@ -80,7 +87,7 @@ Future<void> setupDependencies() async {
   getIt.registerSingletonAsync<TokenService>(() async {
     return TokenService(
       secretKey: '9032baabbeace5abe5e440798545c0edd21c3c25766637b07942ab70fa922b7b', // Используйте надежный ключ
-      accessTokenExpiry: Duration(minutes: 1),
+      accessTokenExpiry: Duration(hours: 24), // Увеличено до 24 часов для удобства разработки
       refreshTokenExpiry: Duration(days: 30),
     );
   });
@@ -126,5 +133,36 @@ Future<void> setupDependencies() async {
     return RosAviaTestController(
       rosAviaTestRepository: rosAviaTestRepository,
     );
+  });
+
+  // Регистрируем платежные зависимости
+  getIt.registerSingleton<YooKassaService>(YooKassaService());
+
+  getIt.registerSingletonAsync<PaymentRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    final yookassaService = getIt.get<YooKassaService>();
+    return PaymentRepository(
+      connection: connection,
+      yookassaService: yookassaService,
+    );
+  });
+
+  getIt.registerSingletonAsync<SubscriptionRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return SubscriptionRepository(connection: connection);
+  });
+
+  getIt.registerSingletonAsync<PaymentController>(() async {
+    final paymentRepository = await getIt.getAsync<PaymentRepository>();
+    final subscriptionRepository = await getIt.getAsync<SubscriptionRepository>();
+    return PaymentController(
+      paymentRepository: paymentRepository,
+      subscriptionRepository: subscriptionRepository,
+    );
+  });
+
+  getIt.registerSingletonAsync<SubscriptionController>(() async {
+    final subscriptionRepository = await getIt.getAsync<SubscriptionRepository>();
+    return SubscriptionController(subscriptionRepository: subscriptionRepository);
   });
 }

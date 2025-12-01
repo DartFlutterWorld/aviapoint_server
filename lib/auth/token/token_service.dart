@@ -42,16 +42,28 @@ class TokenService {
   bool validateToken(String token) {
     try {
       final parts = token.split('.');
-      if (parts.length != 3) return false;
+      if (parts.length != 3) {
+        print('Token validation failed: invalid format (parts: ${parts.length})');
+        return false;
+      }
 
       if (!_verifySignature(parts[0], parts[1], parts[2])) {
+        print('Token validation failed: invalid signature');
         return false;
       }
 
       final payloadMap = JwtDecoder.decode(token);
       final expiry = DateTime.fromMillisecondsSinceEpoch(payloadMap['exp'] * 1000);
-      return expiry.isAfter(DateTime.now());
+      final now = DateTime.now();
+      final isValid = expiry.isAfter(now);
+
+      if (!isValid) {
+        print('Token validation failed: expired. Expiry: $expiry, Now: $now');
+      }
+
+      return isValid;
     } catch (e) {
+      print('Token validation error: $e');
       return false;
     }
   }

@@ -12,6 +12,13 @@ ProfileModel _$ProfileModelFromJson(Map<String, dynamic> json) => ProfileModel(
       email: json['email'] as String?,
       firstName: json['first_name'] as String?,
       lastName: json['last_name'] as String?,
+      subscriptionEndDate: json['subscription_end_date'] == null
+          ? null
+          : DateTime.parse(json['subscription_end_date'] as String),
+      hasActiveSubscription: json['has_active_subscription'] as bool? ?? false,
+      subscriptionUpdatedAt: json['subscription_updated_at'] == null
+          ? null
+          : DateTime.parse(json['subscription_updated_at'] as String),
     );
 
 Map<String, dynamic> _$ProfileModelToJson(ProfileModel instance) {
@@ -29,5 +36,10 @@ Map<String, dynamic> _$ProfileModelToJson(ProfileModel instance) {
   writeNotNull('email', instance.email);
   writeNotNull('first_name', instance.firstName);
   writeNotNull('last_name', instance.lastName);
+  writeNotNull(
+      'subscription_end_date', instance.subscriptionEndDate?.toIso8601String());
+  val['has_active_subscription'] = instance.hasActiveSubscription;
+  writeNotNull('subscription_updated_at',
+      instance.subscriptionUpdatedAt?.toIso8601String());
   return val;
 }
