@@ -111,9 +111,51 @@ class PaymentRepository {
       );
 
       if (existingPayment.isEmpty) {
-        // Если платежа нет в БД, получаем полную информацию из ЮKassa и сохраняем
-        // Это происходит при получении webhook - сохраняем только после того, как платеж обработан
-        final payment = await _yookassaService.getPayment(paymentId);
+        // Если платежа нет в БД, пытаемся получить информацию из paymentObject или из ЮKassa
+        // Используем данные из paymentObject (приходят в webhook), если они есть
+        // Иначе запрашиваем из ЮKassa
+
+        double amount = 0.0;
+        String currency = 'RUB';
+        String description = '';
+        String? paymentUrl;
+        DateTime createdAt = DateTime.now();
+
+        // Пытаемся извлечь данные из paymentObject (приходит в webhook)
+        if (paymentObject != null) {
+          try {
+            final amountObj = paymentObject['amount'] as Map<String, dynamic>?;
+            if (amountObj != null) {
+              amount = double.tryParse(amountObj['value']?.toString() ?? '0') ?? 0.0;
+              currency = amountObj['currency']?.toString() ?? 'RUB';
+            }
+            description = paymentObject['description']?.toString() ?? '';
+            final confirmation = paymentObject['confirmation'] as Map<String, dynamic>?;
+            paymentUrl = confirmation?['confirmation_url']?.toString();
+            final createdAtStr = paymentObject['created_at']?.toString();
+            if (createdAtStr != null) {
+              createdAt = DateTime.tryParse(createdAtStr) ?? DateTime.now();
+            }
+          } catch (e) {
+            logger.info('Failed to parse payment data from webhook object: $e');
+          }
+        }
+
+        // Если данных недостаточно, пытаемся получить из ЮKassa
+        // Но только если это не тестовый платеж (не начинается с "test-")
+        if (amount == 0.0 && !paymentId.startsWith('test-')) {
+          try {
+            final payment = await _yookassaService.getPayment(paymentId);
+            amount = payment.amount;
+            currency = payment.currency;
+            description = payment.description;
+            paymentUrl = payment.paymentUrl;
+            createdAt = payment.createdAt;
+          } catch (e) {
+            logger.info('Failed to get payment from YooKassa: $e. Using data from webhook object.');
+            // Продолжаем с данными из paymentObject
+          }
+        }
 
         // Получаем subscription_type, period_days и user_id из metadata платежа
         String? subscriptionType;
@@ -147,14 +189,14 @@ class PaymentRepository {
             )
           '''),
           parameters: {
-            'id': payment.id,
-            'status': payment.status,
-            'amount': payment.amount,
-            'currency': payment.currency,
-            'description': payment.description,
-            'payment_url': payment.paymentUrl,
-            'created_at': payment.createdAt,
-            'paid': payment.paid,
+            'id': paymentId,
+            'status': status,
+            'amount': amount,
+            'currency': currency,
+            'description': description,
+            'payment_url': paymentUrl,
+            'created_at': createdAt,
+            'paid': paid,
             'subscription_type': subscriptionType,
             'period_days': periodDays,
             'user_id': userIdFromMetadata,

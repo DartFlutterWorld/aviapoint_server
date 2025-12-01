@@ -172,7 +172,27 @@ class PaymentController {
     return wrapResponse(
       () async {
         final body = await request.readAsString();
-        final json = jsonDecode(body) as Map<String, dynamic>;
+
+        // Проверяем, что тело запроса не пустое
+        if (body.isEmpty || body.trim().isEmpty) {
+          logger.info('Received empty webhook body, ignoring');
+          return Response.ok(
+            jsonEncode({'status': 'ok', 'message': 'Empty body ignored'}),
+            headers: jsonContentHeaders,
+          );
+        }
+
+        Map<String, dynamic> json;
+        try {
+          json = jsonDecode(body) as Map<String, dynamic>;
+        } catch (e) {
+          logger.severe('Failed to parse webhook JSON: $e');
+          logger.severe('Body content: $body');
+          return Response.badRequest(
+            body: jsonEncode({'error': 'Invalid JSON format', 'details': e.toString()}),
+            headers: jsonContentHeaders,
+          );
+        }
 
         final event = json['event'] as String?;
         logger.info('Received webhook from YooKassa: $event');
