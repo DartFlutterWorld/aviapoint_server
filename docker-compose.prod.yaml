@@ -78,6 +78,21 @@ services:
     depends_on:
       - nginx
 
+  adminer:
+    image: adminer
+    container_name: aviapoint-adminer
+    restart: always
+    ports:
+      - "8082:8080"
+    environment:
+      ADMINER_DESIGN: dracula
+    networks:
+      backend:
+        aliases:
+          - adminer
+    depends_on:
+      - db
+
 volumes:
   db_data:
 

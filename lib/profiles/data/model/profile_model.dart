@@ -14,9 +14,6 @@ class ProfileModel {
     this.email,
     this.firstName,
     this.lastName,
-    this.subscriptionEndDate,
-    this.hasActiveSubscription = false,
-    this.subscriptionUpdatedAt,
   });
 
   final int id;
@@ -24,14 +21,6 @@ class ProfileModel {
   final String? email;
   final String? firstName;
   final String? lastName;
-
-  // Денормализованные поля подписки для быстрого доступа
-  @JsonKey(name: 'subscription_end_date')
-  final DateTime? subscriptionEndDate;
-  @JsonKey(name: 'has_active_subscription')
-  final bool hasActiveSubscription;
-  @JsonKey(name: 'subscription_updated_at')
-  final DateTime? subscriptionUpdatedAt;
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) => _$ProfileModelFromJson(json);
 
