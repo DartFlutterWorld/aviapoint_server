@@ -33,6 +33,7 @@ class YooKassaService {
     String? customerPhone,
     String? subscriptionType,
     int? periodDays,
+    int? userId,
   }) async {
     try {
       logger.info('Creating payment in YooKassa: amount=$amount, currency=$currency');
@@ -59,14 +60,17 @@ class YooKassaService {
         'description': description,
       };
 
-      // Сохраняем subscription_type и period_days в metadata для использования в webhook
-      if (subscriptionType != null || periodDays != null) {
+      // Сохраняем subscription_type, period_days и user_id в metadata для использования в webhook
+      if (subscriptionType != null || periodDays != null || userId != null) {
         requestData['metadata'] = <String, dynamic>{};
         if (subscriptionType != null) {
           requestData['metadata']['subscription_type'] = subscriptionType;
         }
         if (periodDays != null) {
           requestData['metadata']['period_days'] = periodDays;
+        }
+        if (userId != null) {
+          requestData['metadata']['user_id'] = userId;
         }
       }
 

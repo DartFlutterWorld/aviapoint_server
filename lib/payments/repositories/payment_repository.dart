@@ -36,6 +36,7 @@ class PaymentRepository {
         customerPhone: customerPhone,
         subscriptionType: subscriptionType,
         periodDays: periodDays,
+        userId: userId,
       );
 
       // НЕ сохраняем платеж в БД сразу - сохраним только после успешной оплаты через webhook
@@ -114,9 +115,10 @@ class PaymentRepository {
         // Это происходит при получении webhook - сохраняем только после того, как платеж обработан
         final payment = await _yookassaService.getPayment(paymentId);
 
-        // Получаем subscription_type и period_days из metadata платежа
+        // Получаем subscription_type, period_days и user_id из metadata платежа
         String? subscriptionType;
         int? periodDays;
+        int? userIdFromMetadata;
 
         // Пытаемся получить из metadata (сохранены при создании платежа)
         if (paymentObject != null) {
@@ -127,6 +129,10 @@ class PaymentRepository {
             if (periodDaysStr != null) {
               periodDays = periodDaysStr is int ? periodDaysStr : int.tryParse(periodDaysStr.toString());
             }
+            final userIdStr = metadata['user_id'];
+            if (userIdStr != null) {
+              userIdFromMetadata = userIdStr is int ? userIdStr : int.tryParse(userIdStr.toString());
+            }
           }
         }
 
@@ -134,10 +140,10 @@ class PaymentRepository {
           Sql.named('''
             INSERT INTO payments (
               id, status, amount, currency, description, 
-              payment_url, created_at, paid, subscription_type, period_days
+              payment_url, created_at, paid, subscription_type, period_days, user_id
             ) VALUES (
               @id, @status, @amount, @currency, @description,
-              @payment_url, @created_at, @paid, @subscription_type, @period_days
+              @payment_url, @created_at, @paid, @subscription_type, @period_days, @user_id
             )
           '''),
           parameters: {
@@ -151,9 +157,10 @@ class PaymentRepository {
             'paid': payment.paid,
             'subscription_type': subscriptionType,
             'period_days': periodDays,
+            'user_id': userIdFromMetadata,
           },
         );
-        logger.info('Payment saved to database from webhook: $paymentId -> $status (paid: $paid)');
+        logger.info('Payment saved to database from webhook: $paymentId -> $status (paid: $paid, user_id: $userIdFromMetadata)');
       } else {
         // Обновляем существующий платеж
         await _connection.execute(
