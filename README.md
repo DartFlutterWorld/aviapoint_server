@@ -31,7 +31,7 @@ cd /home/aviapoint_server
 
 
 
-# Запустите
+# Запустить если обновилось серверное приложение
 docker-compose -f docker-compose.prod.yaml build app
 docker-compose -f docker-compose.prod.yaml up -d
 
@@ -40,3 +40,7 @@ docker-compose -f docker-compose.prod.yaml up -d
 
 # Это запустит только базу данных на порту 5432 и Adminer на порту 8082, а сервер вы запустите локально через dart run bin/aviapoint_server.dart или через IDE.
 docker-compose -f docker-compose.dev.yaml up -d
+
+# Подключение по SSH
+ssh root@83.166.246.205
+uOTC0OWjMVIoaRxI
