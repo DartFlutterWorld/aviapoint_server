@@ -115,10 +115,13 @@ class PaymentRepository {
         // Используем данные из paymentObject (приходят в webhook), если они есть
         // Иначе запрашиваем из ЮKassa
 
+        logger.info('Payment $paymentId not found in DB, creating new record from webhook');
+        logger.info('Payment object keys: ${paymentObject?.keys.toList()}');
+
         double amount = 0.0;
         String currency = 'RUB';
         String description = '';
-        String? paymentUrl;
+        String paymentUrl = '';
         DateTime createdAt = DateTime.now();
 
         // Пытаемся извлечь данные из paymentObject (приходит в webhook)
@@ -128,17 +131,22 @@ class PaymentRepository {
             if (amountObj != null) {
               amount = double.tryParse(amountObj['value']?.toString() ?? '0') ?? 0.0;
               currency = amountObj['currency']?.toString() ?? 'RUB';
+              logger.info('Extracted from webhook: amount=$amount, currency=$currency');
             }
             description = paymentObject['description']?.toString() ?? '';
             final confirmation = paymentObject['confirmation'] as Map<String, dynamic>?;
-            paymentUrl = confirmation?['confirmation_url']?.toString();
+            paymentUrl = confirmation?['confirmation_url']?.toString() ?? '';
             final createdAtStr = paymentObject['created_at']?.toString();
             if (createdAtStr != null) {
               createdAt = DateTime.tryParse(createdAtStr) ?? DateTime.now();
             }
-          } catch (e) {
-            logger.info('Failed to parse payment data from webhook object: $e');
+            logger.info('Extracted: description=$description, paymentUrl=$paymentUrl, createdAt=$createdAt');
+          } catch (e, stackTrace) {
+            logger.severe('Failed to parse payment data from webhook object: $e');
+            logger.severe('Stack trace: $stackTrace');
           }
+        } else {
+          logger.severe('Payment object is null in webhook for payment $paymentId');
         }
 
         // Если данных недостаточно, пытаемся получить из ЮKassa
@@ -151,6 +159,8 @@ class PaymentRepository {
             description = payment.description;
             paymentUrl = payment.paymentUrl;
             createdAt = payment.createdAt;
+            // Обновляем данные из metadata платежа, если они есть
+            // (эти данные уже должны быть в payment, но на всякий случай)
           } catch (e) {
             logger.info('Failed to get payment from YooKassa: $e. Using data from webhook object.');
             // Продолжаем с данными из paymentObject
@@ -158,51 +168,80 @@ class PaymentRepository {
         }
 
         // Получаем subscription_type, period_days и user_id из metadata платежа
-        String? subscriptionType;
-        int? periodDays;
-        int? userIdFromMetadata;
+        String subscriptionType = '';
+        int periodDays = 0;
+        int userIdFromMetadata = 0;
 
         // Пытаемся получить из metadata (сохранены при создании платежа)
         if (paymentObject != null) {
           final metadata = paymentObject['metadata'] as Map<String, dynamic>?;
           if (metadata != null) {
-            subscriptionType = metadata['subscription_type'] as String?;
+            subscriptionType = metadata['subscription_type']?.toString() ?? '';
             final periodDaysStr = metadata['period_days'];
             if (periodDaysStr != null) {
-              periodDays = periodDaysStr is int ? periodDaysStr : int.tryParse(periodDaysStr.toString());
+              periodDays = periodDaysStr is int ? periodDaysStr : (int.tryParse(periodDaysStr.toString()) ?? 0);
             }
             final userIdStr = metadata['user_id'];
             if (userIdStr != null) {
-              userIdFromMetadata = userIdStr is int ? userIdStr : int.tryParse(userIdStr.toString());
+              userIdFromMetadata = userIdStr is int ? userIdStr : (int.tryParse(userIdStr.toString()) ?? 0);
             }
           }
         }
 
-        await _connection.execute(
-          Sql.named('''
-            INSERT INTO payments (
-              id, status, amount, currency, description, 
-              payment_url, created_at, paid, subscription_type, period_days, user_id
-            ) VALUES (
-              @id, @status, @amount, @currency, @description,
-              @payment_url, @created_at, @paid, @subscription_type, @period_days, @user_id
-            )
-          '''),
-          parameters: {
-            'id': paymentId,
-            'status': status,
-            'amount': amount,
-            'currency': currency,
-            'description': description,
-            'payment_url': paymentUrl,
-            'created_at': createdAt,
-            'paid': paid,
-            'subscription_type': subscriptionType,
-            'period_days': periodDays,
-            'user_id': userIdFromMetadata,
-          },
-        );
-        logger.info('Payment saved to database from webhook: $paymentId -> $status (paid: $paid, user_id: $userIdFromMetadata)');
+        // Проверяем, существует ли пользователь, если user_id указан
+        // Для тестовых платежей или если пользователь не найден, используем 0
+        int finalUserId = userIdFromMetadata;
+        if (userIdFromMetadata > 0) {
+          try {
+            final userCheck = await _connection.execute(
+              Sql.named('SELECT id FROM profiles WHERE id = @user_id'),
+              parameters: {'user_id': userIdFromMetadata},
+            );
+            if (userCheck.isEmpty) {
+              logger.info('User $userIdFromMetadata not found in profiles, setting user_id to 0 for payment $paymentId');
+              finalUserId = 0;
+            }
+          } catch (e) {
+            logger.info('Error checking user existence: $e, setting user_id to 0');
+            finalUserId = 0;
+          }
+        }
+
+        logger.info('Inserting payment into DB: id=$paymentId, status=$status, amount=$amount, user_id=$finalUserId, subscription_type=$subscriptionType, period_days=$periodDays');
+
+        try {
+          await _connection.execute(
+            Sql.named('''
+              INSERT INTO payments (
+                id, status, amount, currency, description, 
+                payment_url, created_at, paid, subscription_type, period_days, user_id
+              ) VALUES (
+                @id, @status, @amount, @currency, @description,
+                @payment_url, @created_at, @paid, @subscription_type, @period_days, @user_id
+              )
+            '''),
+            parameters: {
+              'id': paymentId,
+              'status': status,
+              'amount': amount,
+              'currency': currency,
+              'description': description,
+              'payment_url': paymentUrl,
+              'created_at': createdAt,
+              'paid': paid,
+              'subscription_type': subscriptionType,
+              'period_days': periodDays,
+              'user_id': finalUserId,
+            },
+          );
+          logger.info('Payment successfully saved to database: $paymentId -> $status (paid: $paid, user_id: $finalUserId)');
+        } catch (insertError, insertStackTrace) {
+          logger.severe('Failed to INSERT payment into database: $insertError');
+          logger.severe('Payment ID: $paymentId');
+          logger.severe('Parameters: status=$status, amount=$amount, user_id=$finalUserId');
+          logger.severe('Stack trace: $insertStackTrace');
+          rethrow;
+        }
       } else {
         // Обновляем существующий платеж
         await _connection.execute(

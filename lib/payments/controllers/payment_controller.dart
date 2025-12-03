@@ -199,19 +199,47 @@ class PaymentController {
 
         // Обрабатываем события о платежах
         if (event == 'payment.succeeded' || event == 'payment.canceled' || event == 'payment.waiting_for_capture') {
-          final paymentObject = json['object'] as Map<String, dynamic>;
-          final paymentId = paymentObject['id'] as String;
-          final status = paymentObject['status'] as String;
-          final paid = paymentObject['paid'] as bool;
+          final paymentObject = json['object'] as Map<String, dynamic>?;
+          if (paymentObject == null) {
+            logger.severe('Payment object is null in webhook');
+            return Response.badRequest(
+              body: jsonEncode({'error': 'Payment object is missing'}),
+              headers: jsonContentHeaders,
+            );
+          }
+
+          final paymentId = paymentObject['id'] as String?;
+          final status = paymentObject['status'] as String?;
+          final paid = paymentObject['paid'] as bool?;
+
+          if (paymentId == null || status == null || paid == null) {
+            logger.severe('Missing required fields in payment object: id=$paymentId, status=$status, paid=$paid');
+            return Response.badRequest(
+              body: jsonEncode({'error': 'Missing required payment fields'}),
+              headers: jsonContentHeaders,
+            );
+          }
 
           logger.info('Updating payment status: $paymentId -> $status (paid: $paid)');
+          logger.info('Full payment object: $paymentObject');
 
-          await _paymentRepository.updatePaymentStatus(
-            paymentId: paymentId,
-            status: status,
-            paid: paid,
-            paymentObject: paymentObject,
-          );
+          try {
+            await _paymentRepository.updatePaymentStatus(
+              paymentId: paymentId,
+              status: status,
+              paid: paid,
+              paymentObject: paymentObject,
+            );
+            logger.info('Payment status updated successfully: $paymentId');
+          } catch (e, stackTrace) {
+            logger.severe('Failed to update payment status in webhook: $e');
+            logger.severe('Stack trace: $stackTrace');
+            // Не прерываем обработку, возвращаем 200, чтобы ЮKassa не повторял запрос
+            return Response.ok(
+              jsonEncode({'status': 'error', 'message': 'Failed to update payment', 'error': e.toString()}),
+              headers: jsonContentHeaders,
+            );
+          }
 
           // Если платеж успешен, активируем подписку
           if (event == 'payment.succeeded' && paid) {
@@ -229,6 +257,7 @@ class PaymentController {
               final userId = paymentRow['user_id'] as int?;
               final subscriptionTypeStr = paymentRow['subscription_type'] as String?;
               final periodDaysValue = paymentRow['period_days'];
+              final amountValue = paymentRow['amount'];
 
               if (userId == null) {
                 logger.severe('Payment has no user_id: $paymentId');
@@ -236,6 +265,20 @@ class PaymentController {
                   jsonEncode({'status': 'ok', 'message': 'Payment has no user_id'}),
                   headers: jsonContentHeaders,
                 );
+              }
+
+              // Парсим amount из платежа
+              int subscriptionAmount = 0;
+              if (amountValue != null) {
+                if (amountValue is int) {
+                  subscriptionAmount = amountValue;
+                } else if (amountValue is num) {
+                  subscriptionAmount = amountValue.toInt();
+                } else if (amountValue is double) {
+                  subscriptionAmount = amountValue.toInt();
+                } else if (amountValue is String) {
+                  subscriptionAmount = int.tryParse(amountValue) ?? 0;
+                }
               }
 
               // Определяем тип подписки и период
@@ -289,6 +332,8 @@ class PaymentController {
                 paymentId: paymentId,
                 subscriptionType: subscriptionType,
                 periodDays: periodDays,
+                startDate: DateTime.now(),
+                amount: subscriptionAmount,
               );
 
               logger.info('Subscription activated for user $userId, payment: $paymentId, type: ${subscriptionType.code}, days: $periodDays');

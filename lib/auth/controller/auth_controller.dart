@@ -40,6 +40,28 @@ class AuthController {
     final body = await request.readAsString();
     final json = jsonDecode(body) as Map<String, dynamic>;
     final phone = json['phone'] as String;
+
+    // Тестовый номер телефона - не отправляем SMS
+    const testPhone = '+79000000000';
+    if (phone == testPhone || phone == '79000000000' || phone == '9000000000') {
+      smsCode = '0000';
+      print('Test phone detected: $phone, SMS code: $smsCode');
+      // Возвращаем тот же формат, что и при обычной отправке SMS
+      // SmsDto требует: err_code (nullable) и text (required String)
+      final testResponse = {
+        'err_code': '0',
+        'text': '0000', // Обязательное поле для SmsDto
+        'id_sms': 'test-${DateTime.now().millisecondsSinceEpoch}',
+        'phone': phone,
+        'cost': '0.00',
+        'balance': '0.00',
+      };
+      return Response.ok(
+        jsonEncode(testResponse),
+        headers: jsonContentHeaders,
+      );
+    }
+
     final random = Random();
     // Генерируем число от 1000 до 9999 (включительно)
     final code = 1000 + random.nextInt(9000);
@@ -63,14 +85,17 @@ class AuthController {
     final responseData = response.data is String ? jsonDecode(response.data) as Map<String, dynamic> : response.data as Map<String, dynamic>;
     final errorCode = responseData['response']['msg']['err_code'];
     print('Sms отправлено ${response.data}');
+    print('SMS response structure: ${responseData['response']['msg']}');
     if (errorCode == '0') {
+      final msgData = responseData['response']['msg'] as Map<String, dynamic>;
       return Response.ok(
-        jsonEncode(responseData['response']['msg']),
+        jsonEncode(msgData),
         headers: jsonContentHeaders,
       );
     } else {
+      final msgData = responseData['response']['msg'] as Map<String, dynamic>;
       return Response.notFound(
-        jsonEncode(responseData['response']['msg']),
+        jsonEncode(msgData),
         headers: jsonContentHeaders,
       );
     }
@@ -89,7 +114,12 @@ class AuthController {
     final phone = json['phone'] as String;
     final sms = json['sms'] as String;
 
-    if (smsCode == sms) {
+    // Тестовый номер телефона - принимаем код 0000
+    const testPhone = '+79000000000';
+    final isTestPhone = phone == testPhone || phone == '79000000000' || phone == '9000000000';
+    final isValidCode = isTestPhone ? (sms == '0000') : (smsCode == sms);
+
+    if (isValidCode) {
       try {
         final profile = await _profileRepository.fetchProfileByPhone(phone);
 

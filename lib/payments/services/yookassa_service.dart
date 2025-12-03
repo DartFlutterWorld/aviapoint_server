@@ -130,15 +130,24 @@ class YooKassaService {
 
       logger.info('Payment created successfully: ${response.data['id']}');
 
+      // Извлекаем данные из metadata
+      final metadata = response.data['metadata'] as Map<String, dynamic>?;
+      final userIdFromMetadata = metadata?['user_id'];
+      final subscriptionTypeFromMetadata = metadata?['subscription_type'];
+      final periodDaysFromMetadata = metadata?['period_days'];
+
       return PaymentModel(
         id: response.data['id'],
         status: response.data['status'],
         amount: double.parse(response.data['amount']['value']),
         currency: response.data['amount']['currency'],
-        description: response.data['description'] ?? description,
-        paymentUrl: response.data['confirmation']?['confirmation_url'],
+        description: response.data['description']?.toString() ?? description,
+        paymentUrl: response.data['confirmation']?['confirmation_url']?.toString() ?? '',
         createdAt: DateTime.parse(response.data['created_at']),
         paid: response.data['paid'] ?? false,
+        userId: userIdFromMetadata is int ? userIdFromMetadata : (userIdFromMetadata != null ? int.tryParse(userIdFromMetadata.toString()) ?? 0 : 0),
+        subscriptionType: subscriptionTypeFromMetadata?.toString() ?? '',
+        periodDays: periodDaysFromMetadata is int ? periodDaysFromMetadata : (periodDaysFromMetadata != null ? int.tryParse(periodDaysFromMetadata.toString()) ?? 0 : 0),
       );
     } catch (e, stackTrace) {
       logger.severe('Failed to create payment in YooKassa: $e');
@@ -168,15 +177,24 @@ class YooKassaService {
 
       logger.info('Payment info retrieved: ${response.data['id']}');
 
+      // Извлекаем данные из metadata
+      final metadata = response.data['metadata'] as Map<String, dynamic>?;
+      final userIdFromMetadata = metadata?['user_id'];
+      final subscriptionTypeFromMetadata = metadata?['subscription_type'];
+      final periodDaysFromMetadata = metadata?['period_days'];
+
       return PaymentModel(
         id: response.data['id'],
         status: response.data['status'],
         amount: double.parse(response.data['amount']['value']),
         currency: response.data['amount']['currency'],
-        description: response.data['description'] ?? '',
-        paymentUrl: response.data['confirmation']?['confirmation_url'],
+        description: response.data['description']?.toString() ?? '',
+        paymentUrl: response.data['confirmation']?['confirmation_url']?.toString() ?? '',
         createdAt: DateTime.parse(response.data['created_at']),
         paid: response.data['paid'] ?? false,
+        userId: userIdFromMetadata is int ? userIdFromMetadata : (userIdFromMetadata != null ? int.tryParse(userIdFromMetadata.toString()) ?? 0 : 0),
+        subscriptionType: subscriptionTypeFromMetadata?.toString() ?? '',
+        periodDays: periodDaysFromMetadata is int ? periodDaysFromMetadata : (periodDaysFromMetadata != null ? int.tryParse(periodDaysFromMetadata.toString()) ?? 0 : 0),
       );
     } catch (e, stackTrace) {
       logger.severe('Failed to get payment info: $e');

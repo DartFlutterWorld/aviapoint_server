@@ -1,0 +1,1 @@
+-- Таблицы payments и subscriptions пустые

@@ -41,41 +41,31 @@ class SubscriptionRepository {
     required String paymentId,
     required SubscriptionType subscriptionType,
     required int periodDays,
-    DateTime? startDate,
-    bool autoRenew = false,
+    required DateTime startDate,
+    required int amount, // Цена подписки из платежа
   }) async {
     try {
-      // Деактивируем предыдущие активные подписки пользователя
-      await _connection.execute(
-        Sql.named('''
-          UPDATE subscriptions 
-          SET is_active = false 
-          WHERE user_id = @user_id AND is_active = true
-        '''),
-        parameters: {'user_id': userId},
-      );
-
       // Получаем ID типа подписки
       final typeResult = await _connection.execute(
         Sql.named('SELECT id FROM subscription_types WHERE code = @code'),
         parameters: {'code': subscriptionType.code},
       );
 
-      final subscriptionTypeId = typeResult.isNotEmpty ? _parseInt(typeResult.first.toColumnMap()['id']) : null;
+      final subscriptionTypeId = typeResult.isNotEmpty ? _parseInt(typeResult.first.toColumnMap()['id']) : 0;
 
       // Определяем даты
-      final start = startDate ?? DateTime.now();
+      final start = startDate;
       final end = start.add(Duration(days: periodDays));
 
-      // Создаем новую подписку
+      // Создаем новую подписку (пользователь может иметь несколько активных подписок)
       final result = await _connection.execute(
         Sql.named('''
           INSERT INTO subscriptions (
             user_id, payment_id, subscription_type_id, period_days,
-            start_date, end_date, is_active, auto_renew
+            start_date, end_date, is_active, amount
           ) VALUES (
             @user_id, @payment_id, @subscription_type_id, @period_days,
-            @start_date, @end_date, @is_active, @auto_renew
+            @start_date, @end_date, @is_active, @amount
           )
           RETURNING *
         '''),
@@ -87,7 +77,7 @@ class SubscriptionRepository {
           'start_date': start,
           'end_date': end,
           'is_active': true,
-          'auto_renew': autoRenew,
+          'amount': amount,
         },
       );
 
@@ -102,8 +92,8 @@ class SubscriptionRepository {
     }
   }
 
-  /// Получение активной подписки пользователя
-  Future<SubscriptionModel?> getActiveSubscription(int userId) async {
+  /// Получение всех активных подписок пользователя
+  Future<List<SubscriptionModel>> getActiveSubscription(int userId) async {
     try {
       final result = await _connection.execute(
         Sql.named('''
@@ -112,16 +102,11 @@ class SubscriptionRepository {
             AND is_active = true
             AND end_date > CURRENT_TIMESTAMP
           ORDER BY end_date DESC
-          LIMIT 1
         '''),
         parameters: {'user_id': userId},
       );
 
-      if (result.isEmpty) {
-        return null;
-      }
-
-      return SubscriptionModel.fromJson(result.first.toColumnMap());
+      return result.map((row) => SubscriptionModel.fromJson(row.toColumnMap())).toList();
     } catch (e, stackTrace) {
       logger.severe('Failed to get active subscription: $e');
       logger.severe('Stack trace: $stackTrace');

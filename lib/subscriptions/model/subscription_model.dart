@@ -11,38 +11,51 @@ class SubscriptionModel {
   SubscriptionModel({
     required this.id,
     required this.userId,
-    this.paymentId,
-    this.subscriptionTypeId,
+    required this.paymentId,
+    required this.subscriptionTypeId,
     required this.periodDays,
     required this.startDate,
     required this.endDate,
     required this.isActive,
-    this.autoRenew = false,
     required this.createdAt,
-    this.updatedAt,
+    required this.amount,
   });
 
   final int id;
   @JsonKey(name: 'user_id')
   final int userId;
   @JsonKey(name: 'payment_id')
-  final String? paymentId;
+  final String paymentId;
   @JsonKey(name: 'subscription_type_id')
-  final int? subscriptionTypeId;
+  final int subscriptionTypeId;
   @JsonKey(name: 'period_days')
   final int periodDays;
-  @JsonKey(name: 'start_date')
+  @JsonKey(name: 'start_date', toJson: _dateTimeToJson, fromJson: _dateTimeFromJson)
   final DateTime startDate;
-  @JsonKey(name: 'end_date')
+  @JsonKey(name: 'end_date', toJson: _dateTimeToJson, fromJson: _dateTimeFromJson)
   final DateTime endDate;
   @JsonKey(name: 'is_active')
   final bool isActive;
-  @JsonKey(name: 'auto_renew', defaultValue: false)
-  final bool autoRenew;
-  @JsonKey(name: 'created_at')
+  @JsonKey(name: 'created_at', toJson: _dateTimeToJson, fromJson: _dateTimeFromJson)
   final DateTime createdAt;
-  @JsonKey(name: 'updated_at')
-  final DateTime? updatedAt;
+  final int amount; // Цена подписки из платежа
+
+  // Конвертеры для DateTime
+  static String _dateTimeToJson(DateTime dateTime) => dateTime.toIso8601String();
+  static DateTime _dateTimeFromJson(dynamic json) {
+    if (json == null) {
+      throw FormatException('DateTime cannot be null');
+    }
+    if (json is String) {
+      return DateTime.parse(json);
+    } else if (json is DateTime) {
+      return json;
+    } else if (json is int) {
+      return DateTime.fromMillisecondsSinceEpoch(json);
+    } else {
+      throw FormatException('Invalid DateTime format: $json (type: ${json.runtimeType})');
+    }
+  }
 
   factory SubscriptionModel.fromJson(Map<String, dynamic> json) => _$SubscriptionModelFromJson(json);
 

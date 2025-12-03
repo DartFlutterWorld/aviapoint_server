@@ -62,11 +62,11 @@ class SubscriptionController {
   }
 
   ///
-  /// Получение активной подписки пользователя
+  /// Получение всех активных подписок пользователя
   ///
-  /// Возвращает информацию об активной подписке пользователя.
+  /// Возвращает список всех активных подписок пользователя.
   /// Использует токен авторизации для определения пользователя.
-  /// Возвращает 404, если активной подписки нет.
+  /// Возвращает 404, если активных подписок нет.
   ///
   @Route.get('/subscriptions/active')
   @OpenApiRoute()
@@ -107,11 +107,11 @@ class SubscriptionController {
 
         final userId = int.parse(userIdStr);
 
-        // Получаем активную подписку
-        final subscription = await _subscriptionRepository.getActiveSubscription(userId);
+        // Получаем все активные подписки
+        final subscriptions = await _subscriptionRepository.getActiveSubscription(userId);
 
-        // Возвращаем 404, если подписки нет
-        if (subscription == null) {
+        // Возвращаем 404, если подписок нет
+        if (subscriptions.isEmpty) {
           return Response.notFound(
             jsonEncode({
               'error': 'No active subscription found',
@@ -121,9 +121,11 @@ class SubscriptionController {
           );
         }
 
-        // Возвращаем SubscriptionDto
+        // Возвращаем список активных подписок
         return Response.ok(
-          jsonEncode(subscription.toJson()),
+          jsonEncode({
+            'subscriptions': subscriptions.map((s) => s.toJson()).toList(),
+          }),
           headers: jsonContentHeaders,
         );
       },
@@ -171,7 +173,6 @@ class SubscriptionController {
                       'start_date': s.startDate.toIso8601String(),
                       'end_date': s.endDate.toIso8601String(),
                       'is_active': s.isActive,
-                      'auto_renew': s.autoRenew,
                       'created_at': s.createdAt.toIso8601String(),
                     })
                 .toList(),
