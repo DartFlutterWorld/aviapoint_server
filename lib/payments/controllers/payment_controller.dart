@@ -151,49 +151,12 @@ class PaymentController {
       logger.info('Payment return: payment_id=$paymentId');
 
       // Редиректим на фронтенд (профиль) с параметром успешной оплаты
-      // Для веб используем фронтенд URL, для мобильных - deep link
+      // Используем HTTP редирект (302 Found) - это более надежно, чем JavaScript
       final frontendUrl = Platform.environment['FRONTEND_URL'] ?? 'https://avia-point.com';
       final redirectUrl = '$frontendUrl/#/profile?payment=success${paymentId != null ? '&payment_id=$paymentId' : ''}';
 
-      // Возвращаем HTML страницу с автоматическим редиректом
-      // Это работает и для веб, и для мобильных (WebView)
-      final html =
-          '''
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Оплата успешна</title>
-  <script>
-    // Пытаемся закрыть окно/вкладку (для веб)
-    window.onload = function() {
-      // Редирект на фронтенд
-      window.location.href = '$redirectUrl';
-      
-      // Для мобильных приложений (WebView) можно использовать deep link
-      // Если это не сработает, WebView сам обработает URL через NavigationDelegate
-      setTimeout(function() {
-        // Если через 2 секунды все еще на этой странице, пробуем закрыть
-        if (window.location.href.includes('/payments/return')) {
-          // Пытаемся закрыть окно (работает только если было открыто через window.open)
-          window.close();
-        }
-      }, 2000);
-    };
-  </script>
-</head>
-<body>
-  <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-    <h1>Оплата успешно выполнена!</h1>
-    <p>Перенаправление...</p>
-    <p><a href="$redirectUrl">Нажмите здесь, если перенаправление не произошло автоматически</a></p>
-  </div>
-</body>
-</html>
-''';
-
-      return Response.ok(html, headers: {'Content-Type': 'text/html; charset=utf-8'});
+      // HTTP редирект 302 Found - работает везде (веб, мобильные)
+      return Response.found(redirectUrl);
     });
   }
 
@@ -209,43 +172,12 @@ class PaymentController {
       logger.info('Payment cancel: payment_id=$paymentId');
 
       // Редиректим на фронтенд (профиль) с параметром отмены
+      // Используем HTTP редирект (302 Found) - это более надежно, чем JavaScript
       final frontendUrl = Platform.environment['FRONTEND_URL'] ?? 'https://avia-point.com';
       final redirectUrl = '$frontendUrl/#/profile?payment=cancel${paymentId != null ? '&payment_id=$paymentId' : ''}';
 
-      // Возвращаем HTML страницу с автоматическим редиректом
-      final html =
-          '''
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Оплата отменена</title>
-  <script>
-    window.onload = function() {
-      // Редирект на фронтенд
-      window.location.href = '$redirectUrl';
-      
-      // Для мобильных приложений (WebView)
-      setTimeout(function() {
-        if (window.location.href.includes('/payments/cancel')) {
-          window.close();
-        }
-      }, 2000);
-    };
-  </script>
-</head>
-<body>
-  <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-    <h1>Оплата отменена</h1>
-    <p>Перенаправление...</p>
-    <p><a href="$redirectUrl">Нажмите здесь, если перенаправление не произошло автоматически</a></p>
-  </div>
-</body>
-</html>
-''';
-
-      return Response.ok(html, headers: {'Content-Type': 'text/html; charset=utf-8'});
+      // HTTP редирект 302 Found - работает везде (веб, мобильные)
+      return Response.found(redirectUrl);
     });
   }
 
