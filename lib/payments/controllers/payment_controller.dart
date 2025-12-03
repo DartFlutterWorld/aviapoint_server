@@ -150,11 +150,42 @@ class PaymentController {
       final paymentId = request.url.queryParameters['payment_id'];
       logger.info('Payment return: payment_id=$paymentId');
 
-      // Редиректим на страницу выбора режима тестирования после успешной оплаты
+      // Проверяем статус платежа перед редиректом
+      // Показываем сообщение только если платеж действительно успешен или отменен
+      String? paymentStatus;
+
+      if (paymentId != null && paymentId.isNotEmpty) {
+        try {
+          final payment = await _paymentRepository.getPaymentById(paymentId);
+          if (payment != null) {
+            // Определяем статус на основе данных платежа
+            // Показываем сообщение только для успешных или отмененных платежей
+            if (payment.status == 'succeeded' || payment.paid == true) {
+              paymentStatus = 'success';
+            } else if (payment.status == 'canceled') {
+              paymentStatus = 'cancel';
+            }
+            // Если pending - не добавляем параметр payment, чтобы не показывать сообщение
+            logger.info('Payment status for $paymentId: ${payment.status}, paid: ${payment.paid}, redirect status: $paymentStatus');
+          } else {
+            logger.warning('Payment not found: $paymentId');
+            // Если платеж не найден - не показываем сообщение
+          }
+        } catch (e, stackTrace) {
+          logger.severe('Error checking payment status: $e');
+          logger.severe('Stack trace: $stackTrace');
+          // В случае ошибки не показываем сообщение
+        }
+      }
+
+      // Редиректим на страницу выбора режима тестирования
+      // Добавляем параметр payment только если платеж успешен или отменен
       // Используем HTTP редирект (302 Found) - это более надежно, чем JavaScript
       // Используем path-based routing (без хеша), так как фронтенд использует setPathUrlStrategy()
       final frontendUrl = Platform.environment['FRONTEND_URL'] ?? 'https://avia-point.com';
-      final redirectUrl = '$frontendUrl/learning/testing_mode?payment=success${paymentId != null ? '&payment_id=$paymentId' : ''}';
+      final paymentParam = paymentStatus != null ? '?payment=$paymentStatus' : '';
+      final paymentIdParam = paymentId != null && paymentId.isNotEmpty ? (paymentParam.isNotEmpty ? '&payment_id=$paymentId' : '?payment_id=$paymentId') : '';
+      final redirectUrl = '$frontendUrl/learning/testing_mode$paymentParam$paymentIdParam';
 
       // HTTP редирект 302 Found - работает везде (веб, мобильные)
       return Response.found(redirectUrl);
