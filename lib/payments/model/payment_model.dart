@@ -2,11 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'payment_model.g.dart';
 
-@JsonSerializable(
-  includeIfNull: false,
-  fieldRename: FieldRename.snake,
-  createToJson: true,
-)
+@JsonSerializable(includeIfNull: false, fieldRename: FieldRename.snake, createToJson: true)
 class PaymentModel {
   PaymentModel({
     required this.id,
@@ -24,6 +20,7 @@ class PaymentModel {
 
   final String id;
   final String status;
+  @JsonKey(fromJson: _amountFromJson)
   final double amount;
   final String currency;
   final String description;
@@ -32,11 +29,11 @@ class PaymentModel {
   @JsonKey(name: 'created_at', toJson: _dateTimeToJson, fromJson: _dateTimeFromJson)
   final DateTime createdAt;
   final bool paid;
-  @JsonKey(name: 'user_id')
+  @JsonKey(name: 'user_id', fromJson: _intFromJson)
   final int userId;
   @JsonKey(name: 'subscription_type')
   final String subscriptionType;
-  @JsonKey(name: 'period_days')
+  @JsonKey(name: 'period_days', fromJson: _intFromJson)
   final int periodDays;
 
   factory PaymentModel.fromJson(Map<String, dynamic> json) => _$PaymentModelFromJson(json);
@@ -56,5 +53,26 @@ class PaymentModel {
       return DateTime.fromMillisecondsSinceEpoch(json);
     }
     throw ArgumentError('Cannot convert $json (${json.runtimeType}) to DateTime');
+  }
+
+  // Конвертеры для числовых полей (обрабатывают строки и числа)
+  static double _amountFromJson(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      return double.parse(value);
+    }
+    throw ArgumentError('Cannot convert $value (${value.runtimeType}) to double');
+  }
+
+  static int _intFromJson(dynamic value) {
+    if (value is num) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.parse(value);
+    }
+    throw ArgumentError('Cannot convert $value (${value.runtimeType}) to int');
   }
 }
