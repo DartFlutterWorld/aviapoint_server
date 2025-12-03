@@ -20,8 +20,8 @@ class PaymentController {
   final SubscriptionRepository _subscriptionRepository;
 
   PaymentController({required PaymentRepository paymentRepository, required SubscriptionRepository subscriptionRepository})
-    : _paymentRepository = paymentRepository,
-      _subscriptionRepository = subscriptionRepository;
+      : _paymentRepository = paymentRepository,
+        _subscriptionRepository = subscriptionRepository;
 
   Router get router => _$PaymentControllerRouter(this);
 
@@ -171,7 +171,7 @@ class PaymentController {
                 logger.info('Got payment status from YooKassa API: ${payment.status}, paid: ${payment.paid}');
               }
             } catch (e) {
-              logger.warning('Failed to get payment from YooKassa API: $e');
+              logger.info('Failed to get payment from YooKassa API: $e');
               // Продолжаем с данными из БД, если они есть
             }
           }
@@ -208,8 +208,7 @@ class PaymentController {
 
       // Возвращаем HTML страницу с автоматическим редиректом
       // Это работает надежнее, чем простой HTTP редирект, особенно после перехода с ЮKassa
-      final html =
-          '''
+      final html = '''
 <!DOCTYPE html>
 <html>
 <head>
