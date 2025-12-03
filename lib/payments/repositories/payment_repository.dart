@@ -23,6 +23,7 @@ class PaymentRepository {
   }) async {
     try {
       // Создаем платеж в ЮKassa
+      // Сначала создаем платеж без payment_id в return_url
       final payment = await _yookassaService.createPayment(
         amount: amount,
         currency: currency,
@@ -40,6 +41,10 @@ class PaymentRepository {
       // Платеж будет сохранен автоматически в updatePaymentStatus при получении webhook
 
       logger.info('Payment created in YooKassa: ${payment.id}, user_id: $userId (will be saved after successful payment)');
+      
+      // ВАЖНО: ЮKassa не передает payment_id в query параметрах при редиректе
+      // Поэтому payment_id нужно получать из других источников (последние платежи пользователя, webhook и т.д.)
+      
       return payment;
     } catch (e, stackTrace) {
       logger.severe('Failed to create payment: $e');
@@ -77,6 +82,54 @@ class PaymentRepository {
       logger.severe('Failed to get payment from YooKassa: $e');
       logger.severe('Stack trace: $stackTrace');
       return null;
+    }
+  }
+
+  /// Получение последних успешных платежей пользователя за указанный период
+  /// Используется для определения payment_id, если он не передан в URL
+  Future<List<PaymentModel>> getRecentSuccessfulPayments({int? userId, int minutes = 10}) async {
+    try {
+      final cutoffTime = DateTime.now().subtract(Duration(minutes: minutes));
+      
+      // Если userId не передан, получаем последние успешные платежи всех пользователей
+      // Это нужно, так как при редиректе с ЮKassa мы не знаем userId
+      final dbResult = userId != null
+          ? await _connection.execute(
+              Sql.named('''
+                SELECT * FROM payments 
+                WHERE user_id = @user_id 
+                  AND (status = 'succeeded' OR paid = true)
+                  AND created_at >= @cutoff_time
+                ORDER BY created_at DESC
+                LIMIT 1
+              '''),
+              parameters: {
+                'user_id': userId,
+                'cutoff_time': cutoffTime,
+              },
+            )
+          : await _connection.execute(
+              Sql.named('''
+                SELECT * FROM payments 
+                WHERE (status = 'succeeded' OR paid = true)
+                  AND created_at >= @cutoff_time
+                ORDER BY created_at DESC
+                LIMIT 1
+              '''),
+              parameters: {
+                'cutoff_time': cutoffTime,
+              },
+            );
+
+      if (dbResult.isEmpty) {
+        return [];
+      }
+
+      return dbResult.map((row) => PaymentModel.fromJson(row.toColumnMap())).toList();
+    } catch (e, stackTrace) {
+      logger.severe('Failed to get recent successful payments: $e');
+      logger.severe('Stack trace: $stackTrace');
+      return [];
     }
   }
 

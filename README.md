@@ -26,14 +26,11 @@ docker-compose -f docker-compose.prod.yaml restart nginx
 docker exec aviapoint-nginx nginx -s reload
 
 
-# папка где лежит сервер
-cd /home/aviapoint_server
 
 
 
-# Запустить если обновилось серверное приложение
-docker-compose -f docker-compose.prod.yaml build app
-docker-compose -f docker-compose.prod.yaml up -d
+
+
 
 # Скрипт для обновления бзы данных (копирует локальную и вставляет на сервер )
  uOTC0OWjMVIoaRxI
@@ -45,3 +42,20 @@ docker-compose -f docker-compose.dev.yaml up -d
 # Подключение по SSH
 ssh root@83.166.246.205
 uOTC0OWjMVIoaRxI
+
+# папка где лежит сервер
+cd /home/aviapoint_server
+
+# Получить изменения с гита
+git pull
+
+# Запустить если обновилось серверное приложение
+docker-compose -f docker-compose.prod.yaml build app
+docker-compose -f docker-compose.prod.yaml up -d
+
+
+
+
+# Чтобы выйти с сервера (закрыть SSH-сессию), используйте одну из команд:
+
+Ctrl+D — комбинация клавиш

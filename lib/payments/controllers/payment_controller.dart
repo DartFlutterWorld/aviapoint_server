@@ -20,8 +20,8 @@ class PaymentController {
   final SubscriptionRepository _subscriptionRepository;
 
   PaymentController({required PaymentRepository paymentRepository, required SubscriptionRepository subscriptionRepository})
-      : _paymentRepository = paymentRepository,
-        _subscriptionRepository = subscriptionRepository;
+    : _paymentRepository = paymentRepository,
+      _subscriptionRepository = subscriptionRepository;
 
   Router get router => _$PaymentControllerRouter(this);
 
@@ -150,65 +150,23 @@ class PaymentController {
       final paymentId = request.url.queryParameters['payment_id'];
       logger.info('Payment return: payment_id=$paymentId');
 
-      // Проверяем статус платежа перед редиректом
-      // Показываем сообщение только если платеж действительно успешен или отменен
-      String? paymentStatus;
-
-      if (paymentId != null && paymentId.isNotEmpty) {
-        try {
-          // Получаем платеж из БД
-          var payment = await _paymentRepository.getPaymentById(paymentId);
-
-          // Если платеж не найден в БД или статус не succeeded, проверяем через API ЮKassa
-          // Это нужно, так как webhook может еще не обработать платеж, но платеж уже успешен
-          if (payment == null || (payment.status != 'succeeded' && payment.paid != true)) {
-            logger.info('Payment status in DB is not succeeded, checking via YooKassa API: $paymentId');
-            try {
-              // Получаем актуальный статус напрямую из ЮKassa API
-              final yookassaPayment = await _paymentRepository.getPaymentFromYooKassa(paymentId);
-              if (yookassaPayment != null) {
-                payment = yookassaPayment;
-                logger.info('Got payment status from YooKassa API: ${payment.status}, paid: ${payment.paid}');
-              }
-            } catch (e) {
-              logger.info('Failed to get payment from YooKassa API: $e');
-              // Продолжаем с данными из БД, если они есть
-            }
-          }
-
-          if (payment != null) {
-            // Определяем статус на основе данных платежа
-            // Показываем сообщение только для успешных или отмененных платежей
-            if (payment.status == 'succeeded' || payment.paid == true) {
-              paymentStatus = 'success';
-            } else if (payment.status == 'canceled') {
-              paymentStatus = 'cancel';
-            }
-            // Если pending - не добавляем параметр payment, чтобы не показывать сообщение
-            logger.info('Payment status for $paymentId: ${payment.status}, paid: ${payment.paid}, redirect status: $paymentStatus');
-          } else {
-            logger.info('Payment not found: $paymentId');
-            // Если платеж не найден - не показываем сообщение
-          }
-        } catch (e, stackTrace) {
-          logger.severe('Error checking payment status: $e');
-          logger.severe('Stack trace: $stackTrace');
-          // В случае ошибки не показываем сообщение
-        }
-      }
+      // Если пользователь вернулся с /payments/return, это означает успешную оплату
+      // (иначе был бы редирект на /payments/cancel)
+      // Поэтому всегда показываем сообщение об успешной оплате
+      const paymentStatus = 'success';
 
       // Редиректим на страницу выбора режима тестирования
-      // Добавляем параметр payment только если платеж успешен или отменен
+      // Всегда показываем сообщение об успешной оплате, так как пользователь вернулся с /payments/return
       // Используем HTML страницу с автоматическим редиректом для более надежной работы
       // Используем path-based routing (без хеша), так как фронтенд использует setPathUrlStrategy()
       final frontendUrl = Platform.environment['FRONTEND_URL'] ?? 'https://avia-point.com';
-      final paymentParam = paymentStatus != null ? '?payment=$paymentStatus' : '';
-      final paymentIdParam = paymentId != null && paymentId.isNotEmpty ? (paymentParam.isNotEmpty ? '&payment_id=$paymentId' : '?payment_id=$paymentId') : '';
-      final redirectUrl = '$frontendUrl/learning/testing_mode$paymentParam$paymentIdParam';
+      final paymentIdParam = paymentId != null && paymentId.isNotEmpty ? '&payment_id=$paymentId' : '';
+      final redirectUrl = '$frontendUrl/learning/testing_mode?payment=$paymentStatus$paymentIdParam';
 
       // Возвращаем HTML страницу с автоматическим редиректом
       // Это работает надежнее, чем простой HTTP редирект, особенно после перехода с ЮKassa
-      final html = '''
+      final html =
+          '''
 <!DOCTYPE html>
 <html>
 <head>
