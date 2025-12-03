@@ -150,10 +150,11 @@ class PaymentController {
       final paymentId = request.url.queryParameters['payment_id'];
       logger.info('Payment return: payment_id=$paymentId');
 
-      // Редиректим на фронтенд (профиль) с параметром успешной оплаты
+      // Редиректим на страницу выбора режима тестирования после успешной оплаты
       // Используем HTTP редирект (302 Found) - это более надежно, чем JavaScript
+      // Используем path-based routing (без хеша), так как фронтенд использует setPathUrlStrategy()
       final frontendUrl = Platform.environment['FRONTEND_URL'] ?? 'https://avia-point.com';
-      final redirectUrl = '$frontendUrl/#/profile?payment=success${paymentId != null ? '&payment_id=$paymentId' : ''}';
+      final redirectUrl = '$frontendUrl/learning/testing_mode?payment=success${paymentId != null ? '&payment_id=$paymentId' : ''}';
 
       // HTTP редирект 302 Found - работает везде (веб, мобильные)
       return Response.found(redirectUrl);
@@ -171,10 +172,11 @@ class PaymentController {
       final paymentId = request.url.queryParameters['payment_id'];
       logger.info('Payment cancel: payment_id=$paymentId');
 
-      // Редиректим на фронтенд (профиль) с параметром отмены
+      // Редиректим на страницу выбора режима тестирования после отмены платежа
       // Используем HTTP редирект (302 Found) - это более надежно, чем JavaScript
+      // Используем path-based routing (без хеша), так как фронтенд использует setPathUrlStrategy()
       final frontendUrl = Platform.environment['FRONTEND_URL'] ?? 'https://avia-point.com';
-      final redirectUrl = '$frontendUrl/#/profile?payment=cancel${paymentId != null ? '&payment_id=$paymentId' : ''}';
+      final redirectUrl = '$frontendUrl/learning/testing_mode?payment=cancel${paymentId != null ? '&payment_id=$paymentId' : ''}';
 
       // HTTP редирект 302 Found - работает везде (веб, мобильные)
       return Response.found(redirectUrl);
