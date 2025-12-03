@@ -354,6 +354,26 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /payments/return:
+    get:
+      tags:
+        - PaymentController
+      summary: Обработка возврата после успешной оплаты
+      description: ЮKassa редиректит пользователя на этот URL после успешной оплаты
+      operationId: paymentReturn
+      responses:
+        200:
+          description: "Operation completed!"
+  /payments/cancel:
+    get:
+      tags:
+        - PaymentController
+      summary: Обработка отмены платежа
+      description: ЮKassa редиректит пользователя на этот URL при отмене платежа
+      operationId: paymentCancel
+      responses:
+        200:
+          description: "Operation completed!"
   /payments/webhook:
     post:
       tags:

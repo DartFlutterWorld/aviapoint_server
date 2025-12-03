@@ -19,6 +19,16 @@ Router _$PaymentControllerRouter(PaymentController service) {
     service.getPaymentStatus,
   );
   router.add(
+    'GET',
+    r'/payments/return',
+    service.paymentReturn,
+  );
+  router.add(
+    'GET',
+    r'/payments/cancel',
+    service.paymentCancel,
+  );
+  router.add(
     'POST',
     r'/payments/webhook',
     service.webhook,
