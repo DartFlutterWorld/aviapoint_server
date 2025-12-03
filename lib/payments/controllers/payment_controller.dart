@@ -20,8 +20,8 @@ class PaymentController {
   final SubscriptionRepository _subscriptionRepository;
 
   PaymentController({required PaymentRepository paymentRepository, required SubscriptionRepository subscriptionRepository})
-      : _paymentRepository = paymentRepository,
-        _subscriptionRepository = subscriptionRepository;
+    : _paymentRepository = paymentRepository,
+      _subscriptionRepository = subscriptionRepository;
 
   Router get router => _$PaymentControllerRouter(this);
 
@@ -156,7 +156,26 @@ class PaymentController {
 
       if (paymentId != null && paymentId.isNotEmpty) {
         try {
-          final payment = await _paymentRepository.getPaymentById(paymentId);
+          // Получаем платеж из БД
+          var payment = await _paymentRepository.getPaymentById(paymentId);
+
+          // Если платеж не найден в БД или статус не succeeded, проверяем через API ЮKassa
+          // Это нужно, так как webhook может еще не обработать платеж, но платеж уже успешен
+          if (payment == null || (payment.status != 'succeeded' && payment.paid != true)) {
+            logger.info('Payment status in DB is not succeeded, checking via YooKassa API: $paymentId');
+            try {
+              // Получаем актуальный статус напрямую из ЮKassa API
+              final yookassaPayment = await _paymentRepository.getPaymentFromYooKassa(paymentId);
+              if (yookassaPayment != null) {
+                payment = yookassaPayment;
+                logger.info('Got payment status from YooKassa API: ${payment.status}, paid: ${payment.paid}');
+              }
+            } catch (e) {
+              logger.warning('Failed to get payment from YooKassa API: $e');
+              // Продолжаем с данными из БД, если они есть
+            }
+          }
+
           if (payment != null) {
             // Определяем статус на основе данных платежа
             // Показываем сообщение только для успешных или отмененных платежей
@@ -180,15 +199,46 @@ class PaymentController {
 
       // Редиректим на страницу выбора режима тестирования
       // Добавляем параметр payment только если платеж успешен или отменен
-      // Используем HTTP редирект (302 Found) - это более надежно, чем JavaScript
+      // Используем HTML страницу с автоматическим редиректом для более надежной работы
       // Используем path-based routing (без хеша), так как фронтенд использует setPathUrlStrategy()
       final frontendUrl = Platform.environment['FRONTEND_URL'] ?? 'https://avia-point.com';
       final paymentParam = paymentStatus != null ? '?payment=$paymentStatus' : '';
       final paymentIdParam = paymentId != null && paymentId.isNotEmpty ? (paymentParam.isNotEmpty ? '&payment_id=$paymentId' : '?payment_id=$paymentId') : '';
       final redirectUrl = '$frontendUrl/learning/testing_mode$paymentParam$paymentIdParam';
 
-      // HTTP редирект 302 Found - работает везде (веб, мобильные)
-      return Response.found(redirectUrl);
+      // Возвращаем HTML страницу с автоматическим редиректом
+      // Это работает надежнее, чем простой HTTP редирект, особенно после перехода с ЮKassa
+      final html =
+          '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Перенаправление...</title>
+  <meta http-equiv="refresh" content="0;url=$redirectUrl">
+  <script>
+    // Автоматический редирект через JavaScript (более надежно)
+    window.location.href = '$redirectUrl';
+    
+    // Fallback: если через 1 секунду все еще на этой странице, пробуем еще раз
+    setTimeout(function() {
+      if (window.location.href.includes('/payments/return')) {
+        window.location.href = '$redirectUrl';
+      }
+    }, 1000);
+  </script>
+</head>
+<body>
+  <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+    <h1>Перенаправление...</h1>
+    <p>Если перенаправление не произошло автоматически, <a href="$redirectUrl">нажмите здесь</a></p>
+  </div>
+</body>
+</html>
+''';
+
+      return Response.ok(html, headers: {'Content-Type': 'text/html; charset=utf-8'});
     });
   }
 

@@ -7,11 +7,7 @@ class PaymentRepository {
   final Connection _connection;
   final YooKassaService _yookassaService;
 
-  PaymentRepository({
-    required Connection connection,
-    required YooKassaService yookassaService,
-  })  : _connection = connection,
-        _yookassaService = yookassaService;
+  PaymentRepository({required Connection connection, required YooKassaService yookassaService}) : _connection = connection, _yookassaService = yookassaService;
 
   /// Создание платежа
   Future<PaymentModel> createPayment({
@@ -56,10 +52,7 @@ class PaymentRepository {
   Future<PaymentModel?> getPaymentById(String paymentId) async {
     try {
       // Сначала проверяем в БД
-      final dbResult = await _connection.execute(
-        Sql.named('SELECT * FROM payments WHERE id = @id'),
-        parameters: {'id': paymentId},
-      );
+      final dbResult = await _connection.execute(Sql.named('SELECT * FROM payments WHERE id = @id'), parameters: {'id': paymentId});
 
       if (dbResult.isEmpty) {
         // Если нет в БД, получаем из ЮKassa
@@ -75,13 +68,22 @@ class PaymentRepository {
     }
   }
 
+  /// Получение платежа напрямую из API ЮKassa (без проверки БД)
+  /// Используется для получения актуального статуса, когда БД может быть еще не обновлена
+  Future<PaymentModel?> getPaymentFromYooKassa(String paymentId) async {
+    try {
+      return await _yookassaService.getPayment(paymentId);
+    } catch (e, stackTrace) {
+      logger.severe('Failed to get payment from YooKassa: $e');
+      logger.severe('Stack trace: $stackTrace');
+      return null;
+    }
+  }
+
   /// Получение полных данных платежа из БД (включая subscription_type и period_days)
   Future<Map<String, dynamic>?> getPaymentDataById(String paymentId) async {
     try {
-      final dbResult = await _connection.execute(
-        Sql.named('SELECT * FROM payments WHERE id = @id'),
-        parameters: {'id': paymentId},
-      );
+      final dbResult = await _connection.execute(Sql.named('SELECT * FROM payments WHERE id = @id'), parameters: {'id': paymentId});
 
       if (dbResult.isEmpty) {
         return null;
@@ -97,18 +99,10 @@ class PaymentRepository {
 
   /// Обновление статуса платежа
   /// Принимает paymentObject для получения metadata с subscription_type и period_days
-  Future<void> updatePaymentStatus({
-    required String paymentId,
-    required String status,
-    required bool paid,
-    Map<String, dynamic>? paymentObject,
-  }) async {
+  Future<void> updatePaymentStatus({required String paymentId, required String status, required bool paid, Map<String, dynamic>? paymentObject}) async {
     try {
       // Проверяем, существует ли платеж в БД
-      final existingPayment = await _connection.execute(
-        Sql.named('SELECT id FROM payments WHERE id = @id'),
-        parameters: {'id': paymentId},
-      );
+      final existingPayment = await _connection.execute(Sql.named('SELECT id FROM payments WHERE id = @id'), parameters: {'id': paymentId});
 
       if (existingPayment.isEmpty) {
         // Если платежа нет в БД, пытаемся получить информацию из paymentObject или из ЮKassa
@@ -193,10 +187,7 @@ class PaymentRepository {
         int finalUserId = userIdFromMetadata;
         if (userIdFromMetadata > 0) {
           try {
-            final userCheck = await _connection.execute(
-              Sql.named('SELECT id FROM profiles WHERE id = @user_id'),
-              parameters: {'user_id': userIdFromMetadata},
-            );
+            final userCheck = await _connection.execute(Sql.named('SELECT id FROM profiles WHERE id = @user_id'), parameters: {'user_id': userIdFromMetadata});
             if (userCheck.isEmpty) {
               logger.info('User $userIdFromMetadata not found in profiles, setting user_id to 0 for payment $paymentId');
               finalUserId = 0;
@@ -250,11 +241,7 @@ class PaymentRepository {
             SET status = @status, paid = @paid, updated_at = CURRENT_TIMESTAMP
             WHERE id = @id
           '''),
-          parameters: {
-            'id': paymentId,
-            'status': status,
-            'paid': paid,
-          },
+          parameters: {'id': paymentId, 'status': status, 'paid': paid},
         );
         logger.info('Payment status updated: $paymentId -> $status');
       }
