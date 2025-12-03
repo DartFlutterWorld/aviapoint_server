@@ -257,7 +257,21 @@ class PaymentController {
               final userId = paymentRow['user_id'] as int?;
               final subscriptionTypeStr = paymentRow['subscription_type'] as String?;
               final periodDaysValue = paymentRow['period_days'];
-              final amountValue = paymentRow['amount'];
+
+              // Пытаемся получить amount из webhook объекта (более надежно), если нет - из БД
+              dynamic amountValue = paymentRow['amount'];
+              if (paymentObject != null) {
+                final amountObj = paymentObject['amount'] as Map<String, dynamic>?;
+                if (amountObj != null && amountObj['value'] != null) {
+                  // В webhook amount приходит как {"value": "700.00", "currency": "RUB"}
+                  amountValue = amountObj['value'];
+                  logger.info('Extracted amount from webhook object: $amountValue');
+                } else {
+                  logger.info('Amount not found in webhook object, using from DB: $amountValue');
+                }
+              } else {
+                logger.info('Payment object is null, using amount from DB: $amountValue');
+              }
 
               if (userId == null) {
                 logger.severe('Payment has no user_id: $paymentId');
@@ -267,7 +281,7 @@ class PaymentController {
                 );
               }
 
-              // Парсим amount из платежа
+              // Парсим amount из платежа (amount в payments - это numeric(10,2), нужно конвертировать в int для subscriptions)
               int subscriptionAmount = 0;
               if (amountValue != null) {
                 if (amountValue is int) {
@@ -277,9 +291,13 @@ class PaymentController {
                 } else if (amountValue is double) {
                   subscriptionAmount = amountValue.toInt();
                 } else if (amountValue is String) {
-                  subscriptionAmount = int.tryParse(amountValue) ?? 0;
+                  // Если строка, сначала парсим как double, потом в int (для "1000.00" -> 1000)
+                  final doubleValue = double.tryParse(amountValue);
+                  subscriptionAmount = doubleValue?.toInt() ?? 0;
                 }
               }
+
+              logger.info('Parsed subscription amount from payment: $amountValue -> $subscriptionAmount');
 
               // Определяем тип подписки и период
               SubscriptionType subscriptionType = SubscriptionType.monthly;
