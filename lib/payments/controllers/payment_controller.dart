@@ -20,8 +20,8 @@ class PaymentController {
   final SubscriptionRepository _subscriptionRepository;
 
   PaymentController({required PaymentRepository paymentRepository, required SubscriptionRepository subscriptionRepository})
-    : _paymentRepository = paymentRepository,
-      _subscriptionRepository = subscriptionRepository;
+      : _paymentRepository = paymentRepository,
+        _subscriptionRepository = subscriptionRepository;
 
   Router get router => _$PaymentControllerRouter(this);
 
@@ -168,7 +168,7 @@ class PaymentController {
             // Если pending - не добавляем параметр payment, чтобы не показывать сообщение
             logger.info('Payment status for $paymentId: ${payment.status}, paid: ${payment.paid}, redirect status: $paymentStatus');
           } else {
-            logger.warning('Payment not found: $paymentId');
+            logger.info('Payment not found: $paymentId');
             // Если платеж не найден - не показываем сообщение
           }
         } catch (e, stackTrace) {
