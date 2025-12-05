@@ -21,8 +21,8 @@ class PaymentController {
   final SubscriptionRepository _subscriptionRepository;
 
   PaymentController({required PaymentRepository paymentRepository, required SubscriptionRepository subscriptionRepository})
-    : _paymentRepository = paymentRepository,
-      _subscriptionRepository = subscriptionRepository;
+      : _paymentRepository = paymentRepository,
+        _subscriptionRepository = subscriptionRepository;
 
   Router get router => _$PaymentControllerRouter(this);
 
@@ -166,8 +166,7 @@ class PaymentController {
 
       // Возвращаем HTML страницу с автоматическим редиректом
       // Это работает надежнее, чем простой HTTP редирект, особенно после перехода с ЮKassa
-      final html =
-          '''
+      final html = '''
 <!DOCTYPE html>
 <html>
 <head>
