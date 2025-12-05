@@ -9,6 +9,7 @@ import 'package:aviapoint_server/payments/repositories/payment_repository.dart';
 import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
 import 'package:aviapoint_server/subscriptions/repositories/subscription_repository.dart';
 import 'package:aviapoint_server/subscriptions/model/subscription_type.dart';
+import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_open_api/shelf_open_api.dart';
 import 'package:shelf_router/shelf_router.dart';
@@ -388,6 +389,26 @@ class PaymentController {
             );
 
             logger.info('Subscription activated for user $userId, payment: $paymentId, type: ${subscriptionType.code}, days: $periodDays');
+
+            // Отправляем уведомление в Telegram о покупке подписки
+            try {
+              final profileRepository = await getIt.getAsync<ProfileRepository>();
+              final profile = await profileRepository.fetchProfileById(userId);
+
+              TelegramBotService().notifySubscriptionPurchase(
+                userId: userId,
+                phone: profile.phone,
+                subscriptionType: subscriptionType.code,
+                periodDays: periodDays,
+                amount: subscriptionAmount.toDouble(),
+                paymentId: paymentId,
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+              );
+            } catch (e) {
+              logger.info('Failed to send Telegram notification for subscription: $e');
+              // Не прерываем обработку, если уведомление не отправилось
+            }
           } catch (e, stackTrace) {
             logger.severe('Failed to activate subscription after payment: $e');
             logger.severe('Stack trace: $stackTrace');

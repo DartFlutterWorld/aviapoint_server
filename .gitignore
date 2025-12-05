@@ -51,3 +51,8 @@ public/video_for_students/video_for_students.mp4
 pgdata/
 .env
 .env.local
+
+# Database backups
+backups/
+*.sql.gz
+*.sql.backup

@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:aviapoint_server/auth/token/token_service.dart';
 import 'package:aviapoint_server/core/wrap_response.dart';
 import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
+import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
 import 'package:dio/dio.dart' as mydio;
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:shelf/shelf.dart';
@@ -17,18 +18,13 @@ part 'auth_controller.g.dart';
 class AuthController {
   final ProfileRepository _profileRepository;
   final TokenService _tokenService;
-  AuthController({
-    required ProfileRepository profileRepository,
-    required TokenService tokenService,
-  })  : _profileRepository = profileRepository,
-        _tokenService = tokenService;
+  AuthController({required ProfileRepository profileRepository, required TokenService tokenService}) : _profileRepository = profileRepository, _tokenService = tokenService;
 
   Router get router => _$AuthControllerRouter(this);
 
   String smsCode = '';
 
   @protected
-
   ///
   /// Отправление sms
   ///
@@ -56,10 +52,7 @@ class AuthController {
         'cost': '0.00',
         'balance': '0.00',
       };
-      return Response.ok(
-        jsonEncode(testResponse),
-        headers: jsonContentHeaders,
-      );
+      return Response.ok(jsonEncode(testResponse), headers: jsonContentHeaders);
     }
 
     final random = Random();
@@ -78,7 +71,7 @@ class AuthController {
         'phone': phone,
         // 'phone': 'error',
         'sender_name': 'AviaPoint',
-        'format': 'json'
+        'format': 'json',
       },
     );
 
@@ -88,16 +81,10 @@ class AuthController {
     print('SMS response structure: ${responseData['response']['msg']}');
     if (errorCode == '0') {
       final msgData = responseData['response']['msg'] as Map<String, dynamic>;
-      return Response.ok(
-        jsonEncode(msgData),
-        headers: jsonContentHeaders,
-      );
+      return Response.ok(jsonEncode(msgData), headers: jsonContentHeaders);
     } else {
       final msgData = responseData['response']['msg'] as Map<String, dynamic>;
-      return Response.notFound(
-        jsonEncode(msgData),
-        headers: jsonContentHeaders,
-      );
+      return Response.notFound(jsonEncode(msgData), headers: jsonContentHeaders);
     }
   }
 
@@ -125,29 +112,16 @@ class AuthController {
 
         final token = _tokenService.generateAccessToken(profile.id.toString());
         final refreshToken = _tokenService.generateRefreshToken(profile.id.toString());
-        return Response.ok(
-          jsonEncode({
-            "token": token,
-            "refresh_token": refreshToken,
-            "profile": profile,
-            "expires_in": _tokenService.accessTokenExpiry.inSeconds,
-          }),
-          headers: jsonContentHeaders,
-        );
+        return Response.ok(jsonEncode({"token": token, "refresh_token": refreshToken, "profile": profile, "expires_in": _tokenService.accessTokenExpiry.inSeconds}), headers: jsonContentHeaders);
       } on Object catch (e, s) {
         final profile = await _profileRepository.createUser(phone: phone);
         final token = _tokenService.generateAccessToken(profile.id.toString());
         final refreshToken = _tokenService.generateRefreshToken(profile.id.toString());
 
-        return Response.ok(
-          jsonEncode({
-            "token": token,
-            "refresh_token": refreshToken,
-            "profile": profile,
-            "expires_in": _tokenService.accessTokenExpiry.inSeconds,
-          }),
-          headers: jsonContentHeaders,
-        );
+        // Отправляем уведомление в Telegram о новой регистрации
+        TelegramBotService().notifyUserRegistration(userId: profile.id, phone: profile.phone, firstName: profile.firstName, lastName: profile.lastName, email: profile.email);
+
+        return Response.ok(jsonEncode({"token": token, "refresh_token": refreshToken, "profile": profile, "expires_in": _tokenService.accessTokenExpiry.inSeconds}), headers: jsonContentHeaders);
       }
     }
 
@@ -165,36 +139,24 @@ class AuthController {
       // Проверяем наличие refresh_token
       final refreshToken = json['refresh_token']?.toString();
       if (refreshToken == null || refreshToken.isEmpty) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Refresh token is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Refresh token is required'}), headers: jsonContentHeaders);
       }
 
       // Валидация токена через TokenService
       if (!_tokenService.validateToken(refreshToken)) {
-        return Response.unauthorized(
-          jsonEncode({'error': 'Invalid or expired refresh token'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.unauthorized(jsonEncode({'error': 'Invalid or expired refresh token'}), headers: jsonContentHeaders);
       }
 
       // Проверяем тип токена
       final payload = JwtDecoder.decode(refreshToken);
       if (payload['purpose'] != 'refresh') {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Not a refresh token'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Not a refresh token'}), headers: jsonContentHeaders);
       }
 
       // Получаем ID пользователя
       final userId = payload['sub']?.toString();
       if (userId == null || userId.isEmpty) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Invalid user in token'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid user in token'}), headers: jsonContentHeaders);
       }
 
       // Генерируем новые токены
@@ -203,21 +165,12 @@ class AuthController {
       final profile = await _profileRepository.fetchProfileById(int.parse(userId));
 
       return Response.ok(
-        jsonEncode({
-          "token": newAccessToken,
-          "refresh_token": newRefreshToken,
-          "expires_in": _tokenService.accessTokenExpiry.inSeconds,
-          "profile": profile,
-          "token_type": "Bearer",
-        }),
+        jsonEncode({"token": newAccessToken, "refresh_token": newRefreshToken, "expires_in": _tokenService.accessTokenExpiry.inSeconds, "profile": profile, "token_type": "Bearer"}),
         headers: jsonContentHeaders,
       );
     } catch (e, s) {
       print('Refresh token error: $e\n$s');
-      return Response.internalServerError(
-        body: jsonEncode({'error': 'Token refresh failed'}),
-        headers: jsonContentHeaders,
-      );
+      return Response.internalServerError(body: jsonEncode({'error': 'Token refresh failed'}), headers: jsonContentHeaders);
     }
   }
 }

@@ -39,6 +39,9 @@ services:
       POSTGRESQL_PASSWORD: password
       POSTGRESQL_DB: aviapoint
       POSTGRESQL_USER: postgres
+      # Telegram Bot Notifications
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-8323437465:AAHmLtqDio9fgw6n2VqST-OXf1SwgZcywrs}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-854530932}
     depends_on:
       db:
         condition: service_healthy

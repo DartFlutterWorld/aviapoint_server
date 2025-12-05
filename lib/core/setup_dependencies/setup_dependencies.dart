@@ -19,6 +19,7 @@ import 'package:aviapoint_server/payments/repositories/payment_repository.dart';
 import 'package:aviapoint_server/payments/services/yookassa_service.dart';
 import 'package:aviapoint_server/subscriptions/controllers/subscription_controller.dart';
 import 'package:aviapoint_server/subscriptions/repositories/subscription_repository.dart';
+import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
 import 'package:postgres/postgres.dart';
 import 'package:get_it/get_it.dart';
 
@@ -36,13 +37,7 @@ Future<void> setupDependencies() async {
 
     try {
       final connection = await Connection.open(
-        Endpoint(
-          host: Config.dbHost,
-          port: Config.dbPort,
-          database: Config.database,
-          username: Config.username,
-          password: Config.dbPassword,
-        ),
+        Endpoint(host: Config.dbHost, port: Config.dbPort, database: Config.database, username: Config.username, password: Config.dbPassword),
         settings: ConnectionSettings(sslMode: SslMode.disable),
       );
 
@@ -94,10 +89,7 @@ Future<void> setupDependencies() async {
 
   getIt.registerSingletonAsync<AuthController>(() async {
     final profileRepository = await getIt.getAsync<ProfileRepository>();
-    return AuthController(
-      profileRepository: profileRepository,
-      tokenService: await getIt.getAsync<TokenService>(),
-    );
+    return AuthController(profileRepository: profileRepository, tokenService: await getIt.getAsync<TokenService>());
   });
 
   getIt.registerSingletonAsync<StoriesRepository>(() async {
@@ -107,9 +99,7 @@ Future<void> setupDependencies() async {
 
   getIt.registerSingletonAsync<StoriesController>(() async {
     final storiesRepository = await getIt.getAsync<StoriesRepository>();
-    return StoriesController(
-      storiesRepository: storiesRepository,
-    );
+    return StoriesController(storiesRepository: storiesRepository);
   });
 
   getIt.registerSingletonAsync<NewsRepository>(() async {
@@ -118,9 +108,7 @@ Future<void> setupDependencies() async {
   });
   getIt.registerSingletonAsync<NewsController>(() async {
     final newsRepository = await getIt.getAsync<NewsRepository>();
-    return NewsController(
-      newsRepository: newsRepository,
-    );
+    return NewsController(newsRepository: newsRepository);
   });
 
   getIt.registerSingletonAsync<RosAviaTestRepository>(() async {
@@ -130,9 +118,7 @@ Future<void> setupDependencies() async {
 
   getIt.registerSingletonAsync<RosAviaTestController>(() async {
     final rosAviaTestRepository = await getIt.getAsync<RosAviaTestRepository>();
-    return RosAviaTestController(
-      rosAviaTestRepository: rosAviaTestRepository,
-    );
+    return RosAviaTestController(rosAviaTestRepository: rosAviaTestRepository);
   });
 
   // Регистрируем платежные зависимости
@@ -141,10 +127,7 @@ Future<void> setupDependencies() async {
   getIt.registerSingletonAsync<PaymentRepository>(() async {
     final connection = await getIt.getAsync<Connection>();
     final yookassaService = getIt.get<YooKassaService>();
-    return PaymentRepository(
-      connection: connection,
-      yookassaService: yookassaService,
-    );
+    return PaymentRepository(connection: connection, yookassaService: yookassaService);
   });
 
   getIt.registerSingletonAsync<SubscriptionRepository>(() async {
@@ -155,14 +138,15 @@ Future<void> setupDependencies() async {
   getIt.registerSingletonAsync<PaymentController>(() async {
     final paymentRepository = await getIt.getAsync<PaymentRepository>();
     final subscriptionRepository = await getIt.getAsync<SubscriptionRepository>();
-    return PaymentController(
-      paymentRepository: paymentRepository,
-      subscriptionRepository: subscriptionRepository,
-    );
+    return PaymentController(paymentRepository: paymentRepository, subscriptionRepository: subscriptionRepository);
   });
 
   getIt.registerSingletonAsync<SubscriptionController>(() async {
     final subscriptionRepository = await getIt.getAsync<SubscriptionRepository>();
     return SubscriptionController(subscriptionRepository: subscriptionRepository);
   });
+
+  // Инициализируем Telegram бота
+  TelegramBotService().init();
+  logger.info('Telegram bot service initialized');
 }
