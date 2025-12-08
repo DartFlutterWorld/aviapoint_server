@@ -75,12 +75,18 @@ class YooKassaService {
       }
 
       // confirmation обязателен для создания платежа в ЮKassa
+      // Согласно документации ЮKassa:
+      // - return_url используется для возврата пользователя после завершения процесса оплаты
+      // - ЮKassa возвращает на return_url как при успешной оплате, так и при отмене/ошибке
+      // - cancel_url не поддерживается API ЮKassa
+      // - ЮKassa НЕ передает payment_id в query параметрах при редиректе
+      // Решение: добавляем payment_id в return_url после создания платежа (см. ниже)
       // Для мобильных приложений используем deep link, если returnUrl не передан
-      final finalReturnUrl = returnUrl ?? 'aviapoint://payment/return';
+      final baseReturnUrl = returnUrl ?? 'aviapoint://payment/return';
 
       requestData['confirmation'] = {
         'type': 'redirect',
-        'return_url': finalReturnUrl,
+        'return_url': baseReturnUrl,
       };
 
       // Добавляем receipt с customer

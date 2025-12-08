@@ -10,7 +10,7 @@ LOCAL_DB_USER="postgres"
 LOCAL_DB_PASSWORD="password"
 LOCAL_DB_HOST="localhost"
 LOCAL_DB_PORT="5432"
-LOCAL_DB_CONTAINER="server-side-postgres-database"
+LOCAL_DB_CONTAINER="aviapoint-postgres"
 
 echo "=========================================="
 echo "Копирование таблиц с сервера на локальную БД"

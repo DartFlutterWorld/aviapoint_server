@@ -5,7 +5,7 @@
 
 SERVER_IP="83.166.246.205"
 SERVER_USER="root"
-LOCAL_DB_CONTAINER="server-side-postgres-database"
+LOCAL_DB_CONTAINER="aviapoint-postgres"
 SERVER_DB_CONTAINER="aviapoint-postgres"
 SERVER_DB_NAME="aviapoint"
 SERVER_DB_USER="postgres"

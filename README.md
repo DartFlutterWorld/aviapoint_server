@@ -1,6 +1,7 @@
 # airpoint_server
-docker compose down
-docker compose up -d
+# Для локальной разработки (только БД и Adminer, сервер запускается отдельно):
+docker-compose -f docker-compose.dev.yaml down
+docker-compose -f docker-compose.dev.yaml up -d
 
 
 fvm dart pub run build_runner build --delete-conflicting-outputs
@@ -14,6 +15,12 @@ ffmpeg -i video_for_students.mp4 -c:v libx264 -b:v 1M -pass 2 -c:a aac -b:a 128k
 
 #Локальная база:
 ENVIRONMENT=local dart run
+
+# Локальная база с Telegram уведомлениями (рекомендуется):
+./run_local.sh
+
+# Или вручную с переменными:
+ENVIRONMENT=local TELEGRAM_BOT_TOKEN=8323437465:AAHmLtqDio9fgw6n2VqST-OXf1SwgZcywrs TELEGRAM_CHAT_ID=854530932 dart run
 
 # Удалённая база (VPS):
 ENVIRONMENT=remote dart run

@@ -5,6 +5,62 @@ info:
 servers:
   - url: "http://localhost:8080"
 paths:
+  /payments/create:
+    post:
+      tags:
+        - PaymentController
+      summary: Создание платежа
+      description: Создает платеж в ЮKassa и возвращает paymentUrl
+      operationId: createPayment
+      responses:
+        200:
+          description: "Operation completed!"
+  /payments/<paymentId>/status:
+    get:
+      tags:
+        - PaymentController
+      summary: Получение статуса платежа
+      description: Проверяет статус платежа по ID
+      operationId: getPaymentStatus
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /payments/return:
+    get:
+      tags:
+        - PaymentController
+      summary: Обработка возврата после успешной оплаты
+      description: ЮKassa редиректит пользователя на этот URL после успешной оплаты
+      operationId: paymentReturn
+      responses:
+        200:
+          description: "Operation completed!"
+  /payments/cancel:
+    get:
+      tags:
+        - PaymentController
+      summary: Обработка отмены платежа
+      description: ЮKassa редиректит пользователя на этот URL при отмене платежа
+      operationId: paymentCancel
+      responses:
+        200:
+          description: "Operation completed!"
+  /payments/webhook:
+    post:
+      tags:
+        - PaymentController
+      summary: Webhook от ЮKassa
+      description: Получает уведомления о статусе платежа от ЮKassa
+      operationId: webhook
+      responses:
+        200:
+          description: "Operation completed!"
   /auth/sms:
     post:
       tags:
@@ -220,6 +276,46 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /subscriptions/status:
+    get:
+      tags:
+        - SubscriptionController
+      summary: Получение статуса подписки текущего пользователя
+      description: Проверяет наличие активной подписки у пользователя
+      operationId: getSubscriptionStatus
+      responses:
+        200:
+          description: "Operation completed!"
+  /subscriptions/active:
+    get:
+      tags:
+        - SubscriptionController
+      summary: Получение всех активных подписок пользователя
+      description: "Возвращает список всех активных подписок пользователя.\nИспользует токен авторизации для определения пользователя.\nВозвращает пустой массив, если активных подписок нет."
+      operationId: getActiveSubscription
+      responses:
+        200:
+          description: "Operation completed!"
+  /subscriptions/history:
+    get:
+      tags:
+        - SubscriptionController
+      summary: Получение всех подписок пользователя
+      description: Возвращает историю всех подписок пользователя
+      operationId: getSubscriptionHistory
+      responses:
+        200:
+          description: "Operation completed!"
+  /subscriptions/types:
+    get:
+      tags:
+        - SubscriptionController
+      summary: Получение всех типов подписок
+      description: Возвращает список всех активных типов подписок из справочника
+      operationId: getSubscriptionTypes
+      responses:
+        200:
+          description: "Operation completed!"
   /stories:
     get:
       tags:
@@ -328,100 +424,14 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /payments/create:
-    post:
-      tags:
-        - PaymentController
-      summary: Создание платежа
-      description: Создает платеж в ЮKassa и возвращает paymentUrl
-      operationId: createPayment
-      responses:
-        200:
-          description: "Operation completed!"
-  /payments/<paymentId>/status:
-    get:
-      tags:
-        - PaymentController
-      summary: Получение статуса платежа
-      description: Проверяет статус платежа по ID
-      operationId: getPaymentStatus
-      parameters:
-        - name: paymentId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        200:
-          description: "Operation completed!"
-  /payments/return:
-    get:
-      tags:
-        - PaymentController
-      summary: Обработка возврата после успешной оплаты
-      description: ЮKassa редиректит пользователя на этот URL после успешной оплаты
-      operationId: paymentReturn
-      responses:
-        200:
-          description: "Operation completed!"
-  /payments/cancel:
-    get:
-      tags:
-        - PaymentController
-      summary: Обработка отмены платежа
-      description: ЮKassa редиректит пользователя на этот URL при отмене платежа
-      operationId: paymentCancel
-      responses:
-        200:
-          description: "Operation completed!"
-  /payments/webhook:
-    post:
-      tags:
-        - PaymentController
-      summary: Webhook от ЮKassa
-      description: Получает уведомления о статусе платежа от ЮKassa
-      operationId: webhook
-      responses:
-        200:
-          description: "Operation completed!"
-  /subscriptions/status:
-    get:
-      tags:
-        - SubscriptionController
-      summary: Получение статуса подписки текущего пользователя
-      description: Проверяет наличие активной подписки у пользователя
-      operationId: getSubscriptionStatus
-      responses:
-        200:
-          description: "Operation completed!"
-  /subscriptions/active:
-    get:
-      tags:
-        - SubscriptionController
-      summary: Получение всех активных подписок пользователя
-      description: "Возвращает список всех активных подписок пользователя.\nИспользует токен авторизации для определения пользователя.\nВозвращает 404, если активных подписок нет."
-      operationId: getActiveSubscription
-      responses:
-        200:
-          description: "Operation completed!"
-  /subscriptions/history:
-    get:
-      tags:
-        - SubscriptionController
-      summary: Получение всех подписок пользователя
-      description: Возвращает историю всех подписок пользователя
-      operationId: getSubscriptionHistory
-      responses:
-        200:
-          description: "Operation completed!"
 components: { }
 tags:
+  - name: PaymentController
   - name: AuthController
   - name: VideoForStudentsController
   - name: RosAviaTestController
   - name: HandBookController
+  - name: SubscriptionController
   - name: StoriesController
   - name: NewsController
   - name: ProfileController
-  - name: PaymentController
-  - name: SubscriptionController

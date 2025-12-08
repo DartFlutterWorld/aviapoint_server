@@ -66,7 +66,7 @@ class SubscriptionController {
   ///
   /// Возвращает список всех активных подписок пользователя.
   /// Использует токен авторизации для определения пользователя.
-  /// Возвращает 404, если активных подписок нет.
+  /// Возвращает пустой массив, если активных подписок нет.
   ///
   @Route.get('/subscriptions/active')
   @OpenApiRoute()
@@ -110,18 +110,7 @@ class SubscriptionController {
         // Получаем все активные подписки
         final subscriptions = await _subscriptionRepository.getActiveSubscription(userId);
 
-        // Возвращаем 404, если подписок нет
-        if (subscriptions.isEmpty) {
-          return Response.notFound(
-            jsonEncode({
-              'error': 'No active subscription found',
-              'message': 'User does not have an active subscription',
-            }),
-            headers: jsonContentHeaders,
-          );
-        }
-
-        // Возвращаем список активных подписок
+        // Возвращаем список активных подписок (может быть пустым)
         return Response.ok(
           jsonEncode({
             'subscriptions': subscriptions.map((s) => s.toJson()).toList(),
@@ -176,6 +165,28 @@ class SubscriptionController {
                       'created_at': s.createdAt.toIso8601String(),
                     })
                 .toList(),
+          }),
+          headers: jsonContentHeaders,
+        );
+      },
+    );
+  }
+
+  ///
+  /// Получение всех типов подписок
+  ///
+  /// Возвращает список всех активных типов подписок из справочника
+  ///
+  @Route.get('/subscriptions/types')
+  @OpenApiRoute()
+  Future<Response> getSubscriptionTypes(Request request) async {
+    return wrapResponse(
+      () async {
+        final subscriptionTypes = await _subscriptionRepository.getAllSubscriptionTypes();
+
+        return Response.ok(
+          jsonEncode({
+            'subscription_types': subscriptionTypes.map((type) => type.toJson()).toList(),
           }),
           headers: jsonContentHeaders,
         );

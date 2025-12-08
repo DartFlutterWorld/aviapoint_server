@@ -1,8 +1,6 @@
-version: "3.9"
-
 services:
   db:
-    container_name: server-side-postgres-database
+    container_name: aviapoint-postgres
     image: postgres:15-alpine
     restart: always
     shm_size: 128mb
@@ -26,7 +24,7 @@ services:
       retries: 5
 
   adminer:
-    container_name: server-side-adminer
+    container_name: aviapoint-adminer
     image: adminer
     restart: always
     ports:

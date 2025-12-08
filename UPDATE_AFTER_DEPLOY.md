@@ -20,13 +20,13 @@ docker-compose -f docker-compose.prod.yaml up -d --no-deps app
 docker-compose -f docker-compose.prod.yaml logs -f app
 ```
 
-### Для локальной разработки (docker-compose.yaml):
+### Для локальной разработки (docker-compose.dev.yaml):
 
 ```bash
 # В директории проекта
-docker-compose build server
-docker-compose up -d server
-docker-compose logs -f server
+# Запускаем только БД и Adminer (сервер запускается отдельно через dart run)
+docker-compose -f docker-compose.dev.yaml up -d
+docker-compose -f docker-compose.dev.yaml logs -f
 ```
 
 ---
@@ -151,7 +151,7 @@ docker-compose -f docker-compose.prod.yaml logs --tail=20 app
 
 ## Что НЕ нужно делать:
 
-❌ Не нужно делать `docker-compose down` и `docker-compose up` - это остановит все контейнеры  
+❌ Не нужно делать `docker-compose -f docker-compose.dev.yaml down` и `docker-compose -f docker-compose.dev.yaml up` - это остановит все контейнеры  
 ❌ Не нужно перезапускать БД  
 ❌ Не нужно перезапускать nginx (только перезагрузка)  
 ❌ Не нужно пересобирать все сервисы - только `app`

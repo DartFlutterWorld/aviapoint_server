@@ -3,7 +3,7 @@
 # Создание чистого SQL файла для импорта через Adminer
 # Убирает все psql-специфичные команды
 
-LOCAL_DB_CONTAINER="server-side-postgres-database"
+LOCAL_DB_CONTAINER="aviapoint-postgres"
 OUTPUT_FILE="payments_subscriptions_clean.sql"
 
 echo "Создание чистого SQL файла для импорта через Adminer..."

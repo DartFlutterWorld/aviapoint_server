@@ -23,5 +23,10 @@ Router _$SubscriptionControllerRouter(SubscriptionController service) {
     r'/subscriptions/history',
     service.getSubscriptionHistory,
   );
+  router.add(
+    'GET',
+    r'/subscriptions/types',
+    service.getSubscriptionTypes,
+  );
   return router;
 }

@@ -7,7 +7,7 @@ set -e
 
 SERVER_IP="${1:-your-server-ip}"
 SERVER_USER="root"
-LOCAL_CONTAINER="server-side-postgres-database"
+LOCAL_CONTAINER="aviapoint-postgres"
 SERVER_CONTAINER="aviapoint-postgres"
 DB_NAME="aviapoint"
 DB_USER="postgres"

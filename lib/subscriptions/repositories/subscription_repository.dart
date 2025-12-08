@@ -1,6 +1,7 @@
 import 'package:aviapoint_server/logger/logger.dart';
 import 'package:aviapoint_server/subscriptions/model/subscription_model.dart';
 import 'package:aviapoint_server/subscriptions/model/subscription_type.dart';
+import 'package:aviapoint_server/subscriptions/model/subscription_type_model.dart';
 import 'package:postgres/postgres.dart';
 
 class SubscriptionRepository {
@@ -47,7 +48,7 @@ class SubscriptionRepository {
     try {
       // Получаем ID типа подписки
       final typeResult = await _connection.execute(
-        Sql.named('SELECT id FROM subscription_types WHERE code = @code'),
+        Sql.named('SELECT id, code, name, period_days, price, is_active, created_at, description FROM subscription_types WHERE code = @code'),
         parameters: {'code': subscriptionType.code},
       );
 
@@ -190,6 +191,26 @@ class SubscriptionRepository {
       return count;
     } catch (e, stackTrace) {
       logger.severe('Failed to deactivate expired subscriptions: $e');
+      logger.severe('Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  /// Получение всех типов подписок
+  Future<List<SubscriptionTypeModel>> getAllSubscriptionTypes() async {
+    try {
+      final result = await _connection.execute(
+        Sql.named('''
+          SELECT id, code, name, period_days, price, is_active, created_at, description 
+          FROM subscription_types 
+          WHERE is_active = true
+          ORDER BY period_days ASC
+        '''),
+      );
+
+      return result.map((row) => SubscriptionTypeModel.fromJson(row.toColumnMap())).toList();
+    } catch (e, stackTrace) {
+      logger.severe('Failed to get subscription types: $e');
       logger.severe('Stack trace: $stackTrace');
       rethrow;
     }
