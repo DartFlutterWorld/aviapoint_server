@@ -7,7 +7,9 @@ class PaymentRepository {
   final Connection _connection;
   final YooKassaService _yookassaService;
 
-  PaymentRepository({required Connection connection, required YooKassaService yookassaService}) : _connection = connection, _yookassaService = yookassaService;
+  PaymentRepository({required Connection connection, required YooKassaService yookassaService})
+      : _connection = connection,
+        _yookassaService = yookassaService;
 
   /// Создание платежа
   Future<PaymentModel> createPayment({
@@ -41,10 +43,10 @@ class PaymentRepository {
       // Платеж будет сохранен автоматически в updatePaymentStatus при получении webhook
 
       logger.info('Payment created in YooKassa: ${payment.id}, user_id: $userId (will be saved after successful payment)');
-      
+
       // ВАЖНО: ЮKassa не передает payment_id в query параметрах при редиректе
       // Поэтому payment_id нужно получать из других источников (последние платежи пользователя, webhook и т.д.)
-      
+
       return payment;
     } catch (e, stackTrace) {
       logger.severe('Failed to create payment: $e');
@@ -90,7 +92,7 @@ class PaymentRepository {
   Future<List<PaymentModel>> getRecentSuccessfulPayments({int? userId, int minutes = 10}) async {
     try {
       final cutoffTime = DateTime.now().subtract(Duration(minutes: minutes));
-      
+
       // Если userId не передан, получаем последние успешные платежи всех пользователей
       // Это нужно, так как при редиректе с ЮKassa мы не знаем userId
       final dbResult = userId != null
@@ -291,7 +293,7 @@ class PaymentRepository {
         await _connection.execute(
           Sql.named('''
             UPDATE payments 
-            SET status = @status, paid = @paid, updated_at = CURRENT_TIMESTAMP
+            SET status = @status, paid = @paid
             WHERE id = @id
           '''),
           parameters: {'id': paymentId, 'status': status, 'paid': paid},

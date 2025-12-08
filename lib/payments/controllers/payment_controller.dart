@@ -8,7 +8,6 @@ import 'package:aviapoint_server/payments/api/create_payment_request.dart';
 import 'package:aviapoint_server/payments/repositories/payment_repository.dart';
 import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
 import 'package:aviapoint_server/subscriptions/repositories/subscription_repository.dart';
-import 'package:aviapoint_server/subscriptions/model/subscription_type.dart';
 import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_open_api/shelf_open_api.dart';
@@ -278,37 +277,51 @@ class PaymentController {
         } catch (e, stackTrace) {
           logger.severe('Failed to update payment status in webhook: $e');
           logger.severe('Stack trace: $stackTrace');
-          // Не прерываем обработку, возвращаем 200, чтобы ЮKassa не повторял запрос
-          return Response.ok(jsonEncode({'status': 'error', 'message': 'Failed to update payment', 'error': e.toString()}), headers: jsonContentHeaders);
+          // Логируем ошибку, но продолжаем обработку для создания подписки
+          // Если платеж не сохранился, попробуем создать подписку из данных webhook
         }
 
         // Если платеж успешен, активируем подписку
         if (event == 'payment.succeeded' && paid) {
           try {
             // Получаем информацию о платеже из БД (включая subscription_type и period_days)
-            final paymentRow = await _paymentRepository.getPaymentDataById(paymentId);
+            Map<String, dynamic>? paymentRow = await _paymentRepository.getPaymentDataById(paymentId);
+
+            // Если платеж не найден в БД, но у нас есть paymentObject, используем его
+            if (paymentRow == null) {
+              logger.severe('Payment not found in database: $paymentId, but paymentObject exists, using it');
+              // Создаем временный объект из paymentObject для дальнейшей обработки
+              final metadata = paymentObject['metadata'] as Map<String, dynamic>?;
+              final amountObj = paymentObject['amount'] as Map<String, dynamic>?;
+
+              paymentRow = {
+                'user_id': metadata?['user_id'],
+                'subscription_type': metadata?['subscription_type']?.toString(),
+                'period_days': metadata?['period_days'],
+                'amount': amountObj?['value'],
+                'description': paymentObject['description']?.toString() ?? '',
+              };
+            }
 
             if (paymentRow == null) {
-              logger.severe('Payment not found in database: $paymentId');
+              logger.severe('Payment not found in database and no paymentObject available: $paymentId');
               return Response.ok(jsonEncode({'status': 'ok', 'message': 'Payment not found'}), headers: jsonContentHeaders);
             }
             final userId = paymentRow['user_id'] as int?;
             final subscriptionTypeStr = paymentRow['subscription_type'] as String?;
             final periodDaysValue = paymentRow['period_days'];
 
+            logger.info('Payment data extracted: userId=$userId, subscriptionType=$subscriptionTypeStr, periodDays=$periodDaysValue');
+
             // Пытаемся получить amount из webhook объекта (более надежно), если нет - из БД
             dynamic amountValue = paymentRow['amount'];
-            if (paymentObject != null) {
-              final amountObj = paymentObject['amount'] as Map<String, dynamic>?;
-              if (amountObj != null && amountObj['value'] != null) {
-                // В webhook amount приходит как {"value": "700.00", "currency": "RUB"}
-                amountValue = amountObj['value'];
-                logger.info('Extracted amount from webhook object: $amountValue');
-              } else {
-                logger.info('Amount not found in webhook object, using from DB: $amountValue');
-              }
+            final amountObj = paymentObject['amount'] as Map<String, dynamic>?;
+            if (amountObj != null && amountObj['value'] != null) {
+              // В webhook amount приходит как {"value": "700.00", "currency": "RUB"}
+              amountValue = amountObj['value'];
+              logger.info('Extracted amount from webhook object: $amountValue');
             } else {
-              logger.info('Payment object is null, using amount from DB: $amountValue');
+              logger.info('Amount not found in webhook object, using from DB: $amountValue');
             }
 
             if (userId == null) {
@@ -334,62 +347,55 @@ class PaymentController {
 
             logger.info('Parsed subscription amount from payment: $amountValue -> $subscriptionAmount');
 
-            // Определяем тип подписки и период
-            SubscriptionType subscriptionType = SubscriptionType.monthly;
-            int periodDays = 30;
+            // Определяем код типа подписки и период из БД
+            String subscriptionTypeCode = 'rosaviatest_365'; // Дефолтный код
+            int periodDays = 365; // Дефолтный период
 
-            if (subscriptionTypeStr != null && periodDaysValue != null) {
-              // Используем сохраненные данные из БД
-              switch (subscriptionTypeStr.toLowerCase()) {
-                case 'monthly':
-                  subscriptionType = SubscriptionType.monthly;
-                  break;
-                case 'quarterly':
-                  subscriptionType = SubscriptionType.quarterly;
-                  break;
-                case 'yearly':
-                  subscriptionType = SubscriptionType.yearly;
-                  break;
-                default:
-                  subscriptionType = SubscriptionType.monthly;
+            if (subscriptionTypeStr != null && subscriptionTypeStr.isNotEmpty) {
+              // Используем код напрямую из БД (может быть любым, например 'rosaviatest_365')
+              subscriptionTypeCode = subscriptionTypeStr;
+              logger.info('Using subscription type code from payment: $subscriptionTypeCode');
+            } else {
+              // Fallback: определяем из описания, если данные не сохранены
+              logger.severe('Subscription type code not found in payment, using default: $subscriptionTypeCode');
+              final description = (paymentRow['description'] as String? ?? '').toLowerCase();
+
+              if (description.contains('месяц') || description.contains('monthly')) {
+                subscriptionTypeCode = 'monthly';
+                periodDays = 30;
+              } else if (description.contains('квартал') || description.contains('quarterly')) {
+                subscriptionTypeCode = 'quarterly';
+                periodDays = 90;
+              } else if (description.contains('год') || description.contains('yearly') || description.contains('годов')) {
+                subscriptionTypeCode = 'yearly';
+                periodDays = 365;
               }
+            }
 
-              // Парсим periodDays
+            // Парсим periodDays из БД, если есть
+            if (periodDaysValue != null) {
               if (periodDaysValue is int) {
                 periodDays = periodDaysValue;
               } else if (periodDaysValue is num) {
                 periodDays = periodDaysValue.toInt();
               } else if (periodDaysValue is String) {
-                periodDays = int.tryParse(periodDaysValue) ?? 30;
-              }
-            } else {
-              // Fallback: определяем из описания, если данные не сохранены
-              logger.severe('Subscription type/period not found in payment, using description fallback');
-              final description = (paymentRow['description'] as String? ?? '').toLowerCase();
-
-              if (description.contains('месяц') || description.contains('monthly')) {
-                subscriptionType = SubscriptionType.monthly;
-                periodDays = 30;
-              } else if (description.contains('квартал') || description.contains('quarterly')) {
-                subscriptionType = SubscriptionType.quarterly;
-                periodDays = 90;
-              } else if (description.contains('год') || description.contains('yearly') || description.contains('годов')) {
-                subscriptionType = SubscriptionType.yearly;
-                periodDays = 365;
+                periodDays = int.tryParse(periodDaysValue) ?? periodDays;
               }
             }
+
+            logger.info('Creating subscription with: code=$subscriptionTypeCode, periodDays=$periodDays');
 
             // Активируем подписку
             await _subscriptionRepository.createSubscription(
               userId: userId,
               paymentId: paymentId,
-              subscriptionType: subscriptionType,
+              subscriptionTypeCode: subscriptionTypeCode,
               periodDays: periodDays,
               startDate: DateTime.now(),
               amount: subscriptionAmount,
             );
 
-            logger.info('Subscription activated for user $userId, payment: $paymentId, type: ${subscriptionType.code}, days: $periodDays');
+            logger.info('Subscription activated for user $userId, payment: $paymentId, type: $subscriptionTypeCode, days: $periodDays');
 
             // Отправляем уведомление в Telegram о покупке подписки
             try {
@@ -399,7 +405,7 @@ class PaymentController {
               TelegramBotService().notifySubscriptionPurchase(
                 userId: userId,
                 phone: profile.phone,
-                subscriptionType: subscriptionType.code,
+                subscriptionType: subscriptionTypeCode,
                 periodDays: periodDays,
                 amount: subscriptionAmount.toDouble(),
                 paymentId: paymentId,
@@ -411,9 +417,11 @@ class PaymentController {
               // Не прерываем обработку, если уведомление не отправилось
             }
           } catch (e, stackTrace) {
-            logger.severe('Failed to activate subscription after payment: $e');
+            logger.severe('❌ CRITICAL: Failed to activate subscription after payment: $e');
+
             logger.severe('Stack trace: $stackTrace');
-            // Не прерываем обработку webhook, даже если активация подписки не удалась
+            // НЕ прерываем обработку webhook, чтобы ЮKassa не повторял запрос
+            // Но логируем критическую ошибку для дальнейшего разбора
           }
         }
       } else if (event == 'refund.succeeded') {

@@ -1,6 +1,5 @@
 import 'package:aviapoint_server/logger/logger.dart';
 import 'package:aviapoint_server/subscriptions/model/subscription_model.dart';
-import 'package:aviapoint_server/subscriptions/model/subscription_type.dart';
 import 'package:aviapoint_server/subscriptions/model/subscription_type_model.dart';
 import 'package:postgres/postgres.dart';
 
@@ -40,25 +39,37 @@ class SubscriptionRepository {
   Future<SubscriptionModel> createSubscription({
     required int userId,
     required String paymentId,
-    required SubscriptionType subscriptionType,
+    required String subscriptionTypeCode, // Код типа подписки из БД (например, 'rosaviatest_365', 'monthly')
     required int periodDays,
     required DateTime startDate,
     required int amount, // Цена подписки из платежа
   }) async {
     try {
-      // Получаем ID типа подписки
+      logger.info('Creating subscription: userId=$userId, paymentId=$paymentId, subscriptionTypeCode=$subscriptionTypeCode, periodDays=$periodDays, amount=$amount');
+
+      // Получаем ID типа подписки по коду из БД
       final typeResult = await _connection.execute(
         Sql.named('SELECT id, code, name, period_days, price, is_active, created_at, description FROM subscription_types WHERE code = @code'),
-        parameters: {'code': subscriptionType.code},
+        parameters: {'code': subscriptionTypeCode},
       );
 
-      final subscriptionTypeId = typeResult.isNotEmpty ? _parseInt(typeResult.first.toColumnMap()['id']) : 0;
+      if (typeResult.isEmpty) {
+        logger.severe('Subscription type not found in database: code=$subscriptionTypeCode');
+        throw ArgumentError('Subscription type "$subscriptionTypeCode" not found in subscription_types table');
+      }
+
+      final subscriptionTypeId = _parseInt(typeResult.first.toColumnMap()['id']);
+      logger.info('Found subscription type ID: $subscriptionTypeId for code: $subscriptionTypeCode');
 
       // Определяем даты
       final start = startDate;
       final end = start.add(Duration(days: periodDays));
 
+      logger.info('Subscription dates: start=$start, end=$end');
+
       // Создаем новую подписку (пользователь может иметь несколько активных подписок)
+      logger.info('Inserting subscription into database with params: user_id=$userId, payment_id=$paymentId, subscription_type_id=$subscriptionTypeId, period_days=$periodDays, amount=$amount');
+
       final result = await _connection.execute(
         Sql.named('''
           INSERT INTO subscriptions (
@@ -82,12 +93,19 @@ class SubscriptionRepository {
         },
       );
 
+      if (result.isEmpty) {
+        logger.severe('INSERT returned no rows - subscription was not created');
+        throw StateError('Failed to create subscription: INSERT returned no rows');
+      }
+
       final row = result.first;
-      logger.info('Subscription created: user_id=$userId, end_date=$end');
+      final subscriptionId = _parseInt(row.toColumnMap()['id']);
+      logger.info('✅ Subscription created successfully: id=$subscriptionId, user_id=$userId, payment_id=$paymentId, end_date=$end');
 
       return SubscriptionModel.fromJson(row.toColumnMap());
     } catch (e, stackTrace) {
-      logger.severe('Failed to create subscription: $e');
+      logger.severe('❌ Failed to create subscription: $e');
+      logger.severe('Parameters: userId=$userId, paymentId=$paymentId, subscriptionTypeCode=$subscriptionTypeCode, periodDays=$periodDays, amount=$amount');
       logger.severe('Stack trace: $stackTrace');
       rethrow;
     }
