@@ -347,9 +347,8 @@ class PaymentController {
 
             logger.info('Parsed subscription amount from payment: $amountValue -> $subscriptionAmount');
 
-            // Определяем код типа подписки и период из БД
+            // Определяем код типа подписки из БД
             String subscriptionTypeCode = 'rosaviatest_365'; // Дефолтный код
-            int periodDays = 365; // Дефолтный период
 
             if (subscriptionTypeStr != null && subscriptionTypeStr.isNotEmpty) {
               // Используем код напрямую из БД (может быть любым, например 'rosaviatest_365')
@@ -362,40 +361,40 @@ class PaymentController {
 
               if (description.contains('месяц') || description.contains('monthly')) {
                 subscriptionTypeCode = 'monthly';
-                periodDays = 30;
               } else if (description.contains('квартал') || description.contains('quarterly')) {
                 subscriptionTypeCode = 'quarterly';
-                periodDays = 90;
               } else if (description.contains('год') || description.contains('yearly') || description.contains('годов')) {
                 subscriptionTypeCode = 'yearly';
-                periodDays = 365;
               }
             }
 
-            // Парсим periodDays из БД, если есть
-            if (periodDaysValue != null) {
-              if (periodDaysValue is int) {
-                periodDays = periodDaysValue;
-              } else if (periodDaysValue is num) {
-                periodDays = periodDaysValue.toInt();
-              } else if (periodDaysValue is String) {
-                periodDays = int.tryParse(periodDaysValue) ?? periodDays;
-              }
-            }
+            logger.info('Creating subscription with: code=$subscriptionTypeCode (period_days will be taken from subscription_types)');
 
-            logger.info('Creating subscription with: code=$subscriptionTypeCode, periodDays=$periodDays');
+            // Получаем period_days из subscription_types для Telegram уведомления
+            int periodDaysForNotification = 365; // Дефолт
+            try {
+              final subscriptionTypes = await _subscriptionRepository.getAllSubscriptionTypes();
+              final subscriptionType = subscriptionTypes.firstWhere(
+                (type) => type.code == subscriptionTypeCode,
+                orElse: () => subscriptionTypes.isNotEmpty ? subscriptionTypes.first : throw StateError('No subscription types found'),
+              );
+              periodDaysForNotification = subscriptionType.periodDays;
+              logger.info('Found period_days for notification: $periodDaysForNotification');
+            } catch (e) {
+              logger.info('Failed to get period_days from subscription_types for notification: $e');
+            }
 
             // Активируем подписку
+            // period_days будет автоматически взят из subscription_types
             await _subscriptionRepository.createSubscription(
               userId: userId,
               paymentId: paymentId,
               subscriptionTypeCode: subscriptionTypeCode,
-              periodDays: periodDays,
               startDate: DateTime.now(),
               amount: subscriptionAmount,
             );
 
-            logger.info('Subscription activated for user $userId, payment: $paymentId, type: $subscriptionTypeCode, days: $periodDays');
+            logger.info('Subscription activated for user $userId, payment: $paymentId, type: $subscriptionTypeCode');
 
             // Отправляем уведомление в Telegram о покупке подписки
             try {
@@ -406,7 +405,7 @@ class PaymentController {
                 userId: userId,
                 phone: profile.phone,
                 subscriptionType: subscriptionTypeCode,
-                periodDays: periodDays,
+                periodDays: periodDaysForNotification,
                 amount: subscriptionAmount.toDouble(),
                 paymentId: paymentId,
                 firstName: profile.firstName,

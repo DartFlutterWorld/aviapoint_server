@@ -66,3 +66,6 @@ docker-compose -f docker-compose.prod.yaml up -d
 # Чтобы выйти с сервера (закрыть SSH-сессию), используйте одну из команд:
 
 Ctrl+D — комбинация клавиш
+
+# adminer
+http://83.166.246.205:8082
