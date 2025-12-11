@@ -5,7 +5,7 @@ info:
 servers:
   - url: "http://localhost:8080"
 paths:
-  /payments/create:
+  /api/payments/create:
     post:
       tags:
         - PaymentController
@@ -15,7 +15,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /payments/<paymentId>/status:
+  /api/payments/<paymentId>/status:
     get:
       tags:
         - PaymentController
@@ -31,7 +31,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /payments/return:
+  /api/payments/return:
     get:
       tags:
         - PaymentController
@@ -41,7 +41,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /payments/cancel:
+  /api/payments/cancel:
     get:
       tags:
         - PaymentController
@@ -51,7 +51,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /payments/webhook:
+  /api/payments/webhook:
     post:
       tags:
         - PaymentController
@@ -61,7 +61,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /auth/sms:
+  /api/auth/sms:
     post:
       tags:
         - AuthController
@@ -71,7 +71,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /auth/login:
+  /api/auth/login:
     post:
       tags:
         - AuthController
@@ -81,7 +81,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /auth/refresh:
+  /api/auth/refresh:
     post:
       tags:
         - AuthController
@@ -90,7 +90,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/video_for_students:
+  /api/learning/video_for_students:
     get:
       tags:
         - VideoForStudentsController
@@ -100,7 +100,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/video_for_students/<id>:
+  /api/learning/video_for_students/<id>:
     get:
       tags:
         - VideoForStudentsController
@@ -116,7 +116,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/ros_avia_test/type_sertificates:
+  /api/learning/ros_avia_test/type_sertificates:
     get:
       tags:
         - RosAviaTestController
@@ -126,7 +126,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/ros_avia_test/type_correct_answers:
+  /api/learning/ros_avia_test/type_correct_answers:
     get:
       tags:
         - RosAviaTestController
@@ -136,7 +136,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/ros_avia_test/categories/<typeCertificateId>:
+  /api/learning/ros_avia_test/categories/<typeCertificateId>:
     get:
       tags:
         - RosAviaTestController
@@ -152,7 +152,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/ros_avia_test/<typeCertificateId>:
+  /api/learning/ros_avia_test/<typeCertificateId>:
     get:
       tags:
         - RosAviaTestController
@@ -168,7 +168,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/ros_avia_test/questions/<typeCertificateId>:
+  /api/learning/ros_avia_test/questions/<typeCertificateId>:
     get:
       tags:
         - RosAviaTestController
@@ -184,7 +184,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/hand_book/main_categories:
+  /api/learning/hand_book/main_categories:
     get:
       tags:
         - HandBookController
@@ -194,7 +194,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/hand_book/preflight_inspection_categories:
+  /api/learning/hand_book/preflight_inspection_categories:
     get:
       tags:
         - HandBookController
@@ -204,7 +204,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/hand_book/preflight_inspection_categories/check_list:
+  /api/learning/hand_book/preflight_inspection_categories/check_list:
     get:
       tags:
         - HandBookController
@@ -214,7 +214,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/hand_book/preflight_inspection_categories/check_list/<id>:
+  /api/learning/hand_book/preflight_inspection_categories/check_list/<id>:
     get:
       tags:
         - HandBookController
@@ -230,7 +230,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/hand_book/normal_categories:
+  /api/learning/hand_book/normal_categories:
     get:
       tags:
         - HandBookController
@@ -240,7 +240,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/hand_book/normal_categories/check_list:
+  /api/learning/hand_book/normal_categories/check_list:
     get:
       tags:
         - HandBookController
@@ -250,7 +250,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/hand_book/normal_categories/check_list/<id>:
+  /api/learning/hand_book/normal_categories/check_list/<id>:
     get:
       tags:
         - HandBookController
@@ -266,7 +266,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /learning/hand_book/emergency_categories:
+  /api/learning/hand_book/emergency_categories:
     get:
       tags:
         - HandBookController
@@ -276,7 +276,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /subscriptions/status:
+  /api/subscriptions/status:
     get:
       tags:
         - SubscriptionController
@@ -286,7 +286,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /subscriptions/active:
+  /api/subscriptions/active:
     get:
       tags:
         - SubscriptionController
@@ -296,7 +296,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /subscriptions/history:
+  /api/subscriptions/history:
     get:
       tags:
         - SubscriptionController
@@ -306,7 +306,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /subscriptions/types:
+  /api/subscriptions/types:
     get:
       tags:
         - SubscriptionController
@@ -316,7 +316,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /stories:
+  /api/stories:
     get:
       tags:
         - StoriesController
@@ -326,7 +326,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /stories/<id>:
+  /api/stories/<id>:
     get:
       tags:
         - StoriesController
@@ -342,7 +342,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /category_news:
+  /api/category_news:
     get:
       tags:
         - NewsController
@@ -352,7 +352,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /news:
+  /api/news:
     get:
       tags:
         - NewsController
@@ -362,7 +362,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /news/<id>:
+  /api/news/<id>:
     get:
       tags:
         - NewsController
@@ -378,7 +378,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /news/category/<id>:
+  /api/news/category/<id>:
     get:
       tags:
         - NewsController
@@ -394,7 +394,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /user:
+  /api/user:
     post:
       tags:
         - ProfileController
@@ -404,7 +404,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /profiles:
+  /api/profiles:
     get:
       tags:
         - ProfileController
@@ -414,7 +414,7 @@ paths:
       responses:
         200:
           description: "Operation completed!"
-  /profile:
+  /api/profile:
     post:
       tags:
         - ProfileController

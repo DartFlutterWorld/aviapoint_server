@@ -22,7 +22,7 @@ class StoriesController {
   /// Получение всех видео сториков
   ///
 
-  @Route.get('/stories')
+  @Route.get('/api/stories')
   @OpenApiRoute()
   Future<Response> getStories(Request request) async {
     final body = await _storiesRepository.getStories();
@@ -43,7 +43,7 @@ class StoriesController {
   /// Получение конкретного сторика
   ///
 
-  @Route.get('/stories/<id>')
+  @Route.get('/api/stories/<id>')
   @OpenApiRoute()
   Future<Response> getStory(Request request) async {
     return wrapResponse(

@@ -25,7 +25,7 @@ class SubscriptionController {
   ///
   /// Проверяет наличие активной подписки у пользователя
   ///
-  @Route.get('/subscriptions/status')
+  @Route.get('/api/subscriptions/status')
   @OpenApiRoute()
   Future<Response> getSubscriptionStatus(Request request) async {
     return wrapResponse(
@@ -68,7 +68,7 @@ class SubscriptionController {
   /// Использует токен авторизации для определения пользователя.
   /// Возвращает пустой массив, если активных подписок нет.
   ///
-  @Route.get('/subscriptions/active')
+  @Route.get('/api/subscriptions/active')
   @OpenApiRoute()
   Future<Response> getActiveSubscription(Request request) async {
     return wrapResponse(
@@ -126,7 +126,7 @@ class SubscriptionController {
   ///
   /// Возвращает историю всех подписок пользователя
   ///
-  @Route.get('/subscriptions/history')
+  @Route.get('/api/subscriptions/history')
   @OpenApiRoute()
   Future<Response> getSubscriptionHistory(Request request) async {
     return wrapResponse(
@@ -177,7 +177,7 @@ class SubscriptionController {
   ///
   /// Возвращает список всех активных типов подписок из справочника
   ///
-  @Route.get('/subscriptions/types')
+  @Route.get('/api/subscriptions/types')
   @OpenApiRoute()
   Future<Response> getSubscriptionTypes(Request request) async {
     return wrapResponse(

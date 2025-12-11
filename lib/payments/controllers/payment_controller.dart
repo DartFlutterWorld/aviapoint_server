@@ -30,7 +30,7 @@ class PaymentController {
   ///
   /// Создает платеж в ЮKassa и возвращает paymentUrl
   ///
-  @Route.post('/payments/create')
+  @Route.post('/api/payments/create')
   @OpenApiRoute()
   Future<Response> createPayment(Request request) async {
     return wrapResponse(() async {
@@ -111,7 +111,7 @@ class PaymentController {
   ///
   /// Проверяет статус платежа по ID
   ///
-  @Route.get('/payments/<paymentId>/status')
+  @Route.get('/api/payments/<paymentId>/status')
   @OpenApiRoute()
   Future<Response> getPaymentStatus(Request request) async {
     return wrapResponse(() async {
@@ -144,7 +144,7 @@ class PaymentController {
   ///
   /// ЮKassa редиректит пользователя на этот URL после успешной оплаты
   ///
-  @Route.get('/payments/return')
+  @Route.get('/api/payments/return')
   Future<Response> paymentReturn(Request request) async {
     return wrapResponse(() async {
       final paymentId = request.url.queryParameters['payment_id'];
@@ -205,7 +205,7 @@ class PaymentController {
   ///
   /// ЮKassa редиректит пользователя на этот URL при отмене платежа
   ///
-  @Route.get('/payments/cancel')
+  @Route.get('/api/payments/cancel')
   Future<Response> paymentCancel(Request request) async {
     return wrapResponse(() async {
       final paymentId = request.url.queryParameters['payment_id'];
@@ -227,7 +227,7 @@ class PaymentController {
   ///
   /// Получает уведомления о статусе платежа от ЮKassa
   ///
-  @Route.post('/payments/webhook')
+  @Route.post('/api/payments/webhook')
   @OpenApiRoute()
   Future<Response> webhook(Request request) async {
     return wrapResponse(() async {

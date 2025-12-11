@@ -21,7 +21,7 @@ class VideoForStudentsController {
   /// Получение всех обучающих видео для студентов
   ///
 
-  @Route.get('/learning/video_for_students')
+  @Route.get('/api/learning/video_for_students')
   @OpenApiRoute()
   Future<Response> getVideoForStudents(Request request) async {
     final body = await _videoForStudentsRepository.fetchVideoForStudents();
@@ -42,7 +42,7 @@ class VideoForStudentsController {
   /// Получение конкретного обучающих видео для студентов
   ///
 
-  @Route.get('/learning/video_for_students/<id>')
+  @Route.get('/api/learning/video_for_students/<id>')
   @OpenApiRoute()
   Future<Response> getVideoById(Request request) async {
     return wrapResponse(

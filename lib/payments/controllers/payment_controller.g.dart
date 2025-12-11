@@ -10,27 +10,27 @@ Router _$PaymentControllerRouter(PaymentController service) {
   final router = Router();
   router.add(
     'POST',
-    r'/payments/create',
+    r'/api/payments/create',
     service.createPayment,
   );
   router.add(
     'GET',
-    r'/payments/<paymentId>/status',
+    r'/api/payments/<paymentId>/status',
     service.getPaymentStatus,
   );
   router.add(
     'GET',
-    r'/payments/return',
+    r'/api/payments/return',
     service.paymentReturn,
   );
   router.add(
     'GET',
-    r'/payments/cancel',
+    r'/api/payments/cancel',
     service.paymentCancel,
   );
   router.add(
     'POST',
-    r'/payments/webhook',
+    r'/api/payments/webhook',
     service.webhook,
   );
   return router;

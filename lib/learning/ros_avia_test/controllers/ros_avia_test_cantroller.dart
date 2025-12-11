@@ -21,7 +21,7 @@ class RosAviaTestController {
   /// Получение всех Получение типов свидетельств в РосАвиаТест
   ///
 
-  @Route.get('/learning/ros_avia_test/type_sertificates')
+  @Route.get('/api/learning/ros_avia_test/type_sertificates')
   @OpenApiRoute()
   Future<Response> fetchTypeSertificates(Request request) async {
     final body = await _rosAviaTestRepository.fetchTypeSertificates();
@@ -42,7 +42,7 @@ class RosAviaTestController {
   /// Получение всех Получение типов корректности ответа
   ///
 
-  @Route.get('/learning/ros_avia_test/type_correct_answers')
+  @Route.get('/api/learning/ros_avia_test/type_correct_answers')
   @OpenApiRoute()
   Future<Response> fetchTypeCorrectAnswer(Request request) async {
     final body = await _rosAviaTestRepository.fetchTypeCorrectAnswer();
@@ -63,7 +63,7 @@ class RosAviaTestController {
   /// РосАвиаТест. Получение категорий
   ///
 
-  @Route.get('/learning/ros_avia_test/categories/<typeCertificateId>')
+  @Route.get('/api/learning/ros_avia_test/categories/<typeCertificateId>')
   @OpenApiRoute()
   Future<Response> fetchRosAviaTestCategories(Request request) async {
     final id = request.params['typeCertificateId']!;
@@ -85,7 +85,7 @@ class RosAviaTestController {
   /// РосАвиаТест. Получение категорий с вопросами отфильтрованным по типу сертификата
   ///
 
-  @Route.get('/learning/ros_avia_test/<typeCertificateId>')
+  @Route.get('/api/learning/ros_avia_test/<typeCertificateId>')
   @OpenApiRoute()
   Future<Response> fetchRosAviaTestCategoryWithQuestions(Request request) async {
     final id = request.params['typeCertificateId']!;
@@ -107,7 +107,7 @@ class RosAviaTestController {
   /// РосАвиаТест. Получение всех вопросов по выбранному сертификату и темам
   ///
 
-  @Route.get('/learning/ros_avia_test/questions/<typeCertificateId>')
+  @Route.get('/api/learning/ros_avia_test/questions/<typeCertificateId>')
   @OpenApiRoute()
   Future<Response> fetchQuestionsWithAnswersByCategoryAndTypeCertificate(Request request) async {
     final typeCertificateId = request.params['typeCertificateId']!;

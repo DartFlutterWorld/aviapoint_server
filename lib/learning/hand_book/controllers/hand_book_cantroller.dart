@@ -21,7 +21,7 @@ class HandBookController {
   /// Получение всех основных категорий в Hand Book
   ///
 
-  @Route.get('/learning/hand_book/main_categories')
+  @Route.get('/api/learning/hand_book/main_categories')
   @OpenApiRoute()
   Future<Response> fetchHandBookCategoties(Request request) async {
     final body = await _handBookRepository.fetchHandBookMainCategoties();
@@ -42,7 +42,7 @@ class HandBookController {
   /// Hand Book. Получение категорий для Предполётных процедур
   ///
 
-  @Route.get('/learning/hand_book/preflight_inspection_categories')
+  @Route.get('/api/learning/hand_book/preflight_inspection_categories')
   @OpenApiRoute()
   Future<Response> fetchPreflightInspectionCaegories(Request request) async {
     final body = await _handBookRepository.fetchPreflightInspectionCategories();
@@ -71,7 +71,7 @@ class HandBookController {
   /// Hand Book. Получение чек листа для Предполётных процедур
   ///
 
-  @Route.get('/learning/hand_book/preflight_inspection_categories/check_list')
+  @Route.get('/api/learning/hand_book/preflight_inspection_categories/check_list')
   @OpenApiRoute()
   Future<Response> fetchPreflightInspectionCheckList(Request request) async {
     final body = await _handBookRepository.fetchPreflightInspectionCheckList();
@@ -92,7 +92,7 @@ class HandBookController {
   /// Получение конкретной проверки из чеклиста по id
   ///
 
-  @Route.get('/learning/hand_book/preflight_inspection_categories/check_list/<id>')
+  @Route.get('/api/learning/hand_book/preflight_inspection_categories/check_list/<id>')
   @OpenApiRoute()
   Future<Response> fetchPreflightInspectionCheckListById(Request request, String id) async {
     return wrapResponse(
@@ -114,7 +114,7 @@ class HandBookController {
   /// Hand Book. Получение категорий для Нормальных процедур
   ///
 
-  @Route.get('/learning/hand_book/normal_categories')
+  @Route.get('/api/learning/hand_book/normal_categories')
   @OpenApiRoute()
   Future<Response> fetchNormalCategories(Request request) async {
     final body = await _handBookRepository.fetchNormalCategories();
@@ -135,7 +135,7 @@ class HandBookController {
   /// Hand Book. Получение чек листа для Предполётных процедур
   ///
 
-  @Route.get('/learning/hand_book/normal_categories/check_list')
+  @Route.get('/api/learning/hand_book/normal_categories/check_list')
   @OpenApiRoute()
   Future<Response> fetchNormalCheckList(Request request) async {
     final body = await _handBookRepository.fetchNormalCheckList();
@@ -156,7 +156,7 @@ class HandBookController {
   /// Получение конкретной проверки из чеклиста Normal по id
   ///
 
-  @Route.get('/learning/hand_book/normal_categories/check_list/<id>')
+  @Route.get('/api/learning/hand_book/normal_categories/check_list/<id>')
   @OpenApiRoute()
   Future<Response> fetchNormalCheckListById(Request request, String id) async {
     return wrapResponse(
@@ -178,7 +178,7 @@ class HandBookController {
   /// Hand Book. Получение категорий для Аварийных процедур
   ///
 
-  @Route.get('/learning/hand_book/emergency_categories')
+  @Route.get('/api/learning/hand_book/emergency_categories')
   @OpenApiRoute()
   Future<Response> fetchEmergencyCategories(Request request) async {
     final body = await _handBookRepository.fetchEmergencyCategories();

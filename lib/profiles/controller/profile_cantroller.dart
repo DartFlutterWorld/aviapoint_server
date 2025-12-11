@@ -28,7 +28,7 @@ class ProfileController {
   ///
   /// Возвращает в ответе данные пользователя
   ///
-  @Route.post('/user')
+  @Route.post('/api/user')
   @OpenApiRoute()
   Future<Response> createUser(Request request) async {
     final body = await request.readAsString();
@@ -60,7 +60,7 @@ class ProfileController {
   /// Получение всех профилей пользователей
   ///
 
-  @Route.get('/profiles')
+  @Route.get('/api/profiles')
   @OpenApiRoute()
   Future<Response> getUsers(Request request) async {
     final body = await _profileRepository.fetchProiles();
@@ -81,7 +81,7 @@ class ProfileController {
   /// Получение всех профиля пользователя
   ///
 
-  @Route.post('/profile')
+  @Route.post('/api/profile')
   @OpenApiRoute()
   Future<Response> getProfile(Request request) async {
     return wrapResponse(

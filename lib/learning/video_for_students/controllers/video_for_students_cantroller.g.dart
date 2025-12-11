@@ -10,12 +10,12 @@ Router _$VideoForStudentsControllerRouter(VideoForStudentsController service) {
   final router = Router();
   router.add(
     'GET',
-    r'/learning/video_for_students',
+    r'/api/learning/video_for_students',
     service.getVideoForStudents,
   );
   router.add(
     'GET',
-    r'/learning/video_for_students/<id>',
+    r'/api/learning/video_for_students/<id>',
     service.getVideoById,
   );
   return router;

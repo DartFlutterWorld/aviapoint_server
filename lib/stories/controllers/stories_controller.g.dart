@@ -10,12 +10,12 @@ Router _$StoriesControllerRouter(StoriesController service) {
   final router = Router();
   router.add(
     'GET',
-    r'/stories',
+    r'/api/stories',
     service.getStories,
   );
   router.add(
     'GET',
-    r'/stories/<id>',
+    r'/api/stories/<id>',
     service.getStory,
   );
   return router;

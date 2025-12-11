@@ -10,22 +10,22 @@ Router _$SubscriptionControllerRouter(SubscriptionController service) {
   final router = Router();
   router.add(
     'GET',
-    r'/subscriptions/status',
+    r'/api/subscriptions/status',
     service.getSubscriptionStatus,
   );
   router.add(
     'GET',
-    r'/subscriptions/active',
+    r'/api/subscriptions/active',
     service.getActiveSubscription,
   );
   router.add(
     'GET',
-    r'/subscriptions/history',
+    r'/api/subscriptions/history',
     service.getSubscriptionHistory,
   );
   router.add(
     'GET',
-    r'/subscriptions/types',
+    r'/api/subscriptions/types',
     service.getSubscriptionTypes,
   );
   return router;

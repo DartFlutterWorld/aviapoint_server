@@ -10,22 +10,22 @@ Router _$NewsControllerRouter(NewsController service) {
   final router = Router();
   router.add(
     'GET',
-    r'/category_news',
+    r'/api/category_news',
     service.getCategoryNews,
   );
   router.add(
     'GET',
-    r'/news',
+    r'/api/news',
     service.getnews,
   );
   router.add(
     'GET',
-    r'/news/<id>',
+    r'/api/news/<id>',
     service.getNewsById,
   );
   router.add(
     'GET',
-    r'/news/category/<id>',
+    r'/api/news/category/<id>',
     service.getNewsByCategory,
   );
   return router;

@@ -10,17 +10,17 @@ Router _$AuthControllerRouter(AuthController service) {
   final router = Router();
   router.add(
     'POST',
-    r'/auth/sms',
+    r'/api/auth/sms',
     service.sendSms,
   );
   router.add(
     'POST',
-    r'/auth/login',
+    r'/api/auth/login',
     service.login,
   );
   router.add(
     'POST',
-    r'/auth/refresh',
+    r'/api/auth/refresh',
     service.refreshToken,
   );
   return router;

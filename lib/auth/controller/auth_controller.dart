@@ -18,19 +18,22 @@ part 'auth_controller.g.dart';
 class AuthController {
   final ProfileRepository _profileRepository;
   final TokenService _tokenService;
-  AuthController({required ProfileRepository profileRepository, required TokenService tokenService}) : _profileRepository = profileRepository, _tokenService = tokenService;
+  AuthController({required ProfileRepository profileRepository, required TokenService tokenService})
+      : _profileRepository = profileRepository,
+        _tokenService = tokenService;
 
   Router get router => _$AuthControllerRouter(this);
 
   String smsCode = '';
 
   @protected
+
   ///
   /// Отправление sms
   ///
   /// Отправление sms пользователю на телефон
   ///
-  @Route.post('/auth/sms')
+  @Route.post('/api/auth/sms')
   @OpenApiRoute()
   Future<Response> sendSms(Request request) async {
     final body = await request.readAsString();
@@ -93,7 +96,7 @@ class AuthController {
   ///
   /// Логин по телефону и смс
   ///
-  @Route.post('/auth/login')
+  @Route.post('/api/auth/login')
   @OpenApiRoute()
   Future<Response> login(Request request) async {
     final body = await request.readAsString();
@@ -128,7 +131,7 @@ class AuthController {
     return Response.unauthorized(jsonEncode({'error': 'Invalid SMS code'}));
   }
 
-  @Route.post('/auth/refresh')
+  @Route.post('/api/auth/refresh')
   @OpenApiRoute()
   Future<Response> refreshToken(Request request) async {
     try {

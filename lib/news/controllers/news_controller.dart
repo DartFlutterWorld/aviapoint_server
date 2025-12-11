@@ -22,7 +22,7 @@ class NewsController {
   /// Получение всех категорий для новостей
   ///
 
-  @Route.get('/category_news')
+  @Route.get('/api/category_news')
   @OpenApiRoute()
   Future<Response> getCategoryNews(Request request) async {
     final body = await _newsRepository.getCategoryNews();
@@ -43,7 +43,7 @@ class NewsController {
   /// Получение всех видео сториков
   ///
 
-  @Route.get('/news')
+  @Route.get('/api/news')
   @OpenApiRoute()
   Future<Response> getnews(Request request) async {
     final body = await _newsRepository.getNews();
@@ -64,7 +64,7 @@ class NewsController {
   /// Получение конкретной новости
   ///
 
-  @Route.get('/news/<id>')
+  @Route.get('/api/news/<id>')
   @OpenApiRoute()
   Future<Response> getNewsById(Request request) async {
     return wrapResponse(
@@ -85,7 +85,7 @@ class NewsController {
   /// Получение новостей по конкретной категории
   ///
 
-  @Route.get('/news/category/<id>')
+  @Route.get('/api/news/category/<id>')
   @OpenApiRoute()
   Future<Response> getNewsByCategory(Request request) async {
     return wrapResponse(

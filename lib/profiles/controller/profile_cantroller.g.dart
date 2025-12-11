@@ -10,17 +10,17 @@ Router _$ProfileControllerRouter(ProfileController service) {
   final router = Router();
   router.add(
     'POST',
-    r'/user',
+    r'/api/user',
     service.createUser,
   );
   router.add(
     'GET',
-    r'/profiles',
+    r'/api/profiles',
     service.getUsers,
   );
   router.add(
     'POST',
-    r'/profile',
+    r'/api/profile',
     service.getProfile,
   );
   return router;

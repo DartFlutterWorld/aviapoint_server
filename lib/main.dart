@@ -74,7 +74,7 @@ Future<void> main() async {
       .add(
         Router()
           ..mount(
-            '/openapi',
+            '/api/openapi',
             SwaggerUI(
               'public/open_api.yaml',
               docExpansion: DocExpansion.list,
