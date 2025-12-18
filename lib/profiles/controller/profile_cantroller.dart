@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:aviapoint_server/auth/token/token_service.dart';
 import 'package:aviapoint_server/core/setup_dependencies/setup_dependencies.dart';
@@ -13,6 +14,9 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_open_api/shelf_open_api.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:http_parser/http_parser.dart' show MediaType;
+import 'dart:convert' show utf8;
+import 'package:path/path.dart' as path;
 
 part 'profile_cantroller.g.dart';
 
@@ -23,6 +27,7 @@ class ProfileController {
   Router get router => _$ProfileControllerRouter(this);
 
   @protected
+
   ///
   /// Создание пользователя
   ///
@@ -35,7 +40,8 @@ class ProfileController {
     final createTodoRequest = CreateUserRequest.fromJson(jsonDecode(body));
 
     return wrapResponse(() async {
-      final userId = request.context['user_id'] as String;
+      // userId из контекста не используется, так как createUser создает нового пользователя
+      // final userId = request.context['user_id'] as String;
 
       return Response.ok(
         jsonEncode(
@@ -176,5 +182,245 @@ class ProfileController {
 
       return Response.ok(jsonEncode(result), headers: jsonContentHeaders);
     });
+  }
+
+  ///
+  /// Загрузка фото профиля
+  ///
+  /// Загрузка фотографии пользователя
+  ///
+
+  @Route.post('/api/profile/photo')
+  @OpenApiRoute()
+  Future<Response> uploadProfilePhoto(Request request) async {
+    return wrapResponse(() async {
+      // Проверяем аутентификацию
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      // Валидация токена
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        logger.severe('Invalid token received. Token: ${token.substring(0, 20)}...');
+        try {
+          final payload = JwtDecoder.decode(token);
+          final expiry = DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000);
+          final now = DateTime.now();
+          if (now.isAfter(expiry)) {
+            return Response.unauthorized(
+              jsonEncode({'error': 'Token expired', 'code': 'TOKEN_EXPIRED', 'message': 'Access token has expired. Please refresh your token using the refresh_token.'}),
+              headers: {...jsonContentHeaders, 'X-Token-Status': 'expired'},
+            );
+          }
+        } catch (e) {
+          // Токен невалидный по другой причине
+        }
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token', 'code': 'INVALID_TOKEN'}), headers: {...jsonContentHeaders, 'X-Token-Status': 'invalid'});
+      }
+
+      // Получаем ID пользователя из токена
+      final id = tokenService.getUserIdFromToken(token);
+      if (id == null || id.isEmpty) {
+        logger.severe('Cannot extract user ID from token');
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final userId = int.parse(id);
+
+      // Проверяем Content-Type
+      final contentType = request.headers['Content-Type'];
+      if (contentType == null || !contentType.startsWith('multipart/form-data')) {
+        return Response.badRequest(body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}), headers: jsonContentHeaders);
+      }
+
+      // Парсим multipart запрос
+      final mediaType = MediaType.parse(contentType);
+      final boundary = mediaType.parameters['boundary'];
+      if (boundary == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Missing boundary in Content-Type'}), headers: jsonContentHeaders);
+      }
+
+      // Читаем тело запроса
+      final bodyBytes = <int>[];
+      await for (final chunk in request.read()) {
+        bodyBytes.addAll(chunk);
+      }
+
+      // Парсим multipart вручную
+      // Разделяем части по boundary
+      final boundaryMarker = '--$boundary';
+      final boundaryBytes = utf8.encode(boundaryMarker);
+      final parts = <Map<String, dynamic>>[];
+
+      // Находим все части
+      int searchStart = 0;
+      while (true) {
+        final boundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+        if (boundaryIndex == -1) break;
+
+        searchStart = boundaryIndex + boundaryBytes.length;
+        // Пропускаем CRLF
+        if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 13) searchStart++;
+        if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 10) searchStart++;
+
+        // Ищем следующий boundary или конец
+        final nextBoundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+        final partEnd = nextBoundaryIndex == -1 ? bodyBytes.length : nextBoundaryIndex;
+
+        if (partEnd > searchStart) {
+          final partBytes = bodyBytes.sublist(searchStart, partEnd);
+          // Парсим заголовки и тело
+          final partData = _parseMultipartPart(partBytes);
+          if (partData != null) {
+            parts.add(partData);
+          }
+        }
+
+        if (nextBoundaryIndex == -1) break;
+        searchStart = nextBoundaryIndex;
+      }
+
+      // Ищем поле с фото
+      List<int>? photoData;
+      String? extension = 'jpg'; // По умолчанию jpg
+
+      for (final part in parts) {
+        final contentDisposition = part['content-disposition'] as String?;
+        if (contentDisposition != null && contentDisposition.contains('name="photo"')) {
+          photoData = part['data'] as List<int>?;
+
+          // Определяем расширение из Content-Type
+          final partContentType = part['content-type'] as String?;
+          if (partContentType != null) {
+            final partMediaType = MediaType.parse(partContentType);
+            if (partMediaType.subtype == 'jpeg' || partMediaType.subtype == 'jpg') {
+              extension = 'jpg';
+            } else if (partMediaType.subtype == 'png') {
+              extension = 'png';
+            }
+          }
+
+          // Если расширение не определилось, пробуем из filename
+          if (extension == 'jpg') {
+            final filenameMatch = RegExp(r'filename="([^"]+)"').firstMatch(contentDisposition);
+            if (filenameMatch != null) {
+              final filename = filenameMatch.group(1);
+              if (filename != null && filename.isNotEmpty) {
+                final fileExt = path.extension(filename).replaceFirst('.', '').toLowerCase();
+                if (fileExt.isNotEmpty && (fileExt == 'jpg' || fileExt == 'jpeg' || fileExt == 'png')) {
+                  extension = fileExt == 'jpeg' ? 'jpg' : fileExt;
+                }
+              }
+            }
+          }
+          break;
+        }
+      }
+
+      if (photoData == null || photoData.isEmpty) {
+        return Response.badRequest(body: jsonEncode({'error': 'Photo field is required'}), headers: jsonContentHeaders);
+      }
+
+      // Валидация размера (максимум 5MB)
+      if (photoData.length > 5 * 1024 * 1024) {
+        return Response.badRequest(body: jsonEncode({'error': 'File size exceeds 5MB limit'}), headers: jsonContentHeaders);
+      }
+
+      // Создаем директорию profiles если её нет
+      final publicDir = Directory('public');
+      if (!await publicDir.exists()) {
+        await publicDir.create(recursive: true);
+      }
+
+      final profilesDir = Directory('public/profiles');
+      if (!await profilesDir.exists()) {
+        await profilesDir.create(recursive: true);
+      }
+
+      // Удаляем старое фото если есть
+      final oldProfile = await _profileRepository.fetchProfileById(userId);
+      if (oldProfile.avatarUrl != null && oldProfile.avatarUrl!.isNotEmpty) {
+        try {
+          final oldFilePath = oldProfile.avatarUrl!.startsWith('profiles/') ? 'public/${oldProfile.avatarUrl}' : 'public/profiles/${oldProfile.avatarUrl}';
+          final oldFile = File(oldFilePath);
+          if (await oldFile.exists()) {
+            await oldFile.delete();
+          }
+        } catch (e) {
+          logger.info('Failed to delete old avatar: $e');
+        }
+      }
+
+      // Сохраняем новое фото
+      final fileName = '$userId.$extension';
+      final filePath = 'public/profiles/$fileName';
+      final file = File(filePath);
+      await file.writeAsBytes(photoData);
+
+      // Обновляем avatar_url в БД
+      final avatarUrl = 'profiles/$fileName';
+      final result = await _profileRepository.updateAvatarUrl(id: userId, avatarUrl: avatarUrl);
+
+      return Response.ok(jsonEncode(result), headers: jsonContentHeaders);
+    });
+  }
+
+  // Вспомогательный метод для поиска байтов в массиве
+  int _indexOfBytes(List<int> haystack, List<int> needle, int start) {
+    if (needle.isEmpty) return start;
+    if (start >= haystack.length) return -1;
+
+    for (int i = start; i <= haystack.length - needle.length; i++) {
+      bool found = true;
+      for (int j = 0; j < needle.length; j++) {
+        if (haystack[i + j] != needle[j]) {
+          found = false;
+          break;
+        }
+      }
+      if (found) return i;
+    }
+    return -1;
+  }
+
+  // Парсинг одной части multipart
+  Map<String, dynamic>? _parseMultipartPart(List<int> partBytes) {
+    // Ищем разделитель заголовков и тела (пустая строка CRLF CRLF)
+    final headerEnd = _indexOfBytes(partBytes, [13, 10, 13, 10], 0);
+    if (headerEnd == -1) return null;
+
+    // Парсим заголовки
+    final headerBytes = partBytes.sublist(0, headerEnd);
+    final headerText = utf8.decode(headerBytes);
+    final headers = <String, String>{};
+
+    for (final line in headerText.split('\n')) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+      final colonIndex = trimmed.indexOf(':');
+      if (colonIndex > 0) {
+        final key = trimmed.substring(0, colonIndex).trim().toLowerCase();
+        final value = trimmed.substring(colonIndex + 1).trim();
+        headers[key] = value;
+      }
+    }
+
+    // Тело части (пропускаем CRLF после заголовков)
+    final bodyStart = headerEnd + 4;
+    final bodyEnd = partBytes.length;
+    // Убираем trailing CRLF если есть
+    int actualBodyEnd = bodyEnd;
+    if (bodyEnd > bodyStart + 2 && partBytes[bodyEnd - 2] == 13 && partBytes[bodyEnd - 1] == 10) {
+      actualBodyEnd = bodyEnd - 2;
+    }
+
+    final data = partBytes.sublist(bodyStart, actualBodyEnd);
+
+    return {'content-disposition': headers['content-disposition'], 'content-type': headers['content-type'], 'data': data};
   }
 }

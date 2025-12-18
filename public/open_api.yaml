@@ -433,6 +433,16 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /api/profile/photo:
+    post:
+      tags:
+        - ProfileController
+      summary: Загрузка фото профиля
+      description: Загрузка фотографии пользователя
+      operationId: uploadProfilePhoto
+      responses:
+        200:
+          description: "Operation completed!"
 components: { }
 tags:
   - name: PaymentController

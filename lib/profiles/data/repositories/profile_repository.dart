@@ -79,4 +79,12 @@ class ProfileRepository {
     final serializedState = result.first.toColumnMap();
     return ProfileModel.fromJson(serializedState);
   }
+
+  /// Обновить аватар пользователя
+  Future<ProfileModel> updateAvatarUrl({required int id, required String avatarUrl}) async {
+    final result = await _connection.execute(Sql.named('UPDATE profiles SET avatar_url = @avatarUrl WHERE id = @id RETURNING *'), parameters: {'id': id, 'avatarUrl': avatarUrl});
+
+    final serializedState = result.first.toColumnMap();
+    return ProfileModel.fromJson(serializedState);
+  }
 }

@@ -46,6 +46,10 @@ docker exec aviapoint-nginx nginx -s reload
 # Это запустит только базу данных на порту 5432 и Adminer на порту 8082, а сервер вы запустите локально через dart run bin/aviapoint_server.dart или через IDE.
 docker-compose -f docker-compose.dev.yaml up -d
 
+
+
+
+# РЕЛИЗ
 # Подключение по SSH
 ssh root@83.166.246.205
 uOTC0OWjMVIoaRxI

@@ -28,5 +28,10 @@ Router _$ProfileControllerRouter(ProfileController service) {
     r'/api/profile',
     service.updateProfile,
   );
+  router.add(
+    'POST',
+    r'/api/profile/photo',
+    service.uploadProfilePhoto,
+  );
   return router;
 }
