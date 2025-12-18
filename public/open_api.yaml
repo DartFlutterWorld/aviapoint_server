@@ -415,6 +415,15 @@ paths:
         200:
           description: "Operation completed!"
   /api/profile:
+    put:
+      tags:
+        - ProfileController
+      summary: Обновление профиля
+      description: Обновление данных профиля пользователя
+      operationId: updateProfile
+      responses:
+        200:
+          description: "Operation completed!"
     post:
       tags:
         - ProfileController

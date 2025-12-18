@@ -23,5 +23,10 @@ Router _$ProfileControllerRouter(ProfileController service) {
     r'/api/profile',
     service.getProfile,
   );
+  router.add(
+    'PUT',
+    r'/api/profile',
+    service.updateProfile,
+  );
   return router;
 }

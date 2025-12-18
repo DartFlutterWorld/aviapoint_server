@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:aviapoint_server/auth/token/token_service.dart';
 import 'package:aviapoint_server/core/setup_dependencies/setup_dependencies.dart';
 import 'package:aviapoint_server/profiles/api/create_user_request.dart';
+import 'package:aviapoint_server/profiles/api/update_profile_request.dart';
 import 'package:aviapoint_server/core/wrap_response.dart';
 import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
 import 'package:aviapoint_server/logger/logger.dart';
@@ -22,7 +23,6 @@ class ProfileController {
   Router get router => _$ProfileControllerRouter(this);
 
   @protected
-
   ///
   /// Создание пользователя
   ///
@@ -32,26 +32,22 @@ class ProfileController {
   @OpenApiRoute()
   Future<Response> createUser(Request request) async {
     final body = await request.readAsString();
-    final createTodoRequest = CreateUserRequest.fromJson(
-      jsonDecode(body),
-    );
+    final createTodoRequest = CreateUserRequest.fromJson(jsonDecode(body));
 
-    return wrapResponse(
-      () async {
-        final userId = request.context['user_id'] as String;
+    return wrapResponse(() async {
+      final userId = request.context['user_id'] as String;
 
-        return Response.ok(
-          jsonEncode(
-            await _profileRepository.createUser(
-              // id: 1,
-              // name: createTodoRequest.name,
-              phone: createTodoRequest.email,
-            ),
+      return Response.ok(
+        jsonEncode(
+          await _profileRepository.createUser(
+            // id: 1,
+            // name: createTodoRequest.name,
+            phone: createTodoRequest.email,
           ),
-          headers: jsonContentHeaders,
-        );
-      },
-    );
+        ),
+        headers: jsonContentHeaders,
+      );
+    });
   }
 
   ///
@@ -65,14 +61,9 @@ class ProfileController {
   Future<Response> getUsers(Request request) async {
     final body = await _profileRepository.fetchProiles();
 
-    return wrapResponse(
-      () async {
-        return Response.ok(
-          jsonEncode(body),
-          headers: jsonContentHeaders,
-        );
-      },
-    );
+    return wrapResponse(() async {
+      return Response.ok(jsonEncode(body), headers: jsonContentHeaders);
+    });
   }
 
   ///
@@ -84,65 +75,106 @@ class ProfileController {
   @Route.post('/api/profile')
   @OpenApiRoute()
   Future<Response> getProfile(Request request) async {
-    return wrapResponse(
-      () async {
-        // Проверяем аутентификацию в самом методе
-        final authHeader = request.headers['Authorization'];
-        if (authHeader == null || !authHeader.startsWith('Bearer ')) {
-          return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
-        }
+    return wrapResponse(() async {
+      // Проверяем аутентификацию в самом методе
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
 
-        final token = authHeader.substring(7);
-        final tokenService = getIt.get<TokenService>();
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
 
-        // Валидация токена
-        final isValid = tokenService.validateToken(token);
-        if (!isValid) {
-          logger.severe('Invalid token received. Token: ${token.substring(0, 20)}...');
-          // Проверяем, истек ли токен или он невалидный по другой причине
-          try {
-            final payload = JwtDecoder.decode(token);
-            final expiry = DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000);
-            final now = DateTime.now();
-            if (now.isAfter(expiry)) {
-              // Токен истек - возвращаем специальный код для обновления
-              return Response.unauthorized(
-                jsonEncode({'error': 'Token expired', 'code': 'TOKEN_EXPIRED', 'message': 'Access token has expired. Please refresh your token using the refresh_token.'}),
-                headers: {
-                  ...jsonContentHeaders,
-                  'X-Token-Status': 'expired',
-                },
-              );
-            }
-          } catch (e) {
-            // Токен невалидный по другой причине
+      // Валидация токена
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        logger.severe('Invalid token received. Token: ${token.substring(0, 20)}...');
+        // Проверяем, истек ли токен или он невалидный по другой причине
+        try {
+          final payload = JwtDecoder.decode(token);
+          final expiry = DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000);
+          final now = DateTime.now();
+          if (now.isAfter(expiry)) {
+            // Токен истек - возвращаем специальный код для обновления
+            return Response.unauthorized(
+              jsonEncode({'error': 'Token expired', 'code': 'TOKEN_EXPIRED', 'message': 'Access token has expired. Please refresh your token using the refresh_token.'}),
+              headers: {...jsonContentHeaders, 'X-Token-Status': 'expired'},
+            );
           }
-          return Response.unauthorized(
-            jsonEncode({
-              'error': 'Invalid token',
-              'code': 'INVALID_TOKEN',
-            }),
-            headers: {
-              ...jsonContentHeaders,
-              'X-Token-Status': 'invalid',
-            },
-          );
+        } catch (e) {
+          // Токен невалидный по другой причине
         }
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token', 'code': 'INVALID_TOKEN'}), headers: {...jsonContentHeaders, 'X-Token-Status': 'invalid'});
+      }
 
-        // Получаем ID пользователя из токена
-        final id = tokenService.getUserIdFromToken(token);
-        if (id == null || id.isEmpty) {
-          logger.severe('Cannot extract user ID from token');
-          return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      // Получаем ID пользователя из токена
+      final id = tokenService.getUserIdFromToken(token);
+      if (id == null || id.isEmpty) {
+        logger.severe('Cannot extract user ID from token');
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final result = await _profileRepository.fetchProfileById(int.parse(id));
+
+      return Response.ok(jsonEncode(result), headers: jsonContentHeaders);
+    });
+  }
+
+  ///
+  /// Обновление профиля
+  ///
+  /// Обновление данных профиля пользователя
+  ///
+
+  @Route.put('/api/profile')
+  @OpenApiRoute()
+  Future<Response> updateProfile(Request request) async {
+    return wrapResponse(() async {
+      // Проверяем аутентификацию в самом методе
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      // Валидация токена
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        logger.severe('Invalid token received. Token: ${token.substring(0, 20)}...');
+        // Проверяем, истек ли токен или он невалидный по другой причине
+        try {
+          final payload = JwtDecoder.decode(token);
+          final expiry = DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000);
+          final now = DateTime.now();
+          if (now.isAfter(expiry)) {
+            // Токен истек - возвращаем специальный код для обновления
+            return Response.unauthorized(
+              jsonEncode({'error': 'Token expired', 'code': 'TOKEN_EXPIRED', 'message': 'Access token has expired. Please refresh your token using the refresh_token.'}),
+              headers: {...jsonContentHeaders, 'X-Token-Status': 'expired'},
+            );
+          }
+        } catch (e) {
+          // Токен невалидный по другой причине
         }
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token', 'code': 'INVALID_TOKEN'}), headers: {...jsonContentHeaders, 'X-Token-Status': 'invalid'});
+      }
 
-        final result = await _profileRepository.fetchProfileById(int.parse(id));
+      // Получаем ID пользователя из токена
+      final id = tokenService.getUserIdFromToken(token);
+      if (id == null || id.isEmpty) {
+        logger.severe('Cannot extract user ID from token');
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
 
-        return Response.ok(
-          jsonEncode(result),
-          headers: jsonContentHeaders,
-        );
-      },
-    );
+      // Парсим тело запроса
+      final body = await request.readAsString();
+      final updateProfileRequest = UpdateProfileRequest.fromJson(jsonDecode(body));
+
+      final result = await _profileRepository.updateProfile(id: int.parse(id), email: updateProfileRequest.email, firstName: updateProfileRequest.firstName, lastName: updateProfileRequest.lastName);
+
+      return Response.ok(jsonEncode(result), headers: jsonContentHeaders);
+    });
   }
 }
