@@ -56,3 +56,6 @@ pgdata/
 backups/
 *.sql.gz
 *.sql.backup
+
+# User uploaded files (avatars, etc.)
+public/profiles/
