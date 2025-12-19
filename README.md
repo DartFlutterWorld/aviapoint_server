@@ -73,3 +73,8 @@ Ctrl+D — комбинация клавиш
 
 # adminer
 http://83.166.246.205:8082
+
+
+
+# Смотреть логи в реальном времени
+docker logs -f aviapoint-server
