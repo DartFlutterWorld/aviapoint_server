@@ -196,9 +196,12 @@ class ProfileController {
     // Простая проверка, что код обновлен
     print('=== UPLOAD PHOTO METHOD CALLED ===');
     logger.info('=== UPLOAD PHOTO METHOD CALLED ===');
+    logger.info('Upload photo: method started, headers: ${request.headers}');
     return wrapResponse(() async {
+      logger.info('Upload photo: inside wrapResponse');
       // Проверяем аутентификацию
       final authHeader = request.headers['Authorization'];
+      logger.info('Upload photo: authHeader = ${authHeader != null ? "present" : "missing"}');
       if (authHeader == null || !authHeader.startsWith('Bearer ')) {
         return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
       }
@@ -237,7 +240,9 @@ class ProfileController {
 
       // Проверяем Content-Type
       final contentType = request.headers['Content-Type'];
+      logger.info('Upload photo: contentType = $contentType');
       if (contentType == null || !contentType.startsWith('multipart/form-data')) {
+        logger.severe('Upload photo: invalid Content-Type: $contentType');
         return Response.badRequest(body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}), headers: jsonContentHeaders);
       }
 
