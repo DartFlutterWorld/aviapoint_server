@@ -43,16 +43,16 @@ class ProfileController {
       // userId из контекста не используется, так как createUser создает нового пользователя
       // final userId = request.context['user_id'] as String;
 
-      return Response.ok(
-        jsonEncode(
-          await _profileRepository.createUser(
-            // id: 1,
-            // name: createTodoRequest.name,
-            phone: createTodoRequest.email,
+        return Response.ok(
+          jsonEncode(
+            await _profileRepository.createUser(
+              // id: 1,
+              // name: createTodoRequest.name,
+              phone: createTodoRequest.email,
+            ),
           ),
-        ),
-        headers: jsonContentHeaders,
-      );
+          headers: jsonContentHeaders,
+        );
     });
   }
 
@@ -136,13 +136,13 @@ class ProfileController {
   @OpenApiRoute()
   Future<Response> updateProfile(Request request) async {
     return wrapResponse(() async {
-      // Проверяем аутентификацию в самом методе
-      final authHeader = request.headers['Authorization'];
-      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
-        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
-      }
+    // Проверяем аутентификацию в самом методе
+    final authHeader = request.headers['Authorization'];
+    if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+      return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+    }
 
-      final token = authHeader.substring(7);
+    final token = authHeader.substring(7);
       final tokenService = getIt.get<TokenService>();
 
       // Валидация токена
@@ -375,32 +375,58 @@ class ProfileController {
 
       // Удаляем старое фото если есть
       final oldProfile = await _profileRepository.fetchProfileById(userId);
+      logger.info('Upload photo: oldProfile.avatarUrl = ${oldProfile.avatarUrl}');
       if (oldProfile.avatarUrl != null && oldProfile.avatarUrl!.isNotEmpty) {
         try {
           final oldFilePath = oldProfile.avatarUrl!.startsWith('profiles/') ? 'public/${oldProfile.avatarUrl}' : 'public/profiles/${oldProfile.avatarUrl}';
+          logger.info('Upload photo: attempting to delete old file: $oldFilePath');
           final oldFile = File(oldFilePath);
           if (await oldFile.exists()) {
             await oldFile.delete();
+            logger.info('Upload photo: old file deleted successfully');
+          } else {
+            logger.info('Upload photo: old file does not exist: $oldFilePath');
           }
-        } catch (e) {
-          logger.info('Failed to delete old avatar: $e');
+        } catch (e, stackTrace) {
+          logger.severe('Upload photo: failed to delete old avatar: $e');
+          logger.severe('Upload photo: stackTrace: $stackTrace');
         }
+      } else {
+        logger.info('Upload photo: no old avatar to delete');
       }
 
       // Сохраняем новое фото
       final fileName = '$userId.$extension';
       final filePath = 'public/profiles/$fileName';
       logger.info('Upload photo: saving file to $filePath, size=${photoData.length} bytes');
-
+      
       try {
         final file = File(filePath);
+        
+        // Проверяем, существует ли файл перед записью
+        final fileExistsBefore = await file.exists();
+        if (fileExistsBefore) {
+          logger.info('Upload photo: file already exists, will overwrite');
+          // Пытаемся удалить существующий файл перед записью
+          try {
+            await file.delete();
+            logger.info('Upload photo: existing file deleted before write');
+          } catch (e) {
+            logger.info('Upload photo: failed to delete existing file before write: $e');
+          }
+        }
+        
+        // Записываем новый файл
         await file.writeAsBytes(photoData);
-        logger.info('Upload photo: file saved successfully');
-
-        // Проверяем, что файл действительно создан
+        logger.info('Upload photo: file written successfully');
+        
+        // Проверяем, что файл действительно создан и имеет правильный размер
         if (await file.exists()) {
           final fileSize = await file.length();
-          logger.info('Upload photo: file exists, size=$fileSize bytes');
+          logger.info('Upload photo: file exists, size=$fileSize bytes (expected ${photoData.length} bytes)');
+          if (fileSize != photoData.length) {
+            logger.severe('Upload photo: file size mismatch! Expected ${photoData.length}, got $fileSize');
+          }
         } else {
           logger.severe('Upload photo: file was not created!');
         }
