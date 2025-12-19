@@ -20,6 +20,8 @@ import 'package:aviapoint_server/payments/services/yookassa_service.dart';
 import 'package:aviapoint_server/subscriptions/controllers/subscription_controller.dart';
 import 'package:aviapoint_server/subscriptions/repositories/subscription_repository.dart';
 import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
+import 'package:aviapoint_server/on_the_way/controller/on_the_way_controller.dart';
+import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
 import 'package:postgres/postgres.dart';
 import 'package:get_it/get_it.dart';
 
@@ -144,6 +146,16 @@ Future<void> setupDependencies() async {
   getIt.registerSingletonAsync<SubscriptionController>(() async {
     final subscriptionRepository = await getIt.getAsync<SubscriptionRepository>();
     return SubscriptionController(subscriptionRepository: subscriptionRepository);
+  });
+
+  getIt.registerSingletonAsync<OnTheWayRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return OnTheWayRepository(connection: connection);
+  });
+
+  getIt.registerSingletonAsync<OnTheWayController>(() async {
+    final onTheWayRepository = await getIt.getAsync<OnTheWayRepository>();
+    return OnTheWayController(onTheWayRepository: onTheWayRepository);
   });
 
   // Инициализируем Telegram бота

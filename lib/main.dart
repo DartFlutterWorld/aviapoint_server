@@ -14,6 +14,7 @@ import 'package:aviapoint_server/logger/logger.dart';
 import 'package:aviapoint_server/stories/controllers/stories_controller.dart';
 import 'package:aviapoint_server/payments/controllers/payment_controller.dart';
 import 'package:aviapoint_server/subscriptions/controllers/subscription_controller.dart';
+import 'package:aviapoint_server/on_the_way/controller/on_the_way_controller.dart';
 import 'package:postgres/postgres.dart';
 import 'package:talker/talker.dart';
 import 'package:shelf/shelf.dart';
@@ -29,13 +30,7 @@ import 'package:shelf_swagger_ui/shelf_swagger_ui.dart';
 
 Future<void> main() async {
   // Инициализация Talker
-  final talker = Talker(
-    settings: TalkerSettings(
-      useConsoleLogs: true,
-      useHistory: true,
-      maxHistoryItems: 100,
-    ),
-  );
+  final talker = Talker(settings: TalkerSettings(useConsoleLogs: true, useHistory: true, maxHistoryItems: 100));
 
   // Регистрируем Talker в GetIt для использования в приложении
   getIt.registerSingleton<Talker>(talker);
@@ -70,19 +65,9 @@ Future<void> main() async {
       .add(getIt<RosAviaTestController>().router)
       .add(getIt<PaymentController>().router)
       .add(getIt<SubscriptionController>().router)
+      .add(getIt<OnTheWayController>().router)
       .add(createStaticHandler('public/', listDirectories: true))
-      .add(
-        Router()
-          ..mount(
-            '/api/openapi',
-            SwaggerUI(
-              'public/open_api.yaml',
-              docExpansion: DocExpansion.list,
-              syntaxHighlightTheme: SyntaxHighlightTheme.tomorrowNight,
-              title: 'Swagger AviaPoint',
-            ),
-          ),
-      )
+      .add(Router()..mount('/api/openapi', SwaggerUI('public/open_api.yaml', docExpansion: DocExpansion.list, syntaxHighlightTheme: SyntaxHighlightTheme.tomorrowNight, title: 'Swagger AviaPoint')))
       .handler;
 
   Middleware checkAuth() {
@@ -146,22 +131,7 @@ Future<void> main() async {
     };
   }
 
-  final pipeline = Pipeline()
-      .addMiddleware(
-        logRequests(),
-      )
-      .addMiddleware(
-        cors.corsHeaders(),
-      )
-      .addMiddleware(
-        handleErrors(),
-      )
-      .addMiddleware(
-        logDatabaseRequests(),
-      )
-      .addHandler(
-        handler,
-      );
+  final pipeline = Pipeline().addMiddleware(logRequests()).addMiddleware(cors.corsHeaders()).addMiddleware(handleErrors()).addMiddleware(logDatabaseRequests()).addHandler(handler);
 
   HttpServer server;
   try {
