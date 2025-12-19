@@ -251,6 +251,8 @@ class ProfileController {
         bodyBytes.addAll(chunk);
       }
 
+      logger.info('Upload photo: bodySize=${bodyBytes.length}, boundary=$boundary');
+
       // Парсим multipart вручную
       // Разделяем части по boundary
       final boundaryMarker = '--$boundary';
@@ -285,14 +287,18 @@ class ProfileController {
         searchStart = nextBoundaryIndex;
       }
 
+      logger.info('Upload photo: parsed ${parts.length} parts');
+
       // Ищем поле с фото
       List<int>? photoData;
       String? extension = 'jpg'; // По умолчанию jpg
 
       for (final part in parts) {
         final contentDisposition = part['content-disposition'] as String?;
+        logger.info('Upload photo: checking part with content-disposition=$contentDisposition');
         if (contentDisposition != null && contentDisposition.contains('name="photo"')) {
           photoData = part['data'] as List<int>?;
+          logger.info('Upload photo: found photo field, dataSize=${photoData?.length ?? 0}');
 
           // Определяем расширение из Content-Type
           final partContentType = part['content-type'] as String?;
@@ -323,6 +329,11 @@ class ProfileController {
       }
 
       if (photoData == null || photoData.isEmpty) {
+        logger.severe('Upload photo: photoData is null or empty. Parts count: ${parts.length}');
+        for (int i = 0; i < parts.length; i++) {
+          final part = parts[i];
+          logger.severe('Upload photo: part $i - content-disposition: ${part['content-disposition']}, dataSize: ${(part['data'] as List<int>?)?.length ?? 0}');
+        }
         return Response.badRequest(body: jsonEncode({'error': 'Photo field is required'}), headers: jsonContentHeaders);
       }
 
@@ -332,14 +343,34 @@ class ProfileController {
       }
 
       // Создаем директорию profiles если её нет
+      // Используем абсолютный путь для надежности
+      final currentDir = Directory.current.path;
+      logger.info('Upload photo: current working directory = $currentDir');
+
       final publicDir = Directory('public');
       if (!await publicDir.exists()) {
+        logger.info('Upload photo: creating public directory');
         await publicDir.create(recursive: true);
       }
 
       final profilesDir = Directory('public/profiles');
       if (!await profilesDir.exists()) {
+        logger.info('Upload photo: creating profiles directory');
         await profilesDir.create(recursive: true);
+      }
+
+      // Проверяем, что директория доступна для записи
+      final testFile = File('public/profiles/.write_test');
+      try {
+        await testFile.writeAsString('test');
+        await testFile.delete();
+        logger.info('Upload photo: directory is writable');
+      } catch (e) {
+        logger.severe('Upload photo: directory is NOT writable: $e');
+        return Response.internalServerError(
+          body: jsonEncode({'error': 'Directory is not writable', 'details': e.toString()}),
+          headers: jsonContentHeaders,
+        );
       }
 
       // Удаляем старое фото если есть
@@ -359,12 +390,34 @@ class ProfileController {
       // Сохраняем новое фото
       final fileName = '$userId.$extension';
       final filePath = 'public/profiles/$fileName';
-      final file = File(filePath);
-      await file.writeAsBytes(photoData);
+      logger.info('Upload photo: saving file to $filePath, size=${photoData.length} bytes');
+
+      try {
+        final file = File(filePath);
+        await file.writeAsBytes(photoData);
+        logger.info('Upload photo: file saved successfully');
+
+        // Проверяем, что файл действительно создан
+        if (await file.exists()) {
+          final fileSize = await file.length();
+          logger.info('Upload photo: file exists, size=$fileSize bytes');
+        } else {
+          logger.severe('Upload photo: file was not created!');
+        }
+      } catch (e, stackTrace) {
+        logger.severe('Upload photo: failed to save file: $e');
+        logger.severe('Upload photo: stackTrace: $stackTrace');
+        return Response.internalServerError(
+          body: jsonEncode({'error': 'Failed to save photo', 'details': e.toString()}),
+          headers: jsonContentHeaders,
+        );
+      }
 
       // Обновляем avatar_url в БД
       final avatarUrl = 'profiles/$fileName';
+      logger.info('Upload photo: updating avatar_url in DB: $avatarUrl');
       final result = await _profileRepository.updateAvatarUrl(id: userId, avatarUrl: avatarUrl);
+      logger.info('Upload photo: avatar_url updated successfully');
 
       return Response.ok(jsonEncode(result), headers: jsonContentHeaders);
     });
