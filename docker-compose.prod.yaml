@@ -37,7 +37,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-8323437465:AAHmLtqDio9fgw6n2VqST-OXf1SwgZcywrs}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-854530932}
     volumes:
-      - ./public:/app/public:ro
+      - ./public:/app/public
       - ./assets:/app/assets:ro
     depends_on:
       db:
