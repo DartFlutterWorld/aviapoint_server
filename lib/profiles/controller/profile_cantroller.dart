@@ -193,6 +193,9 @@ class ProfileController {
   @Route.post('/api/profile/photo')
   @OpenApiRoute()
   Future<Response> uploadProfilePhoto(Request request) async {
+    // Простая проверка, что код обновлен
+    print('=== UPLOAD PHOTO METHOD CALLED ===');
+    logger.info('=== UPLOAD PHOTO METHOD CALLED ===');
     return wrapResponse(() async {
       // Проверяем аутентификацию
       final authHeader = request.headers['Authorization'];
