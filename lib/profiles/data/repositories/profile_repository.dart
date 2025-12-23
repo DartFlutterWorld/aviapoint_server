@@ -9,7 +9,19 @@ class ProfileRepository {
 
   // /// Получить профиль пользователя
   Future<ProfileModel> fetchProfileByPhone(String phone) async {
-    final result = await _connection.execute(Sql.named('SELECT * FROM profiles WHERE phone = @phone'), parameters: {'phone': phone});
+    final result = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          p.*,
+          COALESCE(AVG(r.rating)::numeric, 0) as average_rating,
+          COUNT(r.id) FILTER (WHERE r.rating IS NOT NULL) as reviews_count
+        FROM profiles p
+        LEFT JOIN reviews r ON r.reviewed_id = p.id AND r.reply_to_review_id IS NULL AND r.rating IS NOT NULL
+        WHERE p.phone = @phone
+        GROUP BY p.id
+      '''),
+      parameters: {'phone': phone},
+    );
 
     final serializedState = result.first.toColumnMap();
     return ProfileModel.fromJson(serializedState);
@@ -17,7 +29,19 @@ class ProfileRepository {
 
   // /// Получить профиль пользователя
   Future<ProfileModel> fetchProfileById(int id) async {
-    final result = await _connection.execute(Sql.named('SELECT * FROM profiles WHERE id = @id'), parameters: {'id': id});
+    final result = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          p.*,
+          COALESCE(AVG(r.rating)::numeric, 0) as average_rating,
+          COUNT(r.id) FILTER (WHERE r.rating IS NOT NULL) as reviews_count
+        FROM profiles p
+        LEFT JOIN reviews r ON r.reviewed_id = p.id AND r.reply_to_review_id IS NULL AND r.rating IS NOT NULL
+        WHERE p.id = @id
+        GROUP BY p.id
+      '''),
+      parameters: {'id': id},
+    );
 
     final serializedState = result.first.toColumnMap();
     return ProfileModel.fromJson(serializedState);

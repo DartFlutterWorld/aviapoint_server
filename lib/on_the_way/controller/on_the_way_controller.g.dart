@@ -1,0 +1,92 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'on_the_way_controller.dart';
+
+// **************************************************************************
+// ShelfRouterGenerator
+// **************************************************************************
+
+Router _$OnTheWayControllerRouter(OnTheWayController service) {
+  final router = Router();
+  router.add(
+    'GET',
+    r'/api/flights',
+    service.getFlights,
+  );
+  router.add(
+    'GET',
+    r'/api/flights/my',
+    service.getMyFlights,
+  );
+  router.add(
+    'GET',
+    r'/api/flights/<id>',
+    service.getFlight,
+  );
+  router.add(
+    'POST',
+    r'/api/flights',
+    service.createFlight,
+  );
+  router.add(
+    'PUT',
+    r'/api/flights/<id>',
+    service.updateFlight,
+  );
+  router.add(
+    'DELETE',
+    r'/api/flights/<id>',
+    service.deleteFlight,
+  );
+  router.add(
+    'GET',
+    r'/api/flights/<flightId>/bookings',
+    service.getBookingsByFlightId,
+  );
+  router.add(
+    'GET',
+    r'/api/bookings',
+    service.getBookings,
+  );
+  router.add(
+    'POST',
+    r'/api/bookings',
+    service.createBooking,
+  );
+  router.add(
+    'PUT',
+    r'/api/bookings/<id>/confirm',
+    service.confirmBooking,
+  );
+  router.add(
+    'PUT',
+    r'/api/bookings/<id>/cancel',
+    service.cancelBooking,
+  );
+  router.add(
+    'GET',
+    r'/api/reviews/<userId>',
+    service.getReviews,
+  );
+  router.add(
+    'GET',
+    r'/api/reviews/flight/<flightId>',
+    service.getReviewsByFlightId,
+  );
+  router.add(
+    'POST',
+    r'/api/reviews',
+    service.createReview,
+  );
+  router.add(
+    'PUT',
+    r'/api/reviews/<id>',
+    service.updateReview,
+  );
+  router.add(
+    'DELETE',
+    r'/api/reviews/<id>',
+    service.deleteReview,
+  );
+  return router;
+}

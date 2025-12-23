@@ -302,11 +302,6 @@ class PaymentController {
                 'description': paymentObject['description']?.toString() ?? '',
               };
             }
-
-            if (paymentRow == null) {
-              logger.severe('Payment not found in database and no paymentObject available: $paymentId');
-              return Response.ok(jsonEncode({'status': 'ok', 'message': 'Payment not found'}), headers: jsonContentHeaders);
-            }
             final userId = paymentRow['user_id'] as int?;
             final subscriptionTypeStr = paymentRow['subscription_type'] as String?;
             final periodDaysValue = paymentRow['period_days'];

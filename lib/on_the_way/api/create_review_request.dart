@@ -1,12 +1,20 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:json_annotation/json_annotation.dart';
 
-part 'create_review_request.freezed.dart';
 part 'create_review_request.g.dart';
 
-@freezed
-class CreateReviewRequest with _$CreateReviewRequest {
-  const factory CreateReviewRequest({@JsonKey(name: 'booking_id') required int bookingId, @JsonKey(name: 'reviewed_id') required int reviewedId, required int rating, String? comment}) =
-      _CreateReviewRequest;
+@JsonSerializable()
+class CreateReviewRequest {
+  @JsonKey(name: 'booking_id')
+  final int bookingId;
+  @JsonKey(name: 'reviewed_id')
+  final int reviewedId;
+  final int? rating;
+  final String? comment;
+  @JsonKey(name: 'reply_to_review_id')
+  final int? replyToReviewId;
+
+  CreateReviewRequest({required this.bookingId, required this.reviewedId, this.rating, this.comment, this.replyToReviewId});
 
   factory CreateReviewRequest.fromJson(Map<String, dynamic> json) => _$CreateReviewRequestFromJson(json);
+  Map<String, dynamic> toJson() => _$CreateReviewRequestToJson(this);
 }

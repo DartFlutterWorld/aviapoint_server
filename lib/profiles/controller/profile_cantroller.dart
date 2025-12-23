@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
+import 'dart:convert' show utf8, jsonEncode, jsonDecode;
 import 'dart:io';
 
 import 'package:aviapoint_server/auth/token/token_service.dart';
@@ -13,9 +13,7 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_open_api/shelf_open_api.dart';
 import 'package:shelf_router/shelf_router.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:http_parser/http_parser.dart' show MediaType;
-import 'dart:convert' show utf8;
 import 'package:path/path.dart' as path;
 
 part 'profile_cantroller.g.dart';
@@ -25,8 +23,6 @@ class ProfileController {
   ProfileController({required ProfileRepository profileRepository}) : _profileRepository = profileRepository;
 
   Router get router => _$ProfileControllerRouter(this);
-
-  @protected
 
   ///
   /// Создание пользователя

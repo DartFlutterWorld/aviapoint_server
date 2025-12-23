@@ -115,4 +115,62 @@ ${lastName != null && lastName.isNotEmpty ? '👤 <b>Фамилия:</b> $lastNa
 
     await sendMessage(message);
   }
+
+  /// Уведомление о новом отзыве
+  Future<void> notifyReviewCreated({
+    required int reviewId,
+    required int flightId,
+    required int pilotId,
+    required int passengerId,
+    required String departureAirport,
+    required String arrivalAirport,
+    required DateTime departureDate,
+    required String pilotName,
+    required String passengerName,
+    required int reviewerId,
+    required int reviewedId,
+    required int rating,
+    String? comment,
+    bool isReply = false,
+  }) async {
+    // Определяем, кто оставил отзыв (пилот или пассажир)
+    final isPilotReview = reviewerId == pilotId;
+    final reviewerName = isPilotReview ? pilotName : passengerName;
+    final reviewedName = isPilotReview ? passengerName : pilotName;
+
+    // Форматируем дату полёта
+    final flightDate = departureDate.toLocal().toString().substring(0, 16);
+
+    // Формируем звёздочки для рейтинга
+    final stars = '⭐' * rating + '☆' * (5 - rating);
+
+    final message = isReply
+        ? '''
+💬 <b>Новый ответ на отзыв</b>
+
+✈️ <b>Полёт:</b> $departureAirport → $arrivalAirport
+📅 <b>Дата полёта:</b> $flightDate
+🆔 <b>ID полёта:</b> $flightId
+
+👤 <b>От:</b> $reviewerName
+👤 <b>Для:</b> $reviewedName
+${comment != null && comment.isNotEmpty ? '💬 <b>Комментарий:</b> $comment' : ''}
+🕐 <b>Время:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+'''
+        : '''
+⭐ <b>Новый отзыв о полёте</b>
+
+✈️ <b>Полёт:</b> $departureAirport → $arrivalAirport
+📅 <b>Дата полёта:</b> $flightDate
+🆔 <b>ID полёта:</b> $flightId
+
+👤 <b>От:</b> $reviewerName
+👤 <b>Для:</b> $reviewedName
+⭐ <b>Рейтинг:</b> $stars ($rating/5)
+${comment != null && comment.isNotEmpty ? '💬 <b>Комментарий:</b> $comment' : ''}
+🕐 <b>Время:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+''';
+
+    await sendMessage(message);
+  }
 }

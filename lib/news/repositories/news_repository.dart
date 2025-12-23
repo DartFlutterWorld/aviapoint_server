@@ -1,7 +1,6 @@
 import 'package:aviapoint_server/logger/logger.dart';
 import 'package:aviapoint_server/news/model/category_news_model.dart';
 import 'package:aviapoint_server/news/model/news_model.dart';
-import 'package:aviapoint_server/stories/model/story_model.dart';
 import 'package:postgres/postgres.dart';
 
 class NewsRepository {

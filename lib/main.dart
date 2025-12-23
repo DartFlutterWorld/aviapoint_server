@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:aviapoint_server/auth/controller/auth_controller.dart';
-import 'package:aviapoint_server/auth/token/token_service.dart';
 import 'package:aviapoint_server/core/config/config.dart';
 import 'package:aviapoint_server/core/setup_dependencies/setup_dependencies.dart';
 import 'package:aviapoint_server/learning/hand_book/controllers/hand_book_cantroller.dart';
@@ -14,7 +12,11 @@ import 'package:aviapoint_server/logger/logger.dart';
 import 'package:aviapoint_server/stories/controllers/stories_controller.dart';
 import 'package:aviapoint_server/payments/controllers/payment_controller.dart';
 import 'package:aviapoint_server/subscriptions/controllers/subscription_controller.dart';
+import 'package:aviapoint_server/core/migrations/migration_manager.dart';
+import 'package:aviapoint_server/on_the_way/controller/airport_controller.dart';
 import 'package:aviapoint_server/on_the_way/controller/on_the_way_controller.dart';
+import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
+import 'package:aviapoint_server/on_the_way/services/flight_status_service.dart';
 import 'package:postgres/postgres.dart';
 import 'package:talker/talker.dart';
 import 'package:shelf/shelf.dart';
@@ -46,14 +48,47 @@ Future<void> main() async {
   await getIt.allReady();
   logger.info('All dependencies are ready');
 
+  // Запускаем сервис автоматического управления статусами полётов
+  final onTheWayRepository = await getIt.getAsync<OnTheWayRepository>();
+  final flightStatusService = FlightStatusService(repository: onTheWayRepository);
+  flightStatusService.start();
+  logger.info('✅ Flight status service started (auto-complete after 24h, notifications after 12h)');
+
+  // Убеждаемся, что AirportController загружен
+  await getIt.getAsync<AirportController>();
+
   // Проверяем что соединение с БД установлено
+  Connection? connection;
   try {
-    await getIt.getAsync<Connection>();
+    connection = await getIt.getAsync<Connection>();
     logger.info('Database connection verified: host=${Config.dbHost}, database=${Config.database}');
+
+    // Выполняем миграции при старте сервера (опционально, можно отключить)
+    // Раскомментируйте следующую строку, если хотите автоматические миграции при старте:
+    final migrationManager = MigrationManager(connection: connection);
+    await migrationManager.runMigrations();
   } catch (e) {
     logger.severe('Failed to get database connection: $e');
     rethrow;
   }
+
+  // Middleware для логирования статических запросов
+  Handler logStaticRequests(Handler handler) {
+    return (Request request) async {
+      final path = request.url.path;
+      // Логируем только запросы к статическим файлам (не API)
+      if (!path.startsWith('/api/') && (path.startsWith('/profiles/') || path.startsWith('/stories/') || path.startsWith('/news/'))) {
+        logger.info('📁 Static file request: ${request.method} ${request.url}');
+      }
+      final response = await handler(request);
+      if (response.statusCode == 404 && !path.startsWith('/api/')) {
+        logger.info('⚠️ Static file not found: ${request.url}');
+      }
+      return response;
+    };
+  }
+
+  final staticHandler = createStaticHandler('public/', listDirectories: true);
 
   final handler = Cascade()
       .add(getIt<ProfileController>().router)
@@ -66,38 +101,10 @@ Future<void> main() async {
       .add(getIt<PaymentController>().router)
       .add(getIt<SubscriptionController>().router)
       .add(getIt<OnTheWayController>().router)
-      .add(createStaticHandler('public/', listDirectories: true))
+      .add(getIt<AirportController>().router)
+      .add(logStaticRequests(staticHandler))
       .add(Router()..mount('/api/openapi', SwaggerUI('public/open_api.yaml', docExpansion: DocExpansion.list, syntaxHighlightTheme: SyntaxHighlightTheme.tomorrowNight, title: 'Swagger AviaPoint')))
       .handler;
-
-  Middleware checkAuth() {
-    return (Handler innerHandler) {
-      return (Request request) async {
-        // Здесь проверяем аутентификацию
-        // Например, проверяем заголовок Authorization
-        final authHeader = request.headers['Authorization'];
-
-        if (authHeader == null || !authHeader.startsWith('Bearer ')) {
-          return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
-        }
-
-        // Извлекаем токен
-        final token = authHeader.substring(7);
-
-        // Здесь должна быть логика проверки токена (например, через JWT)
-        // Это пример - замените на свою реальную проверку
-
-        final isValid = getIt.get<TokenService>().validateToken(token); // Ваша функция проверки токена
-
-        if (!isValid) {
-          return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
-        }
-
-        // Если всё ок, передаем запрос дальше
-        return innerHandler(request);
-      };
-    };
-  }
 
   Middleware logDatabaseRequests() {
     return (Handler handler) {
@@ -159,8 +166,12 @@ Future<void> main() async {
     rethrow;
   }
 
+  // Сохраняем ссылку на сервис для корректного завершения
+  final flightStatusServiceRef = flightStatusService;
+
   ProcessSignal.sigint.watch().listen((_) async {
     try {
+      flightStatusServiceRef.stop();
       final connection = await getIt.getAsync<Connection>();
       await connection.close();
       logger.info('Connection to PostgreSQL closed');

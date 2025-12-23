@@ -75,3 +75,4 @@ dart pub run build_runner build --delete-conflicting-outputs
 4. Запустить build_runner на фронтенде (уже выполнен)
 5. Протестировать работу кнопки "По пути" в приложении
 
+

@@ -13,6 +13,8 @@ ProfileModel _$ProfileModelFromJson(Map<String, dynamic> json) => ProfileModel(
       firstName: json['first_name'] as String?,
       lastName: json['last_name'] as String?,
       avatarUrl: json['avatar_url'] as String?,
+      averageRating: _doubleFromJsonNullable(json['average_rating']),
+      reviewsCount: _intFromJsonNullable(json['reviews_count']),
     );
 
 Map<String, dynamic> _$ProfileModelToJson(ProfileModel instance) {
@@ -31,5 +33,7 @@ Map<String, dynamic> _$ProfileModelToJson(ProfileModel instance) {
   writeNotNull('first_name', instance.firstName);
   writeNotNull('last_name', instance.lastName);
   writeNotNull('avatar_url', instance.avatarUrl);
+  writeNotNull('average_rating', instance.averageRating);
+  writeNotNull('reviews_count', instance.reviewsCount);
   return val;
 }

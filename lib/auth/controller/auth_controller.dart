@@ -11,22 +11,17 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_open_api/shelf_open_api.dart';
 import 'package:shelf_router/shelf_router.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'auth_controller.g.dart';
 
 class AuthController {
   final ProfileRepository _profileRepository;
   final TokenService _tokenService;
-  AuthController({required ProfileRepository profileRepository, required TokenService tokenService})
-      : _profileRepository = profileRepository,
-        _tokenService = tokenService;
+  AuthController({required ProfileRepository profileRepository, required TokenService tokenService}) : _profileRepository = profileRepository, _tokenService = tokenService;
 
   Router get router => _$AuthControllerRouter(this);
 
   String smsCode = '';
-
-  @protected
 
   ///
   /// Отправление sms
@@ -40,9 +35,9 @@ class AuthController {
     final json = jsonDecode(body) as Map<String, dynamic>;
     final phone = json['phone'] as String;
 
-    // Тестовый номер телефона - не отправляем SMS
-    const testPhone = '+79000000000';
-    if (phone == testPhone || phone == '79000000000' || phone == '9000000000') {
+    // Тестовые номера телефонов - не отправляем SMS
+    const testPhones = ['+79000000000', '79000000000', '9000000000', '+79000000001', '79000000001', '9000000001'];
+    if (testPhones.contains(phone)) {
       smsCode = '0000';
       print('Test phone detected: $phone, SMS code: $smsCode');
       // Возвращаем тот же формат, что и при обычной отправке SMS
@@ -104,9 +99,9 @@ class AuthController {
     final phone = json['phone'] as String;
     final sms = json['sms'] as String;
 
-    // Тестовый номер телефона - принимаем код 0000
-    const testPhone = '+79000000000';
-    final isTestPhone = phone == testPhone || phone == '79000000000' || phone == '9000000000';
+    // Тестовые номера телефонов - принимаем код 0000
+    const testPhones = ['+79000000000', '79000000000', '9000000000', '+79000000001', '79000000001', '9000000001'];
+    final isTestPhone = testPhones.contains(phone);
     final isValidCode = isTestPhone ? (sms == '0000') : (smsCode == sms);
 
     if (isValidCode) {
@@ -116,7 +111,7 @@ class AuthController {
         final token = _tokenService.generateAccessToken(profile.id.toString());
         final refreshToken = _tokenService.generateRefreshToken(profile.id.toString());
         return Response.ok(jsonEncode({"token": token, "refresh_token": refreshToken, "profile": profile, "expires_in": _tokenService.accessTokenExpiry.inSeconds}), headers: jsonContentHeaders);
-      } on Object catch (e, s) {
+      } on Object {
         final profile = await _profileRepository.createUser(phone: phone);
         final token = _tokenService.generateAccessToken(profile.id.toString());
         final refreshToken = _tokenService.generateRefreshToken(profile.id.toString());
@@ -171,8 +166,8 @@ class AuthController {
         jsonEncode({"token": newAccessToken, "refresh_token": newRefreshToken, "expires_in": _tokenService.accessTokenExpiry.inSeconds, "profile": profile, "token_type": "Bearer"}),
         headers: jsonContentHeaders,
       );
-    } catch (e, s) {
-      print('Refresh token error: $e\n$s');
+    } catch (e, stackTrace) {
+      print('Refresh token error: $e\n$stackTrace');
       return Response.internalServerError(body: jsonEncode({'error': 'Token refresh failed'}), headers: jsonContentHeaders);
     }
   }

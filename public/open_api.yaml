@@ -394,6 +394,205 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /api/flights:
+    get:
+      tags:
+        - OnTheWayController
+      summary: getFlights
+      operationId: getFlights
+      responses:
+        200:
+          description: "Operation completed!"
+    post:
+      tags:
+        - OnTheWayController
+      summary: createFlight
+      operationId: createFlight
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/flights/my:
+    get:
+      tags:
+        - OnTheWayController
+      summary: getMyFlights
+      operationId: getMyFlights
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/flights/<id>:
+    get:
+      tags:
+        - OnTheWayController
+      summary: getFlight
+      operationId: getFlight
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    put:
+      tags:
+        - OnTheWayController
+      summary: updateFlight
+      operationId: updateFlight
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - OnTheWayController
+      summary: deleteFlight
+      operationId: deleteFlight
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/flights/<flightId>/bookings:
+    get:
+      tags:
+        - OnTheWayController
+      summary: getBookingsByFlightId
+      operationId: getBookingsByFlightId
+      parameters:
+        - name: flightId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/bookings:
+    get:
+      tags:
+        - OnTheWayController
+      summary: getBookings
+      operationId: getBookings
+      responses:
+        200:
+          description: "Operation completed!"
+    post:
+      tags:
+        - OnTheWayController
+      summary: createBooking
+      operationId: createBooking
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/bookings/<id>/confirm:
+    put:
+      tags:
+        - OnTheWayController
+      summary: confirmBooking
+      operationId: confirmBooking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/bookings/<id>/cancel:
+    put:
+      tags:
+        - OnTheWayController
+      summary: cancelBooking
+      operationId: cancelBooking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/reviews/<userId>:
+    get:
+      tags:
+        - OnTheWayController
+      summary: getReviews
+      operationId: getReviews
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/reviews/flight/<flightId>:
+    get:
+      tags:
+        - OnTheWayController
+      summary: getReviewsByFlightId
+      operationId: getReviewsByFlightId
+      parameters:
+        - name: flightId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/reviews:
+    post:
+      tags:
+        - OnTheWayController
+      summary: createReview
+      operationId: createReview
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/reviews/<id>:
+    put:
+      tags:
+        - OnTheWayController
+      summary: updateReview
+      operationId: updateReview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - OnTheWayController
+      summary: deleteReview
+      operationId: deleteReview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
   /api/user:
     post:
       tags:
@@ -443,6 +642,45 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /api/airports:
+    get:
+      tags:
+        - AirportController
+      summary: Поиск аэропортов
+      operationId: searchAirports
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/airports/<code>:
+    get:
+      tags:
+        - AirportController
+      summary: Получить аэропорт по коду
+      operationId: getAirportByCode
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/airports/country/<country>:
+    get:
+      tags:
+        - AirportController
+      summary: Получить все аэропорты страны
+      operationId: getAirportsByCountry
+      parameters:
+        - name: country
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
 components: { }
 tags:
   - name: PaymentController
@@ -453,4 +691,6 @@ tags:
   - name: SubscriptionController
   - name: StoriesController
   - name: NewsController
+  - name: OnTheWayController
   - name: ProfileController
+  - name: AirportController
