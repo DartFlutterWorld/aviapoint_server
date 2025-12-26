@@ -80,11 +80,3 @@ int? _intFromJsonNullable(dynamic json) {
   if (json is String) return int.tryParse(json);
   return null;
 }
-
-/// Парсит int (не nullable)
-int _intFromJson(dynamic json) {
-  if (json is int) return json;
-  if (json is num) return json.toInt();
-  if (json is String) return int.parse(json);
-  throw FormatException('Cannot parse int from $json');
-}

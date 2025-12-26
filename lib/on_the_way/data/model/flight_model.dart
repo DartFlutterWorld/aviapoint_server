@@ -11,6 +11,28 @@ class FlightModel {
   final String departureAirport;
   @JsonKey(name: 'arrival_airport')
   final String arrivalAirport;
+  // Дополнительная информация об аэропорте отправления
+  @JsonKey(name: 'departure_airport_name')
+  final String? departureAirportName;
+  @JsonKey(name: 'departure_airport_city')
+  final String? departureAirportCity;
+  @JsonKey(name: 'departure_airport_region')
+  final String? departureAirportRegion;
+  @JsonKey(name: 'departure_airport_type')
+  final String? departureAirportType;
+  @JsonKey(name: 'departure_airport_ident_ru')
+  final String? departureAirportIdentRu;
+  // Дополнительная информация об аэропорте прибытия
+  @JsonKey(name: 'arrival_airport_name')
+  final String? arrivalAirportName;
+  @JsonKey(name: 'arrival_airport_city')
+  final String? arrivalAirportCity;
+  @JsonKey(name: 'arrival_airport_region')
+  final String? arrivalAirportRegion;
+  @JsonKey(name: 'arrival_airport_type')
+  final String? arrivalAirportType;
+  @JsonKey(name: 'arrival_airport_ident_ru')
+  final String? arrivalAirportIdentRu;
   @JsonKey(name: 'departure_date', toJson: _dateTimeToJson, fromJson: _dateTimeFromJson)
   final DateTime departureDate;
   @JsonKey(name: 'available_seats')
@@ -35,14 +57,26 @@ class FlightModel {
   final String? pilotLastName;
   @JsonKey(name: 'pilot_avatar_url')
   final String? pilotAvatarUrl;
-  @JsonKey(name: 'pilot_average_rating', fromJson: _doubleFromJsonNullable)
-  final double? pilotAverageRating;
+    @JsonKey(name: 'pilot_average_rating', fromJson: _doubleFromJsonNullable)
+    final double? pilotAverageRating;
+    @JsonKey(name: 'photos', fromJson: _photosFromJson)
+    final List<String>? photos;
 
   FlightModel({
     required this.id,
     required this.pilotId,
     required this.departureAirport,
     required this.arrivalAirport,
+    this.departureAirportName,
+    this.departureAirportCity,
+    this.departureAirportRegion,
+    this.departureAirportType,
+    this.departureAirportIdentRu,
+    this.arrivalAirportName,
+    this.arrivalAirportCity,
+    this.arrivalAirportRegion,
+    this.arrivalAirportType,
+    this.arrivalAirportIdentRu,
     required this.departureDate,
     required this.availableSeats,
     required this.pricePerSeat,
@@ -56,6 +90,7 @@ class FlightModel {
     this.pilotLastName,
     this.pilotAvatarUrl,
     this.pilotAverageRating,
+    this.photos,
   });
 
   factory FlightModel.fromJson(Map<String, dynamic> json) => _$FlightModelFromJson(json);
@@ -98,5 +133,14 @@ double? _doubleFromJsonNullable(dynamic json) {
   if (json is double) return json;
   if (json is num) return json.toDouble();
   if (json is String) return double.tryParse(json);
+  return null;
+}
+
+/// Парсит список фотографий из JSON
+List<String>? _photosFromJson(dynamic json) {
+  if (json == null) return null;
+  if (json is List) {
+    return json.map((e) => e.toString()).toList();
+  }
   return null;
 }

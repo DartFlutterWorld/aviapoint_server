@@ -15,6 +15,11 @@ BookingModel _$BookingModelFromJson(Map<String, dynamic> json) => BookingModel(
       status: json['status'] as String?,
       createdAt: _dateTimeFromJsonNullable(json['created_at']),
       updatedAt: _dateTimeFromJsonNullable(json['updated_at']),
+      passengerFirstName: json['passenger_first_name'] as String?,
+      passengerLastName: json['passenger_last_name'] as String?,
+      passengerAvatarUrl: json['passenger_avatar_url'] as String?,
+      passengerAverageRating:
+          _doubleFromJsonNullable(json['passenger_average_rating']),
     );
 
 Map<String, dynamic> _$BookingModelToJson(BookingModel instance) =>
@@ -27,4 +32,8 @@ Map<String, dynamic> _$BookingModelToJson(BookingModel instance) =>
       'status': instance.status,
       'created_at': _dateTimeToJsonNullable(instance.createdAt),
       'updated_at': _dateTimeToJsonNullable(instance.updatedAt),
+      'passenger_first_name': instance.passengerFirstName,
+      'passenger_last_name': instance.passengerLastName,
+      'passenger_avatar_url': instance.passengerAvatarUrl,
+      'passenger_average_rating': instance.passengerAverageRating,
     };

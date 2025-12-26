@@ -593,6 +593,35 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /api/flights/<id>/photos:
+    post:
+      tags:
+        - OnTheWayController
+      summary: uploadFlightPhotos
+      operationId: uploadFlightPhotos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - OnTheWayController
+      summary: deleteFlightPhoto
+      operationId: deleteFlightPhoto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
   /api/user:
     post:
       tags:
@@ -666,6 +695,20 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+    put:
+      tags:
+        - AirportController
+      summary: Обновить данные аэропорта (только для владельца)
+      operationId: updateAirport
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
   /api/airports/country/<country>:
     get:
       tags:
@@ -678,6 +721,118 @@ paths:
           required: true
           schema:
             type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/airports/<code>/feedback:
+    post:
+      tags:
+        - AirportController
+      summary: Отправить обратную связь об аэропорте
+      operationId: submitAirportFeedback
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/airports/<code>/photos:
+    post:
+      tags:
+        - AirportController
+      summary: Загрузить фотографии аэропорта
+      operationId: uploadAirportPhotos
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - AirportController
+      summary: Удалить фотографию аэропорта
+      operationId: deleteAirportPhoto
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/airports/<code>/visitor-photos:
+    post:
+      tags:
+        - AirportController
+      summary: Загрузить фотографии посетителей (доступно всем авторизованным пользователям)
+      operationId: uploadVisitorPhotos
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - AirportController
+      summary: Удалить фотографию посетителя
+      operationId: deleteVisitorPhoto
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/airports/<code>/is-owner:
+    get:
+      tags:
+        - AirportController
+      summary: "Проверить, является ли пользователь владельцем аэропорта"
+      operationId: checkIsOwner
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/airports/<code>/ownership-request:
+    post:
+      tags:
+        - AirportController
+      summary: Подать заявку на владение аэродромом
+      operationId: submitOwnershipRequest
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/feedback:
+    post:
+      tags:
+        - FeedbackController
+      summary: Отправить обратную связь
+      operationId: submitFeedback
       responses:
         200:
           description: "Operation completed!"
@@ -694,3 +849,4 @@ tags:
   - name: OnTheWayController
   - name: ProfileController
   - name: AirportController
+  - name: FeedbackController

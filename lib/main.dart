@@ -15,6 +15,7 @@ import 'package:aviapoint_server/subscriptions/controllers/subscription_controll
 import 'package:aviapoint_server/core/migrations/migration_manager.dart';
 import 'package:aviapoint_server/on_the_way/controller/airport_controller.dart';
 import 'package:aviapoint_server/on_the_way/controller/on_the_way_controller.dart';
+import 'package:aviapoint_server/on_the_way/controller/feedback_controller.dart';
 import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
 import 'package:aviapoint_server/on_the_way/services/flight_status_service.dart';
 import 'package:postgres/postgres.dart';
@@ -54,8 +55,9 @@ Future<void> main() async {
   flightStatusService.start();
   logger.info('✅ Flight status service started (auto-complete after 24h, notifications after 12h)');
 
-  // Убеждаемся, что AirportController загружен
+  // Убеждаемся, что контроллеры загружены
   await getIt.getAsync<AirportController>();
+  await getIt.getAsync<FeedbackController>();
 
   // Проверяем что соединение с БД установлено
   Connection? connection;
@@ -102,6 +104,7 @@ Future<void> main() async {
       .add(getIt<SubscriptionController>().router)
       .add(getIt<OnTheWayController>().router)
       .add(getIt<AirportController>().router)
+      .add(getIt<FeedbackController>().router)
       .add(logStaticRequests(staticHandler))
       .add(Router()..mount('/api/openapi', SwaggerUI('public/open_api.yaml', docExpansion: DocExpansion.list, syntaxHighlightTheme: SyntaxHighlightTheme.tomorrowNight, title: 'Swagger AviaPoint')))
       .handler;

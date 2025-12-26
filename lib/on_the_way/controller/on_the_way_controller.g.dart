@@ -88,5 +88,15 @@ Router _$OnTheWayControllerRouter(OnTheWayController service) {
     r'/api/reviews/<id>',
     service.deleteReview,
   );
+  router.add(
+    'POST',
+    r'/api/flights/<id>/photos',
+    service.uploadFlightPhotos,
+  );
+  router.add(
+    'DELETE',
+    r'/api/flights/<id>/photos',
+    service.deleteFlightPhoto,
+  );
   return router;
 }

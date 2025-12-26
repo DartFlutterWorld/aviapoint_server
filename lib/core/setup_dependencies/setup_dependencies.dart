@@ -22,8 +22,11 @@ import 'package:aviapoint_server/subscriptions/repositories/subscription_reposit
 import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
 import 'package:aviapoint_server/on_the_way/controller/airport_controller.dart';
 import 'package:aviapoint_server/on_the_way/controller/on_the_way_controller.dart';
+import 'package:aviapoint_server/on_the_way/controller/feedback_controller.dart';
 import 'package:aviapoint_server/on_the_way/repositories/airport_repository.dart';
 import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
+import 'package:aviapoint_server/on_the_way/repositories/feedback_repository.dart';
+import 'package:aviapoint_server/on_the_way/repositories/airport_ownership_repository.dart';
 import 'package:postgres/postgres.dart';
 import 'package:get_it/get_it.dart';
 
@@ -161,15 +164,37 @@ Future<void> setupDependencies() async {
     return AirportRepository(connection: connection);
   });
 
+  // Airport Ownership Repository
+  getIt.registerSingletonAsync<AirportOwnershipRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return AirportOwnershipRepository(connection: connection);
+  });
+
   // Airport Controller
   getIt.registerSingletonAsync<AirportController>(() async {
     final airportRepository = await getIt.getAsync<AirportRepository>();
-    return AirportController(airportRepository: airportRepository);
+    final ownershipRepository = await getIt.getAsync<AirportOwnershipRepository>();
+    final profileRepository = await getIt.getAsync<ProfileRepository>();
+    return AirportController(
+      airportRepository: airportRepository,
+      ownershipRepository: ownershipRepository,
+      profileRepository: profileRepository,
+    );
   });
 
   getIt.registerSingletonAsync<OnTheWayController>(() async {
     final onTheWayRepository = await getIt.getAsync<OnTheWayRepository>();
     return OnTheWayController(onTheWayRepository: onTheWayRepository);
+  });
+
+  getIt.registerSingletonAsync<FeedbackRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return FeedbackRepository(connection: connection);
+  });
+
+  getIt.registerSingletonAsync<FeedbackController>(() async {
+    final feedbackRepository = await getIt.getAsync<FeedbackRepository>();
+    return FeedbackController(feedbackRepository: feedbackRepository);
   });
 
   // Инициализируем Telegram бота

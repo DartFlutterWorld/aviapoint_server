@@ -4,7 +4,17 @@ part 'profile_model.g.dart';
 
 @JsonSerializable(includeIfNull: false, fieldRename: FieldRename.snake, createToJson: true)
 class ProfileModel {
-  ProfileModel({required this.id, required this.phone, this.email, this.firstName, this.lastName, this.avatarUrl, this.averageRating, this.reviewsCount});
+  ProfileModel({
+    required this.id,
+    required this.phone,
+    this.email,
+    this.firstName,
+    this.lastName,
+    this.avatarUrl,
+    this.averageRating,
+    this.reviewsCount,
+    this.ownedAirports,
+  });
 
   final int id;
   final String phone;
@@ -16,6 +26,7 @@ class ProfileModel {
   final double? averageRating;
   @JsonKey(fromJson: _intFromJsonNullable)
   final int? reviewsCount;
+  final dynamic ownedAirports; // JSONB массив ID аэропортов
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) => _$ProfileModelFromJson(json);
 

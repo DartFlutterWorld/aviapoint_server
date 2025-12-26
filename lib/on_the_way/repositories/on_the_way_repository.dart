@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:aviapoint_server/on_the_way/data/model/booking_model.dart';
 import 'package:aviapoint_server/on_the_way/data/model/flight_model.dart';
 import 'package:aviapoint_server/on_the_way/data/model/review_model.dart';
@@ -37,9 +38,28 @@ class OnTheWayRepository {
           WHERE reviewed_id = p.id 
             AND reply_to_review_id IS NULL 
             AND rating IS NOT NULL
-        ), 0) AS pilot_average_rating
+        ), 0) AS pilot_average_rating,
+        COALESCE((
+          SELECT json_agg(photo_url ORDER BY created_at)
+          FROM flight_photos
+          WHERE flight_id = f.id
+        ), '[]'::json) AS photos,
+        -- Информация об аэропорте отправления
+        dep_airport.name AS departure_airport_name,
+        dep_airport.city AS departure_airport_city,
+        dep_airport.region AS departure_airport_region,
+        dep_airport.type AS departure_airport_type,
+        dep_airport.ident_ru AS departure_airport_ident_ru,
+        -- Информация об аэропорте прибытия
+        arr_airport.name AS arrival_airport_name,
+        arr_airport.city AS arrival_airport_city,
+        arr_airport.region AS arrival_airport_region,
+        arr_airport.type AS arrival_airport_type,
+        arr_airport.ident_ru AS arrival_airport_ident_ru
       FROM flights f
       LEFT JOIN profiles p ON f.pilot_id = p.id
+      LEFT JOIN airports dep_airport ON f.departure_airport = dep_airport.ident
+      LEFT JOIN airports arr_airport ON f.arrival_airport = arr_airport.ident
       LEFT JOIN (
         SELECT 
           flight_id,
@@ -144,9 +164,28 @@ class OnTheWayRepository {
             WHERE reviewed_id = p.id 
               AND reply_to_review_id IS NULL 
               AND rating IS NOT NULL
-          ), 0) AS pilot_average_rating
+          ), 0) AS pilot_average_rating,
+          COALESCE((
+            SELECT json_agg(photo_url ORDER BY created_at)
+            FROM flight_photos
+            WHERE flight_id = f.id
+          ), '[]'::json) AS photos,
+          -- Информация об аэропорте отправления
+          dep_airport.name AS departure_airport_name,
+          dep_airport.city AS departure_airport_city,
+          dep_airport.region AS departure_airport_region,
+          dep_airport.type AS departure_airport_type,
+          dep_airport.ident_ru AS departure_airport_ident_ru,
+          -- Информация об аэропорте прибытия
+          arr_airport.name AS arrival_airport_name,
+          arr_airport.city AS arrival_airport_city,
+          arr_airport.region AS arrival_airport_region,
+          arr_airport.type AS arrival_airport_type,
+          arr_airport.ident_ru AS arrival_airport_ident_ru
         FROM flights f
         LEFT JOIN profiles p ON f.pilot_id = p.id
+        LEFT JOIN airports dep_airport ON f.departure_airport = dep_airport.ident
+        LEFT JOIN airports arr_airport ON f.arrival_airport = arr_airport.ident
         WHERE f.id = @id
       '''),
       parameters: {'id': id},
@@ -295,15 +334,37 @@ class OnTheWayRepository {
 
   // Получение бронирований пользователя
   Future<List<BookingModel>> fetchBookings({int? userId}) async {
-    var query = 'SELECT * FROM bookings';
+    var query = '''
+      SELECT 
+        b.id,
+        b.flight_id,
+        b.passenger_id,
+        b.seats_count,
+        b.total_price,
+        b.status,
+        b.created_at,
+        b.updated_at,
+        p.first_name AS passenger_first_name,
+        p.last_name AS passenger_last_name,
+        p.avatar_url AS passenger_avatar_url,
+        COALESCE((
+          SELECT AVG(rating)::numeric
+          FROM reviews
+          WHERE reviewed_id = p.id 
+            AND reply_to_review_id IS NULL 
+            AND rating IS NOT NULL
+        ), 0) AS passenger_average_rating
+      FROM bookings b
+      LEFT JOIN profiles p ON b.passenger_id = p.id
+    ''';
     final parameters = <String, dynamic>{};
 
     if (userId != null) {
-      query += ' WHERE passenger_id = @user_id';
+      query += ' WHERE b.passenger_id = @user_id';
       parameters['user_id'] = userId;
     }
 
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY b.created_at DESC';
 
     final result = await _connection.execute(Sql.named(query), parameters: parameters);
 
@@ -315,7 +376,34 @@ class OnTheWayRepository {
 
   // Получение бронирований по flight_id (для пилота)
   Future<List<BookingModel>> fetchBookingsByFlightId(int flightId) async {
-    final result = await _connection.execute(Sql.named('SELECT * FROM bookings WHERE flight_id = @flight_id ORDER BY created_at DESC'), parameters: {'flight_id': flightId});
+    final result = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          b.id,
+          b.flight_id,
+          b.passenger_id,
+          b.seats_count,
+          b.total_price,
+          b.status,
+          b.created_at,
+          b.updated_at,
+          p.first_name AS passenger_first_name,
+          p.last_name AS passenger_last_name,
+          p.avatar_url AS passenger_avatar_url,
+          COALESCE((
+            SELECT AVG(rating)::numeric
+            FROM reviews
+            WHERE reviewed_id = p.id 
+              AND reply_to_review_id IS NULL 
+              AND rating IS NOT NULL
+          ), 0) AS passenger_average_rating
+        FROM bookings b
+        LEFT JOIN profiles p ON b.passenger_id = p.id
+        WHERE b.flight_id = @flight_id
+        ORDER BY b.created_at DESC
+      '''),
+      parameters: {'flight_id': flightId},
+    );
 
     return result.map((row) {
       final map = row.toColumnMap();
@@ -375,6 +463,31 @@ class OnTheWayRepository {
       print('🔵 [OnTheWayRepository] createBooking DB field "$key": value=$value, type=${value.runtimeType}');
     });
 
+    // Получаем данные пассажира через JOIN
+    final passengerResult = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          p.first_name AS passenger_first_name,
+          p.last_name AS passenger_last_name,
+          p.avatar_url AS passenger_avatar_url,
+          COALESCE((
+            SELECT AVG(rating)::numeric
+            FROM reviews
+            WHERE reviewed_id = p.id 
+              AND reply_to_review_id IS NULL 
+              AND rating IS NOT NULL
+          ), 0) AS passenger_average_rating
+        FROM profiles p
+        WHERE p.id = @passenger_id
+      '''),
+      parameters: {'passenger_id': passengerId},
+    );
+
+    if (passengerResult.isNotEmpty) {
+      final passengerMap = passengerResult.first.toColumnMap();
+      map.addAll(passengerMap);
+    }
+
     final booking = BookingModel.fromJson(map);
     print('🔵 [OnTheWayRepository] createBooking parsed BookingModel: ${booking.toJson()}');
     return booking;
@@ -392,8 +505,39 @@ class OnTheWayRepository {
       parameters: {'id': id},
     );
 
-    final map = result.first.toColumnMap();
-    return BookingModel.fromJson(map);
+    if (result.isEmpty) {
+      throw Exception('Booking not found');
+    }
+
+    // Получаем данные пассажира через JOIN
+    final bookingMap = result.first.toColumnMap();
+    final passengerId = bookingMap['passenger_id'] as int;
+
+    final passengerResult = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          p.first_name AS passenger_first_name,
+          p.last_name AS passenger_last_name,
+          p.avatar_url AS passenger_avatar_url,
+          COALESCE((
+            SELECT AVG(rating)::numeric
+            FROM reviews
+            WHERE reviewed_id = p.id 
+              AND reply_to_review_id IS NULL 
+              AND rating IS NOT NULL
+          ), 0) AS passenger_average_rating
+        FROM profiles p
+        WHERE p.id = @passenger_id
+      '''),
+      parameters: {'passenger_id': passengerId},
+    );
+
+    if (passengerResult.isNotEmpty) {
+      final passengerMap = passengerResult.first.toColumnMap();
+      bookingMap.addAll(passengerMap);
+    }
+
+    return BookingModel.fromJson(bookingMap);
   }
 
   // Отмена бронирования
@@ -408,8 +552,39 @@ class OnTheWayRepository {
       parameters: {'id': id},
     );
 
-    final map = result.first.toColumnMap();
-    return BookingModel.fromJson(map);
+    if (result.isEmpty) {
+      throw Exception('Booking not found');
+    }
+
+    // Получаем данные пассажира через JOIN
+    final bookingMap = result.first.toColumnMap();
+    final passengerId = bookingMap['passenger_id'] as int;
+
+    final passengerResult = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          p.first_name AS passenger_first_name,
+          p.last_name AS passenger_last_name,
+          p.avatar_url AS passenger_avatar_url,
+          COALESCE((
+            SELECT AVG(rating)::numeric
+            FROM reviews
+            WHERE reviewed_id = p.id 
+              AND reply_to_review_id IS NULL 
+              AND rating IS NOT NULL
+          ), 0) AS passenger_average_rating
+        FROM profiles p
+        WHERE p.id = @passenger_id
+      '''),
+      parameters: {'passenger_id': passengerId},
+    );
+
+    if (passengerResult.isNotEmpty) {
+      final passengerMap = passengerResult.first.toColumnMap();
+      bookingMap.addAll(passengerMap);
+    }
+
+    return BookingModel.fromJson(bookingMap);
   }
 
   // Получение отзывов о пользователе
@@ -758,5 +933,117 @@ class OnTheWayRepository {
 
     final row = result.first.toColumnMap();
     return {'id': row['id'], 'name': row['name'], 'phone': row['phone'], 'email': row['email']};
+  }
+
+  // Загрузка фотографий к полету
+  Future<List<String>> uploadFlightPhotos({
+    required int flightId,
+    required int uploadedBy,
+    required List<String> photoUrls,
+  }) async {
+    // Вставляем все фотографии
+    for (final photoUrl in photoUrls) {
+      await _connection.execute(
+        Sql.named('''
+          INSERT INTO flight_photos (flight_id, photo_url, uploaded_by)
+          VALUES (@flight_id, @photo_url, @uploaded_by)
+        '''),
+        parameters: {
+          'flight_id': flightId,
+          'photo_url': photoUrl,
+          'uploaded_by': uploadedBy,
+        },
+      );
+    }
+
+    // Возвращаем список всех фотографий полета
+    final result = await _connection.execute(
+      Sql.named('''
+        SELECT photo_url
+        FROM flight_photos
+        WHERE flight_id = @flight_id
+        ORDER BY created_at
+      '''),
+      parameters: {'flight_id': flightId},
+    );
+
+    return result.map((row) => row[0] as String).toList();
+  }
+
+  // Удаление фотографии полета
+  Future<List<String>> deleteFlightPhoto({
+    required int flightId,
+    required String photoUrl,
+    required int userId,
+  }) async {
+    // Проверяем, что фотография существует и принадлежит пользователю
+    final checkResult = await _connection.execute(
+      Sql.named('''
+        SELECT id, uploaded_by
+        FROM flight_photos
+        WHERE flight_id = @flight_id AND photo_url = @photo_url
+      '''),
+      parameters: {
+        'flight_id': flightId,
+        'photo_url': photoUrl,
+      },
+    );
+
+    if (checkResult.isEmpty) {
+      throw Exception('Photo not found');
+    }
+
+    final photoRow = checkResult.first.toColumnMap();
+    final uploadedBy = photoRow['uploaded_by'] as int;
+
+    // Проверяем, что пользователь является владельцем фотографии или пилотом полета
+    final flight = await fetchFlightById(flightId);
+    if (flight == null) {
+      throw Exception('Flight not found');
+    }
+
+    final isPhotoOwner = uploadedBy == userId;
+    final isPilot = flight.pilotId == userId;
+
+    if (!isPhotoOwner && !isPilot) {
+      throw Exception('You can only delete your own photos or photos from your flights');
+    }
+
+    // Удаляем запись из БД
+    await _connection.execute(
+      Sql.named('''
+        DELETE FROM flight_photos
+        WHERE flight_id = @flight_id AND photo_url = @photo_url
+      '''),
+      parameters: {
+        'flight_id': flightId,
+        'photo_url': photoUrl,
+      },
+    );
+
+    // Удаляем файл с диска
+    try {
+      final filePath = 'public/$photoUrl';
+      final file = File(filePath);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (e) {
+      // Игнорируем ошибки удаления файла (файл может уже не существовать)
+      print('Warning: Failed to delete photo file: $e');
+    }
+
+    // Возвращаем обновленный список фотографий
+    final result = await _connection.execute(
+      Sql.named('''
+        SELECT photo_url
+        FROM flight_photos
+        WHERE flight_id = @flight_id
+        ORDER BY created_at
+      '''),
+      parameters: {'flight_id': flightId},
+    );
+
+    return result.map((row) => row[0] as String).toList();
   }
 }

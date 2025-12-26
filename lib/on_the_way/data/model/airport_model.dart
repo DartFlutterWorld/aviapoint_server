@@ -6,53 +6,106 @@ part 'airport_model.g.dart';
 @JsonSerializable()
 class AirportModel {
   final int id;
-  final String ident; // ICAO код
-  final String type; // airport, heliport, seaplane_base, etc.
-  final String name;
-  final double latitudeDeg;
-  final double longitudeDeg;
-  final int? elevationFt;
-  final String? continent;
-  final String isoCountry; // RU, US, etc.
-  final String? isoRegion; // RU-MOW, US-CA, etc.
-  final String? municipality; // Город
-  final String? scheduledService; // yes/no
-  final String? gpsCode;
-  final String? iataCode; // IATA код
-  final String? localCode;
-
-  // Расширяемые поля
-  final Map<String, dynamic>? services; // JSON объект с услугами
-  final int? ownerId; // Владелец аэропорта
-  final bool isVerified;
+  
+  // Основные данные из АОПА
   final bool isActive;
-
+  final String type; // Вертодром, Аэродром и т.д.
+  final String name;
+  @JsonKey(name: 'name_eng')
+  final String? nameEng;
+  final String? city;
+  final String ident; // Код аэродрома (например, HEE1)
+  @JsonKey(name: 'ident_ru')
+  final String? identRu; // Русский код (например, ХЕЕ1)
+  @JsonKey(name: 'country_code')
+  final String? countryCode; // UU-RUSSIA
+  final String? country;
+  @JsonKey(name: 'country_eng')
+  final String? countryEng;
+  final String? region;
+  @JsonKey(name: 'region_eng')
+  final String? regionEng;
+  @JsonKey(name: 'coordinates_text')
+  final String? coordinatesText; // КТА
+  @JsonKey(name: 'longitude_deg')
+  final double longitudeDeg;
+  @JsonKey(name: 'latitude_deg')
+  final double latitudeDeg;
+  @JsonKey(name: 'elevation_ft')
+  final int? elevationFt;
+  final String? ownership; // Принадлежность
+  @JsonKey(name: 'is_international')
+  final bool isInternational;
+  final String? email;
+  final String? website;
+  final String? notes;
+  
+  // Данные о ВПП
+  @JsonKey(name: 'runway_name')
+  final String? runwayName;
+  @JsonKey(name: 'runway_length')
+  final int? runwayLength;
+  @JsonKey(name: 'runway_width')
+  final int? runwayWidth;
+  @JsonKey(name: 'runway_surface')
+  final String? runwaySurface;
+  @JsonKey(name: 'runway_magnetic_course')
+  final String? runwayMagneticCourse;
+  @JsonKey(name: 'runway_lighting')
+  final String? runwayLighting;
+  
+  // Дополнительные поля
+  final Map<String, dynamic>? services; // JSON объект с услугами
+  @JsonKey(name: 'owner_id')
+  final int? ownerId;
+  @JsonKey(name: 'is_verified')
+  final bool isVerified;
+  final dynamic photos; // JSONB массив URL официальных фотографий
+  @JsonKey(name: 'visitor_photos')
+  final dynamic visitorPhotos; // JSONB массив URL фотографий посетителей
+  
   // Метаданные
-  final String source; // ourairports, manual, etc.
+  final String source;
+  @JsonKey(name: 'created_at')
   final DateTime createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime updatedAt;
 
   AirportModel({
     required this.id,
-    required this.ident,
+    required this.isActive,
     required this.type,
     required this.name,
-    required this.latitudeDeg,
+    this.nameEng,
+    this.city,
+    required this.ident,
+    this.identRu,
+    this.countryCode,
+    this.country,
+    this.countryEng,
+    this.region,
+    this.regionEng,
+    this.coordinatesText,
     required this.longitudeDeg,
+    required this.latitudeDeg,
     this.elevationFt,
-    this.continent,
-    required this.isoCountry,
-    this.isoRegion,
-    this.municipality,
-    this.scheduledService,
-    this.gpsCode,
-    this.iataCode,
-    this.localCode,
+    this.ownership,
+    this.isInternational = false,
+    this.email,
+    this.website,
+    this.notes,
+    this.runwayName,
+    this.runwayLength,
+    this.runwayWidth,
+    this.runwaySurface,
+    this.runwayMagneticCourse,
+    this.runwayLighting,
     this.services,
     this.ownerId,
     this.isVerified = false,
-    this.isActive = true,
-    this.source = 'ourairports',
+    this.photos,
+    this.visitorPhotos,
+    this.source = 'aopa',
     required this.createdAt,
     required this.updatedAt,
   });
@@ -75,25 +128,39 @@ class AirportModel {
 
     return AirportModel(
       id: _intFromJson(json['id']),
-      ident: json['ident'] as String,
+      isActive: _boolFromJson(json['is_active']) ?? true,
       type: json['type'] as String,
       name: json['name'] as String,
-      latitudeDeg: _doubleFromJson(json['latitude_deg']),
+      nameEng: json['name_eng'] as String?,
+      city: json['city'] as String?,
+      ident: json['ident'] as String,
+      identRu: json['ident_ru'] as String?,
+      countryCode: json['country_code'] as String?,
+      country: json['country'] as String?,
+      countryEng: json['country_eng'] as String?,
+      region: json['region'] as String?,
+      regionEng: json['region_eng'] as String?,
+      coordinatesText: json['coordinates_text'] as String?,
       longitudeDeg: _doubleFromJson(json['longitude_deg']),
+      latitudeDeg: _doubleFromJson(json['latitude_deg']),
       elevationFt: _intFromJsonNullable(json['elevation_ft']),
-      continent: json['continent'] as String?,
-      isoCountry: json['iso_country'] as String,
-      isoRegion: json['iso_region'] as String?,
-      municipality: json['municipality'] as String?,
-      scheduledService: json['scheduled_service'] as String?,
-      gpsCode: json['gps_code'] as String?,
-      iataCode: json['iata_code'] as String?,
-      localCode: json['local_code'] as String?,
+      ownership: json['ownership'] as String?,
+      isInternational: _boolFromJson(json['is_international']) ?? false,
+      email: json['email'] as String?,
+      website: json['website'] as String?,
+      notes: json['notes'] as String?,
+      runwayName: json['runway_name'] as String?,
+      runwayLength: _intFromJsonNullable(json['runway_length']),
+      runwayWidth: _intFromJsonNullable(json['runway_width']),
+      runwaySurface: json['runway_surface'] as String?,
+      runwayMagneticCourse: json['runway_magnetic_course'] as String?,
+      runwayLighting: json['runway_lighting'] as String?,
       services: services,
       ownerId: _intFromJsonNullable(json['owner_id']),
       isVerified: _boolFromJson(json['is_verified']) ?? false,
-      isActive: _boolFromJson(json['is_active']) ?? true,
-      source: json['source'] as String? ?? 'ourairports',
+      photos: json['photos'],
+      visitorPhotos: json['visitor_photos'], // Парсим фотографии посетителей
+      source: json['source'] as String? ?? 'aopa',
       createdAt: _dateTimeFromJson(json['created_at']),
       updatedAt: _dateTimeFromJson(json['updated_at']),
     );
@@ -155,7 +222,7 @@ class AirportModel {
     if (json is bool) {
       return json;
     } else if (json is String) {
-      return json.toLowerCase() == 'true' || json == '1';
+      return json.toLowerCase() == 'true' || json == '1' || json.toLowerCase() == 'да';
     } else if (json is int) {
       return json != 0;
     } else {

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:aviapoint_server/auth/token/token_service.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:aviapoint_server/core/setup_dependencies/setup_dependencies.dart';
 import 'package:aviapoint_server/core/wrap_response.dart';
 import 'package:aviapoint_server/on_the_way/api/create_booking_request.dart';
@@ -691,5 +693,334 @@ class OnTheWayController {
       print('Stack trace: $stackTrace');
       // Не прерываем выполнение, если уведомление не отправилось
     }
+  }
+
+  // Загрузка фотографий к полету
+  @Route.post('/api/flights/<id>/photos')
+  @OpenApiRoute()
+  Future<Response> uploadFlightPhotos(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+      }
+
+      final userIdStr = tokenService.getUserIdFromToken(token);
+      if (userIdStr == null || userIdStr.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final userId = int.parse(userIdStr);
+
+      // Получаем ID полета
+      final id = request.params['id'];
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Flight ID is required'}), headers: jsonContentHeaders);
+      }
+      final flightId = int.parse(id);
+
+      // Проверяем, что пользователь является участником полета (пилот или пассажир с подтвержденным бронированием)
+      final flight = await _onTheWayRepository.fetchFlightById(flightId);
+      if (flight == null) {
+        return Response.notFound(jsonEncode({'error': 'Flight not found'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем, является ли пользователь пилотом
+      final isPilot = flight.pilotId == userId;
+
+      // Если не пилот, проверяем, есть ли подтвержденное бронирование
+      if (!isPilot) {
+        final bookings = await _onTheWayRepository.fetchBookingsByFlightId(flightId);
+        final hasConfirmedBooking = bookings.any(
+          (b) => b.passengerId == userId && b.status == 'confirmed',
+        );
+        if (!hasConfirmedBooking) {
+          return Response.forbidden(
+            jsonEncode({'error': 'Only flight participants can upload photos'}),
+            headers: jsonContentHeaders,
+          );
+        }
+      }
+
+      // Проверяем Content-Type
+      final contentType = request.headers['Content-Type'];
+      if (contentType == null || !contentType.startsWith('multipart/form-data')) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Парсим multipart запрос (используем ту же логику, что и для профиля)
+      final mediaType = MediaType.parse(contentType);
+      final boundary = mediaType.parameters['boundary'];
+      if (boundary == null) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Missing boundary in Content-Type'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Читаем тело запроса
+      final bodyBytes = <int>[];
+      await for (final chunk in request.read()) {
+        bodyBytes.addAll(chunk);
+      }
+
+      // Парсим multipart вручную
+      final boundaryMarker = '--$boundary';
+      final boundaryBytes = utf8.encode(boundaryMarker);
+      final parts = <Map<String, dynamic>>[];
+
+      int searchStart = 0;
+      while (true) {
+        final boundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+        if (boundaryIndex == -1) break;
+
+        searchStart = boundaryIndex + boundaryBytes.length;
+        if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 13) searchStart++;
+        if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 10) searchStart++;
+
+        final nextBoundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+        final partEnd = nextBoundaryIndex == -1 ? bodyBytes.length : nextBoundaryIndex;
+
+        if (partEnd > searchStart) {
+          final partBytes = bodyBytes.sublist(searchStart, partEnd);
+          final partData = _parseMultipartPart(partBytes);
+          if (partData != null) {
+            parts.add(partData);
+          }
+        }
+
+        if (nextBoundaryIndex == -1) break;
+        searchStart = nextBoundaryIndex;
+      }
+
+      // Извлекаем все фотографии
+      final photoUrls = <String>[];
+      final publicDir = Directory('public');
+      if (!await publicDir.exists()) {
+        await publicDir.create(recursive: true);
+      }
+
+      final flightsDir = Directory('public/flights');
+      if (!await flightsDir.exists()) {
+        await flightsDir.create(recursive: true);
+      }
+
+      // Обрабатываем все части, которые содержат "photos" в имени
+      for (final part in parts) {
+        final contentDisposition = part['content-disposition'] as String?;
+        if (contentDisposition == null) continue;
+        
+        // Проверяем, содержит ли поле имя "photos" (может быть "photos", "photos[]", "photos[0]" и т.д.)
+        final isPhotoField = RegExp('name=["\']?photos').hasMatch(contentDisposition);
+        if (!isPhotoField) continue;
+        
+        final photoData = part['data'] as List<int>?;
+        if (photoData == null || photoData.isEmpty) continue;
+
+        // Валидация размера (максимум 5MB)
+        if (photoData.length > 5 * 1024 * 1024) {
+          return Response.badRequest(
+            body: jsonEncode({'error': 'File size exceeds 5MB limit'}),
+            headers: jsonContentHeaders,
+          );
+        }
+
+        // Определяем расширение
+        String extension = 'jpg';
+        final partContentType = part['content-type'] as String?;
+        if (partContentType != null) {
+          final partMediaType = MediaType.parse(partContentType);
+          if (partMediaType.subtype == 'jpeg' || partMediaType.subtype == 'jpg') {
+            extension = 'jpg';
+          } else if (partMediaType.subtype == 'png') {
+            extension = 'png';
+          }
+        }
+
+        // Сохраняем фото с уникальным именем для каждого файла
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final random = DateTime.now().microsecondsSinceEpoch % 1000000;
+        final index = photoUrls.length; // Индекс для уникальности каждого файла
+        final fileName = '$flightId.$timestamp.$random.$index.$extension';
+        final filePath = 'public/flights/$fileName';
+        final file = File(filePath);
+        await file.writeAsBytes(photoData);
+
+        photoUrls.add('flights/$fileName');
+      }
+
+      if (photoUrls.isEmpty) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'No photos provided'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Сохраняем фотографии в БД
+      await _onTheWayRepository.uploadFlightPhotos(
+        flightId: flightId,
+        uploadedBy: userId,
+        photoUrls: photoUrls,
+      );
+
+      // Получаем обновленный полет
+      final updatedFlight = await _onTheWayRepository.fetchFlightById(flightId);
+      if (updatedFlight == null) {
+        return Response.internalServerError(
+          body: jsonEncode({'error': 'Failed to fetch updated flight'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      return Response.ok(jsonEncode(updatedFlight), headers: jsonContentHeaders);
+    });
+  }
+
+  // Удаление фотографии полета
+  @Route.delete('/api/flights/<id>/photos')
+  @OpenApiRoute()
+  Future<Response> deleteFlightPhoto(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+      }
+
+      final userIdStr = tokenService.getUserIdFromToken(token);
+      if (userIdStr == null || userIdStr.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final userId = int.parse(userIdStr);
+
+      // Получаем ID полета
+      final id = request.params['id'];
+      if (id == null) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Flight ID is required'}),
+          headers: jsonContentHeaders,
+        );
+      }
+      final flightId = int.parse(id);
+
+      // Получаем photoUrl из query параметров или body
+      final photoUrl = request.url.queryParameters['photo_url'];
+      if (photoUrl == null || photoUrl.isEmpty) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Photo URL is required'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      try {
+        // Удаляем фотографию
+        await _onTheWayRepository.deleteFlightPhoto(
+          flightId: flightId,
+          photoUrl: photoUrl,
+          userId: userId,
+        );
+
+        // Получаем обновленный полет
+        final updatedFlight = await _onTheWayRepository.fetchFlightById(flightId);
+        if (updatedFlight == null) {
+          return Response.internalServerError(
+            body: jsonEncode({'error': 'Failed to fetch updated flight'}),
+            headers: jsonContentHeaders,
+          );
+        }
+
+        return Response.ok(jsonEncode(updatedFlight), headers: jsonContentHeaders);
+      } catch (e) {
+        return Response.badRequest(
+          body: jsonEncode({'error': e.toString()}),
+          headers: jsonContentHeaders,
+        );
+      }
+    });
+  }
+
+  // Вспомогательные методы для парсинга multipart (из profile_controller)
+  int _indexOfBytes(List<int> haystack, List<int> needle, int start) {
+    for (int i = start; i <= haystack.length - needle.length; i++) {
+      bool match = true;
+      for (int j = 0; j < needle.length; j++) {
+        if (haystack[i + j] != needle[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) return i;
+    }
+    return -1;
+  }
+
+  Map<String, dynamic>? _parseMultipartPart(List<int> partBytes) {
+    // Ищем разделитель между заголовками и телом
+    final crlf = [13, 10, 13, 10]; // \r\n\r\n
+    int headerEnd = -1;
+    for (int i = 0; i <= partBytes.length - crlf.length; i++) {
+      bool match = true;
+      for (int j = 0; j < crlf.length; j++) {
+        if (partBytes[i + j] != crlf[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        headerEnd = i + crlf.length;
+        break;
+      }
+    }
+
+    if (headerEnd == -1) return null;
+
+    // Парсим заголовки
+    final headerBytes = partBytes.sublist(0, headerEnd - crlf.length);
+    final headers = <String, String>{};
+    final headerLines = utf8.decode(headerBytes).split('\r\n');
+    for (final line in headerLines) {
+      final colonIndex = line.indexOf(':');
+      if (colonIndex > 0) {
+        final key = line.substring(0, colonIndex).trim().toLowerCase();
+        final value = line.substring(colonIndex + 1).trim();
+        headers[key] = value;
+      }
+    }
+
+    // Тело части
+    final bodyBytes = partBytes.sublist(headerEnd);
+    // Удаляем trailing CRLF если есть
+    if (bodyBytes.length >= 2 && bodyBytes[bodyBytes.length - 2] == 13 && bodyBytes[bodyBytes.length - 1] == 10) {
+      return {
+        ...headers,
+        'data': bodyBytes.sublist(0, bodyBytes.length - 2),
+      };
+    }
+
+    return {
+      ...headers,
+      'data': bodyBytes,
+    };
   }
 }

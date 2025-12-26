@@ -18,8 +18,30 @@ class BookingModel {
   final DateTime? createdAt;
   @JsonKey(name: 'updated_at', toJson: _dateTimeToJsonNullable, fromJson: _dateTimeFromJsonNullable)
   final DateTime? updatedAt;
+  // Данные пассажира (загружаются через JOIN в SQL)
+  @JsonKey(name: 'passenger_first_name')
+  final String? passengerFirstName;
+  @JsonKey(name: 'passenger_last_name')
+  final String? passengerLastName;
+  @JsonKey(name: 'passenger_avatar_url')
+  final String? passengerAvatarUrl;
+  @JsonKey(name: 'passenger_average_rating', fromJson: _doubleFromJsonNullable)
+  final double? passengerAverageRating;
 
-  BookingModel({required this.id, required this.flightId, required this.passengerId, required this.seatsCount, required this.totalPrice, this.status, this.createdAt, this.updatedAt});
+  BookingModel({
+    required this.id,
+    required this.flightId,
+    required this.passengerId,
+    required this.seatsCount,
+    required this.totalPrice,
+    this.status,
+    this.createdAt,
+    this.updatedAt,
+    this.passengerFirstName,
+    this.passengerLastName,
+    this.passengerAvatarUrl,
+    this.passengerAverageRating,
+  });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) => _$BookingModelFromJson(json);
   Map<String, dynamic> toJson() => _$BookingModelToJson(this);
@@ -50,4 +72,13 @@ DateTime? _dateTimeFromJsonNullable(dynamic json) {
     return null;
   }
   return _dateTimeFromJson(json);
+}
+
+/// Парсит nullable double
+double? _doubleFromJsonNullable(dynamic json) {
+  if (json == null) return null;
+  if (json is double) return json;
+  if (json is num) return json.toDouble();
+  if (json is String) return double.tryParse(json);
+  return null;
 }

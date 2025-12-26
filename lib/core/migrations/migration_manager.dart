@@ -95,6 +95,22 @@ class MigrationManager {
       _MigrationInfo(version: '005', name: 'add_avatar_url_to_profiles', file: 'migrations/add_avatar_url_to_profiles.sql'),
       _MigrationInfo(version: '006', name: 'add_reply_to_reviews', file: 'migrations/add_reply_to_reviews.sql'),
       _MigrationInfo(version: '007', name: 'make_rating_nullable_for_replies', file: 'migrations/make_rating_nullable_for_replies.sql'),
+      _MigrationInfo(version: '008', name: 'add_flight_photos_table', file: 'migrations/add_flight_photos_table.sql'),
+      _MigrationInfo(version: '009', name: 'recreate_airports_table_aopa', file: 'migrations/recreate_airports_table_aopa.sql'),
+      _MigrationInfo(version: '010', name: 'create_feedback_table', file: 'migrations/create_feedback_table.sql'),
+      _MigrationInfo(version: '011', name: 'create_airport_ownership_requests_table', file: 'migrations/create_airport_ownership_requests_table.sql'),
+      _MigrationInfo(version: '012', name: 'add_owned_airports_to_profiles', file: 'migrations/add_owned_airports_to_profiles.sql'),
+      _MigrationInfo(version: '013', name: 'add_user_id_to_payments', file: 'migrations/add_user_id_to_payments.sql'),
+      _MigrationInfo(version: '014', name: 'add_subscription_fields_to_profiles', file: 'migrations/add_subscription_fields_to_profiles.sql'),
+      _MigrationInfo(version: '015', name: 'add_subscription_fields_to_payments', file: 'migrations/add_subscription_fields_to_payments.sql'),
+      _MigrationInfo(version: '016', name: 'add_description_to_subscription_types', file: 'migrations/add_description_to_subscription_types.sql'),
+      _MigrationInfo(version: '017', name: 'make_payment_id_nullable_in_subscriptions', file: 'migrations/make_payment_id_nullable_in_subscriptions.sql'),
+      _MigrationInfo(version: '018', name: 'add_missing_fields_to_airport_ownership_requests', file: 'migrations/add_missing_fields_to_airport_ownership_requests.sql'),
+      _MigrationInfo(version: '019', name: 'add_owner_id_to_airports', file: 'migrations/add_owner_id_to_airports.sql'),
+      _MigrationInfo(version: '020', name: 'add_photos_to_airports', file: 'migrations/add_photos_to_airports.sql'),
+      _MigrationInfo(version: '021', name: 'create_airport_feedback_table', file: 'migrations/create_airport_feedback_table.sql'),
+      _MigrationInfo(version: '022', name: 'create_airport_visitor_photos_table', file: 'migrations/create_airport_visitor_photos_table.sql'),
+      _MigrationInfo(version: '023', name: 'add_visitor_photos_to_airports', file: 'migrations/add_visitor_photos_to_airports.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 
