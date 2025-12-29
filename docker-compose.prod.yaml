@@ -39,6 +39,7 @@ services:
     volumes:
       - ./public:/app/public
       - ./assets:/app/assets:ro
+      - ./migrations:/app/migrations:ro
     depends_on:
       db:
         condition: service_healthy

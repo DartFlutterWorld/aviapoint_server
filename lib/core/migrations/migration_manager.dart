@@ -46,14 +46,12 @@ class MigrationManager {
 
     final file = File(filePath);
     if (!await file.exists()) {
-      // Пропускаем миграцию только если это создание таблицы (create_*_table или create_*_tables)
-      // и таблица уже существует. Для миграций добавления/изменения полей файл обязателен.
-      if (name.startsWith('create_') && (name.endsWith('_table') || name.endsWith('_tables'))) {
+      // Для миграций создания таблиц: если файла нет, проверяем существование таблицы
+      if (_isCreateTableMigration(name)) {
         final tableNames = _extractTableNamesFromMigrationName(name);
         if (tableNames.isNotEmpty) {
           try {
             // Проверяем существование хотя бы одной из таблиц
-            bool anyTableExists = false;
             for (final tableName in tableNames) {
               final result = await _connection.execute(
                 Sql.named("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = @table_name)"),
@@ -61,17 +59,23 @@ class MigrationManager {
               );
               final tableExists = result.first[0] as bool;
               if (tableExists) {
-                anyTableExists = true;
-                break;
+                logger.info('⏭️  Таблица $tableName уже существует, пропускаем миграцию $name');
+                await _recordMigration(version, name);
+                return;
               }
             }
-            if (anyTableExists) {
-              logger.info('⏭️  Таблицы уже существуют, пропускаем миграцию $name');
-              await _recordMigration(version, name);
-              return;
-            }
+            // Если ни одна таблица не существует, но файла нет - пропускаем с предупреждением
+            // Таблица будет создана вручную или через другую миграцию
+            logger.info('⚠️  Файл миграции не найден и таблицы не существуют: $filePath');
+            logger.info('⏭️  Пропускаем миграцию $name (таблицы будут созданы вручную или через другую миграцию)');
+            await _recordMigration(version, name);
+            return;
           } catch (e) {
+            // Если ошибка при проверке - пропускаем миграцию
             logger.info('⚠️  Не удалось проверить существование таблиц: $e');
+            logger.info('⏭️  Пропускаем миграцию $name (не удалось проверить таблицы)');
+            await _recordMigration(version, name);
+            return;
           }
         }
       }
@@ -300,18 +304,22 @@ class MigrationManager {
     return commands.where((cmd) => cmd.trim().isNotEmpty && !cmd.trim().startsWith('--')).toList();
   }
 
+  /// Проверяет, является ли миграция созданием таблицы
+  bool _isCreateTableMigration(String migrationName) {
+    return migrationName.startsWith('create_') && (migrationName.endsWith('_table') || migrationName.endsWith('_tables'));
+  }
+
   /// Извлекает имена таблиц из имени миграции
   /// Например: create_payments_table -> [payments]
   ///           create_on_the_way_tables -> [flights, bookings, reviews]
   List<String> _extractTableNamesFromMigrationName(String migrationName) {
-    // Для create_*_tables (множественное число) возвращаем список основных таблиц
+    // Специальные случаи для множественных таблиц
     if (migrationName == 'create_on_the_way_tables') {
       return ['flights', 'bookings', 'reviews'];
     }
 
-    // Для create_*_table (единственное число) извлекаем имя таблицы
-    final singleTablePattern = RegExp(r'^create_(.+)_table$');
-    final match = singleTablePattern.firstMatch(migrationName);
+    // Для create_*_table извлекаем имя таблицы
+    final match = RegExp(r'^create_(.+)_table$').firstMatch(migrationName);
     if (match != null) {
       return [match.group(1)!];
     }
