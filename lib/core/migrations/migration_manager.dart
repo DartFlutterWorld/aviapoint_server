@@ -46,6 +46,22 @@ class MigrationManager {
 
     final file = File(filePath);
     if (!await file.exists()) {
+      // Для миграции create_payments_table проверяем, существует ли таблица
+      if (name == 'create_payments_table') {
+        try {
+          final result = await _connection.execute(
+            Sql("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'payments')"),
+          );
+          final tableExists = result.first[0] as bool;
+          if (tableExists) {
+            logger.info('⏭️  Таблица payments уже существует, пропускаем миграцию');
+            await _recordMigration(version, name);
+            return;
+          }
+        } catch (e) {
+          logger.warning('Не удалось проверить существование таблицы payments: $e');
+        }
+      }
       throw Exception('Файл миграции не найден: $filePath');
     }
 
