@@ -46,24 +46,32 @@ class MigrationManager {
 
     final file = File(filePath);
     if (!await file.exists()) {
-      // Пропускаем миграцию только если это создание таблицы (create_*_table)
+      // Пропускаем миграцию только если это создание таблицы (create_*_table или create_*_tables)
       // и таблица уже существует. Для миграций добавления/изменения полей файл обязателен.
-      if (name.startsWith('create_') && name.endsWith('_table')) {
-        final tableName = _extractTableNameFromMigrationName(name);
-        if (tableName != null) {
+      if (name.startsWith('create_') && (name.endsWith('_table') || name.endsWith('_tables'))) {
+        final tableNames = _extractTableNamesFromMigrationName(name);
+        if (tableNames.isNotEmpty) {
           try {
-            final result = await _connection.execute(
-              Sql.named("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = @table_name)"),
-              parameters: {'table_name': tableName},
-            );
-            final tableExists = result.first[0] as bool;
-            if (tableExists) {
-              logger.info('⏭️  Таблица $tableName уже существует, пропускаем миграцию $name');
+            // Проверяем существование хотя бы одной из таблиц
+            bool anyTableExists = false;
+            for (final tableName in tableNames) {
+              final result = await _connection.execute(
+                Sql.named("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = @table_name)"),
+                parameters: {'table_name': tableName},
+              );
+              final tableExists = result.first[0] as bool;
+              if (tableExists) {
+                anyTableExists = true;
+                break;
+              }
+            }
+            if (anyTableExists) {
+              logger.info('⏭️  Таблицы уже существуют, пропускаем миграцию $name');
               await _recordMigration(version, name);
               return;
             }
           } catch (e) {
-            logger.info('⚠️  Не удалось проверить существование таблицы $tableName: $e');
+            logger.info('⚠️  Не удалось проверить существование таблиц: $e');
           }
         }
       }
@@ -292,29 +300,23 @@ class MigrationManager {
     return commands.where((cmd) => cmd.trim().isNotEmpty && !cmd.trim().startsWith('--')).toList();
   }
 
-  /// Извлекает имя таблицы из имени миграции
-  /// Например: create_payments_table -> payments
-  ///           create_subscriptions_table -> subscriptions
-  String? _extractTableNameFromMigrationName(String migrationName) {
-    // Паттерны для извлечения имени таблицы
-    final patterns = [
-      RegExp(r'^create_(.+)_table$'), // create_payments_table
-      RegExp(r'^create_(.+)$'), // create_payments
-      RegExp(r'^add_.+_to_(.+)$'), // add_user_id_to_payments
-      RegExp(r'^remove_.+_from_(.+)$'), // remove_subscription_fields_from_profiles
-      RegExp(r'^make_.+_in_(.+)$'), // make_payment_id_nullable_in_subscriptions
-      RegExp(r'^add_(.+)_to_(.+)$'), // add_photos_to_airports
-    ];
-
-    for (final pattern in patterns) {
-      final match = pattern.firstMatch(migrationName);
-      if (match != null) {
-        // Берем последнюю группу (обычно это имя таблицы)
-        return match.group(match.groupCount);
-      }
+  /// Извлекает имена таблиц из имени миграции
+  /// Например: create_payments_table -> [payments]
+  ///           create_on_the_way_tables -> [flights, bookings, reviews]
+  List<String> _extractTableNamesFromMigrationName(String migrationName) {
+    // Для create_*_tables (множественное число) возвращаем список основных таблиц
+    if (migrationName == 'create_on_the_way_tables') {
+      return ['flights', 'bookings', 'reviews'];
     }
 
-    return null;
+    // Для create_*_table (единственное число) извлекаем имя таблицы
+    final singleTablePattern = RegExp(r'^create_(.+)_table$');
+    final match = singleTablePattern.firstMatch(migrationName);
+    if (match != null) {
+      return [match.group(1)!];
+    }
+
+    return [];
   }
 }
 
