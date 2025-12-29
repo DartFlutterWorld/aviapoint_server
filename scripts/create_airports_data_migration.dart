@@ -7,20 +7,24 @@
 
 import 'dart:io';
 import 'package:postgres/postgres.dart';
+import 'package:aviapoint_server/core/config/config.dart';
 
 Future<void> main() async {
   print('═══════════════════════════════════════════════════════════');
   print('  Создание миграции с данными airports');
   print('═══════════════════════════════════════════════════════════\n');
 
+  // Инициализируем конфигурацию
+  Config.init();
+  
   // Параметры подключения к локальной БД
   final connection = await Connection.open(
     Endpoint(
-      host: 'localhost',
-      port: 5432,
-      database: 'aviapoint',
-      username: 'postgres',
-      password: 'postgres',
+      host: Config.dbHost,
+      port: Config.dbPort,
+      database: Config.database,
+      username: Config.username,
+      password: Config.dbPassword,
     ),
     settings: ConnectionSettings(sslMode: SslMode.disable),
   );
