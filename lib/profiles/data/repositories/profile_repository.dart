@@ -72,7 +72,7 @@ class ProfileRepository {
   }
 
   /// Обновить профиль пользователя
-  Future<ProfileModel> updateProfile({required int id, String? email, String? firstName, String? lastName}) async {
+  Future<ProfileModel> updateProfile({required int id, String? email, String? firstName, String? lastName, String? telegram, String? max}) async {
     // Строим динамический SQL запрос для обновления только переданных полей
     final updates = <String>[];
     final parameters = <String, dynamic>{'id': id};
@@ -88,6 +88,14 @@ class ProfileRepository {
     if (lastName != null) {
       updates.add('last_name = @lastName');
       parameters['lastName'] = lastName;
+    }
+    if (telegram != null) {
+      updates.add('telegram = @telegram');
+      parameters['telegram'] = telegram;
+    }
+    if (max != null) {
+      updates.add('max = @max');
+      parameters['max'] = max;
     }
 
     if (updates.isEmpty) {

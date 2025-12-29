@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'flight_waypoint_request.dart';
 
 part 'create_flight_request.g.dart';
 
@@ -17,6 +18,8 @@ class CreateFlightRequest {
   @JsonKey(name: 'aircraft_type')
   final String? aircraftType;
   final String? description;
+  @JsonKey(name: 'waypoints', fromJson: _waypointsFromJson)
+  final List<FlightWaypointRequest>? waypoints;
 
   CreateFlightRequest({
     required this.departureAirport,
@@ -26,6 +29,7 @@ class CreateFlightRequest {
     required this.pricePerSeat,
     this.aircraftType,
     this.description,
+    this.waypoints,
   });
 
   factory CreateFlightRequest.fromJson(Map<String, dynamic> json) => _$CreateFlightRequestFromJson(json);
@@ -60,4 +64,13 @@ DateTime _dateTimeFromJson(dynamic json) {
   } else {
     throw FormatException('Invalid DateTime format: $json (type: ${json.runtimeType})');
   }
+}
+
+/// Парсит список waypoints из JSON
+List<FlightWaypointRequest>? _waypointsFromJson(dynamic json) {
+  if (json == null) return null;
+  if (json is List) {
+    return json.map((e) => FlightWaypointRequest.fromJson(e as Map<String, dynamic>)).toList();
+  }
+  return null;
 }

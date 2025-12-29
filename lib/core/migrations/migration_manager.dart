@@ -111,6 +111,12 @@ class MigrationManager {
       _MigrationInfo(version: '021', name: 'create_airport_feedback_table', file: 'migrations/create_airport_feedback_table.sql'),
       _MigrationInfo(version: '022', name: 'create_airport_visitor_photos_table', file: 'migrations/create_airport_visitor_photos_table.sql'),
       _MigrationInfo(version: '023', name: 'add_visitor_photos_to_airports', file: 'migrations/add_visitor_photos_to_airports.sql'),
+      _MigrationInfo(version: '024', name: 'create_flight_waypoints_table', file: 'migrations/create_flight_waypoints_table.sql'),
+      _MigrationInfo(version: '025', name: 'clear_all_flights_data', file: 'migrations/clear_all_flights_data.sql'),
+      _MigrationInfo(version: '026', name: 'create_flight_questions_table', file: 'migrations/create_flight_questions_table.sql'),
+      _MigrationInfo(version: '027', name: 'remove_subscription_fields_from_profiles', file: 'migrations/remove_subscription_fields_from_profiles.sql'),
+      _MigrationInfo(version: '028', name: 'remove_unique_active_subscription_index', file: 'migrations/remove_unique_active_subscription_index.sql'),
+      _MigrationInfo(version: '029', name: 'add_telegram_and_max_to_profiles', file: 'migrations/add_telegram_and_max_to_profiles.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 

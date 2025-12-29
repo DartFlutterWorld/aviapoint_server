@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'flight_waypoint_model.dart';
 
 part 'flight_model.g.dart';
 
@@ -61,6 +62,8 @@ class FlightModel {
     final double? pilotAverageRating;
     @JsonKey(name: 'photos', fromJson: _photosFromJson)
     final List<String>? photos;
+    @JsonKey(name: 'waypoints', fromJson: _waypointsFromJson)
+    final List<FlightWaypointModel>? waypoints;
 
   FlightModel({
     required this.id,
@@ -91,6 +94,7 @@ class FlightModel {
     this.pilotAvatarUrl,
     this.pilotAverageRating,
     this.photos,
+    this.waypoints,
   });
 
   factory FlightModel.fromJson(Map<String, dynamic> json) => _$FlightModelFromJson(json);
@@ -141,6 +145,15 @@ List<String>? _photosFromJson(dynamic json) {
   if (json == null) return null;
   if (json is List) {
     return json.map((e) => e.toString()).toList();
+  }
+  return null;
+}
+
+/// Парсит список waypoints из JSON
+List<FlightWaypointModel>? _waypointsFromJson(dynamic json) {
+  if (json == null) return null;
+  if (json is List) {
+    return json.map((e) => FlightWaypointModel.fromJson(e as Map<String, dynamic>)).toList();
   }
   return null;
 }

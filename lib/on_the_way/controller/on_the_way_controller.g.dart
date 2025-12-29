@@ -98,5 +98,30 @@ Router _$OnTheWayControllerRouter(OnTheWayController service) {
     r'/api/flights/<id>/photos',
     service.deleteFlightPhoto,
   );
+  router.add(
+    'GET',
+    r'/api/flights/<flightId>/questions',
+    service.getQuestionsByFlightId,
+  );
+  router.add(
+    'POST',
+    r'/api/flights/<flightId>/questions',
+    service.createQuestion,
+  );
+  router.add(
+    'PUT',
+    r'/api/flights/<flightId>/questions/<id>',
+    service.updateQuestion,
+  );
+  router.add(
+    'DELETE',
+    r'/api/flights/<flightId>/questions/<id>',
+    service.deleteQuestion,
+  );
+  router.add(
+    'POST',
+    r'/api/flights/<flightId>/questions/<id>/answer',
+    service.answerQuestion,
+  );
   return router;
 }

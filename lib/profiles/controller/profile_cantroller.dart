@@ -174,7 +174,14 @@ class ProfileController {
       final body = await request.readAsString();
       final updateProfileRequest = UpdateProfileRequest.fromJson(jsonDecode(body));
 
-      final result = await _profileRepository.updateProfile(id: int.parse(id), email: updateProfileRequest.email, firstName: updateProfileRequest.firstName, lastName: updateProfileRequest.lastName);
+      final result = await _profileRepository.updateProfile(
+        id: int.parse(id),
+        email: updateProfileRequest.email,
+        firstName: updateProfileRequest.firstName,
+        lastName: updateProfileRequest.lastName,
+        telegram: updateProfileRequest.telegram,
+        max: updateProfileRequest.max,
+      );
 
       return Response.ok(jsonEncode(result), headers: jsonContentHeaders);
     });

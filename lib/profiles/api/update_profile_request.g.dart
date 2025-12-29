@@ -12,6 +12,8 @@ UpdateProfileRequest _$UpdateProfileRequestFromJson(
       email: json['email'] as String?,
       firstName: json['first_name'] as String?,
       lastName: json['last_name'] as String?,
+      telegram: json['telegram'] as String?,
+      max: json['max'] as String?,
     );
 
 Map<String, dynamic> _$UpdateProfileRequestToJson(
@@ -20,4 +22,6 @@ Map<String, dynamic> _$UpdateProfileRequestToJson(
       'email': instance.email,
       'first_name': instance.firstName,
       'last_name': instance.lastName,
+      'telegram': instance.telegram,
+      'max': instance.max,
     };

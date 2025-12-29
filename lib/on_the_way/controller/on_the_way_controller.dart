@@ -9,6 +9,9 @@ import 'package:aviapoint_server/core/wrap_response.dart';
 import 'package:aviapoint_server/on_the_way/api/create_booking_request.dart';
 import 'package:aviapoint_server/on_the_way/api/create_flight_request.dart';
 import 'package:aviapoint_server/on_the_way/api/create_review_request.dart';
+import 'package:aviapoint_server/on_the_way/api/create_flight_question_request.dart';
+import 'package:aviapoint_server/on_the_way/api/update_flight_question_request.dart';
+import 'package:aviapoint_server/on_the_way/api/answer_flight_question_request.dart';
 import 'package:aviapoint_server/on_the_way/data/model/review_model.dart';
 import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
 import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
@@ -48,7 +51,8 @@ class OnTheWayController {
 
       print('🔵 [OnTheWayController] getFlights: dateFrom = $dateFrom, dateTo = $dateTo');
 
-      final flights = await _onTheWayRepository.fetchFlights(departureAirport: departureAirport, arrivalAirport: arrivalAirport, dateFrom: dateFrom, dateTo: dateTo);
+      final airport = request.url.queryParameters['airport'];
+      final flights = await _onTheWayRepository.fetchFlights(airport: airport, departureAirport: departureAirport, arrivalAirport: arrivalAirport, dateFrom: dateFrom, dateTo: dateTo);
 
       print('🔵 [OnTheWayController] getFlights: returned ${flights.length} flights');
       final cancelledFlights = flights.where((f) => f.status == 'cancelled').toList();
@@ -135,9 +139,25 @@ class OnTheWayController {
 
       final pilotId = int.parse(userId);
 
+      // Читаем тело запроса как обычный JSON (как для аэропортов)
       final body = await request.readAsString();
       final createRequest = CreateFlightRequest.fromJson(jsonDecode(body));
 
+      // Преобразуем waypoints в формат для repository
+      List<Map<String, dynamic>>? waypoints;
+      if (createRequest.waypoints != null && createRequest.waypoints!.isNotEmpty) {
+        waypoints = createRequest.waypoints!
+            .map((wp) => {
+                  'airport_code': wp.airportCode,
+                  'sequence_order': wp.sequenceOrder,
+                  'arrival_time': wp.arrivalTime,
+                  'departure_time': wp.departureTime,
+                  'comment': wp.comment,
+                })
+            .toList();
+      }
+
+      // Создаем полет
       final flight = await _onTheWayRepository.createFlight(
         pilotId: pilotId,
         departureAirport: createRequest.departureAirport,
@@ -147,9 +167,11 @@ class OnTheWayController {
         pricePerSeat: createRequest.pricePerSeat,
         aircraftType: createRequest.aircraftType,
         description: createRequest.description,
+        waypoints: waypoints,
       );
 
-      return Response.ok(jsonEncode(flight), headers: jsonContentHeaders);
+      // Фотографии загружаются отдельным запросом через uploadFlightPhotos (как для аэропортов)
+      return Response.ok(jsonEncode(flight.toJson()), headers: jsonContentHeaders);
     });
   }
 
@@ -207,6 +229,22 @@ class OnTheWayController {
         }
       }
 
+      // Преобразуем waypoints, если они переданы
+      List<Map<String, dynamic>>? waypoints;
+      if (updateData['waypoints'] != null) {
+        final waypointsList = updateData['waypoints'] as List;
+        waypoints = waypointsList.map((wp) {
+          final wpMap = wp as Map<String, dynamic>;
+          return {
+            'airport_code': wpMap['airport_code'] as String,
+            'sequence_order': wpMap['sequence_order'] as int,
+            'arrival_time': wpMap['arrival_time'] != null ? DateTime.parse(wpMap['arrival_time'] as String) : null,
+            'departure_time': wpMap['departure_time'] != null ? DateTime.parse(wpMap['departure_time'] as String) : null,
+            'comment': wpMap['comment'] as String?,
+          };
+        }).toList();
+      }
+
       final updatedFlight = await _onTheWayRepository.updateFlight(
         id: flightId,
         departureAirport: updateData['departure_airport'] as String?,
@@ -217,6 +255,7 @@ class OnTheWayController {
         aircraftType: updateData['aircraft_type'] as String?,
         description: updateData['description'] as String?,
         status: updateData['status'] as String?,
+        waypoints: waypoints,
       );
 
       return Response.ok(jsonEncode(updatedFlight), headers: jsonContentHeaders);
@@ -376,7 +415,13 @@ class OnTheWayController {
       final passengerId = int.parse(userId);
 
       final body = await request.readAsString();
-      final createRequest = CreateBookingRequest.fromJson(jsonDecode(body));
+      print('🔵 [OnTheWayController] createBooking received body: $body');
+
+      final bodyJson = jsonDecode(body);
+      print('🔵 [OnTheWayController] createBooking parsed JSON: $bodyJson');
+
+      final createRequest = CreateBookingRequest.fromJson(bodyJson);
+      print('🔵 [OnTheWayController] createBooking request: flightId=${createRequest.flightId}, seatsCount=${createRequest.seatsCount}');
 
       // Проверяем, что пользователь не является пилотом этого полета
       final flight = await _onTheWayRepository.fetchFlightById(createRequest.flightId);
@@ -389,17 +434,26 @@ class OnTheWayController {
       }
 
       try {
+        print('🔵 [OnTheWayController] createBooking calling repository.createBooking...');
         final booking = await _onTheWayRepository.createBooking(flightId: createRequest.flightId, passengerId: passengerId, seatsCount: createRequest.seatsCount);
+        print('✅ [OnTheWayController] createBooking repository returned booking: id=${booking.id}');
 
+        print('🔵 [OnTheWayController] createBooking calling booking.toJson()...');
         final bookingJson = booking.toJson();
+        print('✅ [OnTheWayController] createBooking booking.toJson() completed');
         print('🔵 [OnTheWayController] createBooking booking.toJson(): $bookingJson');
         bookingJson.forEach((key, value) {
           print('🔵 [OnTheWayController] createBooking field "$key": value=$value, type=${value.runtimeType}');
         });
 
-        return Response.ok(jsonEncode(booking), headers: jsonContentHeaders);
-      } catch (e) {
+        print('🔵 [OnTheWayController] createBooking calling jsonEncode(bookingJson)...');
+        final jsonString = jsonEncode(bookingJson);
+        print('✅ [OnTheWayController] createBooking jsonEncode completed, length=${jsonString.length}');
+
+        return Response.ok(jsonString, headers: jsonContentHeaders);
+      } catch (e, stackTrace) {
         print('❌ [OnTheWayController] createBooking error: $e');
+        print('❌ [OnTheWayController] createBooking stackTrace: $stackTrace');
         return Response.badRequest(body: jsonEncode({'error': e.toString()}), headers: jsonContentHeaders);
       }
     });
@@ -490,7 +544,7 @@ class OnTheWayController {
 
       final booking = await _onTheWayRepository.cancelBooking(bookingId);
 
-      return Response.ok(jsonEncode(booking), headers: jsonContentHeaders);
+      return Response.ok(jsonEncode(booking.toJson()), headers: jsonContentHeaders);
     });
   }
 
@@ -821,11 +875,11 @@ class OnTheWayController {
       for (final part in parts) {
         final contentDisposition = part['content-disposition'] as String?;
         if (contentDisposition == null) continue;
-        
+
         // Проверяем, содержит ли поле имя "photos" (может быть "photos", "photos[]", "photos[0]" и т.д.)
         final isPhotoField = RegExp('name=["\']?photos').hasMatch(contentDisposition);
         if (!isPhotoField) continue;
-        
+
         final photoData = part['data'] as List<int>?;
         if (photoData == null || photoData.isEmpty) continue;
 
@@ -1022,5 +1076,208 @@ class OnTheWayController {
       ...headers,
       'data': bodyBytes,
     };
+  }
+
+  // ========== FLIGHT QUESTIONS ==========
+
+  // Получение вопросов по полёту (доступно всем, включая неавторизованных)
+  @Route.get('/api/flights/<flightId>/questions')
+  @OpenApiRoute()
+  Future<Response> getQuestionsByFlightId(Request request) async {
+    return wrapResponse(() async {
+      final flightId = request.params['flightId'];
+      if (flightId == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Flight ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final questions = await _onTheWayRepository.fetchQuestionsByFlightId(int.parse(flightId));
+
+      return Response.ok(jsonEncode(questions), headers: jsonContentHeaders);
+    });
+  }
+
+  // Создание вопроса (авторизация опциональна - для неавторизованных authorId будет null)
+  @Route.post('/api/flights/<flightId>/questions')
+  @OpenApiRoute()
+  Future<Response> createQuestion(Request request) async {
+    return wrapResponse(() async {
+      final flightId = request.params['flightId'];
+      if (flightId == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Flight ID is required'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем авторизацию (опционально)
+      int? authorId;
+      final authHeader = request.headers['Authorization'];
+      if (authHeader != null && authHeader.startsWith('Bearer ')) {
+        final token = authHeader.substring(7);
+        final tokenService = getIt.get<TokenService>();
+
+        final isValid = tokenService.validateToken(token);
+        if (isValid) {
+          final userId = tokenService.getUserIdFromToken(token);
+          if (userId != null && userId.isNotEmpty) {
+            authorId = int.parse(userId);
+          }
+        }
+      }
+
+      final body = await request.readAsString();
+      final createRequest = CreateFlightQuestionRequest.fromJson(jsonDecode(body));
+
+      final question = await _onTheWayRepository.createQuestion(
+        flightId: int.parse(flightId),
+        authorId: authorId,
+        questionText: createRequest.questionText,
+      );
+
+      return Response.ok(jsonEncode(question), headers: jsonContentHeaders);
+    });
+  }
+
+  // Обновление вопроса (автор может обновить вопрос, пилот может обновить ответ)
+  @Route.put('/api/flights/<flightId>/questions/<id>')
+  @OpenApiRoute()
+  Future<Response> updateQuestion(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+      }
+
+      final userId = tokenService.getUserIdFromToken(token);
+      if (userId == null || userId.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final id = request.params['id'];
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Question ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final body = await request.readAsString();
+      final updateRequest = UpdateFlightQuestionRequest.fromJson(jsonDecode(body));
+
+      final question = await _onTheWayRepository.updateQuestion(
+        questionId: int.parse(id),
+        userId: int.parse(userId),
+        questionText: updateRequest.questionText,
+        answerText: updateRequest.answerText,
+      );
+
+      return Response.ok(jsonEncode(question), headers: jsonContentHeaders);
+    });
+  }
+
+  // Удаление вопроса (автор или пилот)
+  @Route.delete('/api/flights/<flightId>/questions/<id>')
+  @OpenApiRoute()
+  Future<Response> deleteQuestion(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+      }
+
+      final userId = tokenService.getUserIdFromToken(token);
+      if (userId == null || userId.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final id = request.params['id'];
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Question ID is required'}), headers: jsonContentHeaders);
+      }
+
+      await _onTheWayRepository.deleteQuestion(questionId: int.parse(id), userId: int.parse(userId));
+
+      return Response.ok(jsonEncode({'success': true}), headers: jsonContentHeaders);
+    });
+  }
+
+  // Ответ на вопрос (только создатель полёта)
+  @Route.post('/api/flights/<flightId>/questions/<id>/answer')
+  @OpenApiRoute()
+  Future<Response> answerQuestion(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+      }
+
+      final userId = tokenService.getUserIdFromToken(token);
+      if (userId == null || userId.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final id = request.params['id'];
+      if (id == null) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Question ID is required'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      final body = await request.readAsString();
+      final answerRequest = AnswerFlightQuestionRequest.fromJson(jsonDecode(body));
+
+      if (answerRequest.answerText.trim().isEmpty) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Answer text is required'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      try {
+        final question = await _onTheWayRepository.answerQuestion(
+          questionId: int.parse(id),
+          userId: int.parse(userId),
+          answerText: answerRequest.answerText.trim(),
+        );
+
+        return Response.ok(jsonEncode(question), headers: jsonContentHeaders);
+      } catch (e) {
+        if (e.toString().contains('Only the flight creator')) {
+          return Response.forbidden(
+            jsonEncode({'error': 'Only the flight creator can answer questions'}),
+            headers: jsonContentHeaders,
+          );
+        }
+        if (e.toString().contains('Question not found')) {
+          return Response.notFound(
+            jsonEncode({'error': 'Question not found'}),
+            headers: jsonContentHeaders,
+          );
+        }
+        rethrow;
+      }
+    });
   }
 }

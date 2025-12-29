@@ -35,6 +35,7 @@ FlightModel _$FlightModelFromJson(Map<String, dynamic> json) => FlightModel(
       pilotAvatarUrl: json['pilot_avatar_url'] as String?,
       pilotAverageRating: _doubleFromJsonNullable(json['pilot_average_rating']),
       photos: _photosFromJson(json['photos']),
+      waypoints: _waypointsFromJson(json['waypoints']),
     );
 
 Map<String, dynamic> _$FlightModelToJson(FlightModel instance) =>
@@ -67,4 +68,5 @@ Map<String, dynamic> _$FlightModelToJson(FlightModel instance) =>
       'pilot_avatar_url': instance.pilotAvatarUrl,
       'pilot_average_rating': instance.pilotAverageRating,
       'photos': instance.photos,
+      'waypoints': instance.waypoints,
     };

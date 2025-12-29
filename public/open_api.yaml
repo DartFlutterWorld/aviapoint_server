@@ -622,6 +622,94 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /api/flights/<flightId>/questions:
+    get:
+      tags:
+        - OnTheWayController
+      summary: getQuestionsByFlightId
+      operationId: getQuestionsByFlightId
+      parameters:
+        - name: flightId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    post:
+      tags:
+        - OnTheWayController
+      summary: createQuestion
+      operationId: createQuestion
+      parameters:
+        - name: flightId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/flights/<flightId>/questions/<id>:
+    put:
+      tags:
+        - OnTheWayController
+      summary: updateQuestion
+      operationId: updateQuestion
+      parameters:
+        - name: flightId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - OnTheWayController
+      summary: deleteQuestion
+      operationId: deleteQuestion
+      parameters:
+        - name: flightId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/flights/<flightId>/questions/<id>/answer:
+    post:
+      tags:
+        - OnTheWayController
+      summary: answerQuestion
+      operationId: answerQuestion
+      parameters:
+        - name: flightId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
   /api/user:
     post:
       tags:

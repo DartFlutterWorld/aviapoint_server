@@ -11,10 +11,14 @@ class UpdateProfileRequest extends BaseRestApiRequest {
   final String? firstName;
   @JsonKey(name: 'last_name')
   final String? lastName;
+  @JsonKey(name: 'telegram')
+  final String? telegram;
+  @JsonKey(name: 'max')
+  final String? max;
 
   factory UpdateProfileRequest.fromJson(Map<String, dynamic> data) => _$UpdateProfileRequestFromJson(data);
 
-  UpdateProfileRequest({this.email, this.firstName, this.lastName});
+  UpdateProfileRequest({this.email, this.firstName, this.lastName, this.telegram, this.max});
 
   @override
   Map<String, dynamic> toJson() => _$UpdateProfileRequestToJson(this);

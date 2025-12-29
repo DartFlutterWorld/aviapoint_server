@@ -11,6 +11,8 @@ class ProfileModel {
     this.firstName,
     this.lastName,
     this.avatarUrl,
+    this.telegram,
+    this.max,
     this.averageRating,
     this.reviewsCount,
     this.ownedAirports,
@@ -22,6 +24,8 @@ class ProfileModel {
   final String? firstName;
   final String? lastName;
   final String? avatarUrl;
+  final String? telegram;
+  final String? max;
   @JsonKey(fromJson: _doubleFromJsonNullable)
   final double? averageRating;
   @JsonKey(fromJson: _intFromJsonNullable)

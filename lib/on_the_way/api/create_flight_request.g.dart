@@ -15,6 +15,7 @@ CreateFlightRequest _$CreateFlightRequestFromJson(Map<String, dynamic> json) =>
       pricePerSeat: _doubleFromJson(json['price_per_seat']),
       aircraftType: json['aircraft_type'] as String?,
       description: json['description'] as String?,
+      waypoints: _waypointsFromJson(json['waypoints']),
     );
 
 Map<String, dynamic> _$CreateFlightRequestToJson(
@@ -27,4 +28,5 @@ Map<String, dynamic> _$CreateFlightRequestToJson(
       'price_per_seat': instance.pricePerSeat,
       'aircraft_type': instance.aircraftType,
       'description': instance.description,
+      'waypoints': instance.waypoints,
     };
