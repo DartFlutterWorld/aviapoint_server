@@ -50,19 +50,23 @@ BEGIN;
 EOF
 
 # Экспортируем структуру (только схему, без данных)
-docker exec $LOCAL_DB_CONTAINER pg_dump -U $DB_USER -d $DB_NAME \
+# НЕ используем --clean и --if-exists, чтобы избежать проблем с DROP TABLE
+ERROR_OUTPUT=$(docker exec $LOCAL_DB_CONTAINER pg_dump -U $DB_USER -d $DB_NAME \
   --schema-only \
   --no-owner \
   --no-privileges \
-  --exclude-table=schema_migrations \
-  --if-exists \
-  --clean >> "$OUTPUT_FILE" 2>/dev/null
+  --exclude-table=schema_migrations 2>&1)
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Ошибка при экспорте структуры БД!${NC}"
+    echo -e "${RED}Детали ошибки:${NC}"
+    echo "$ERROR_OUTPUT" | head -10
     rm -f "$OUTPUT_FILE"
     exit 1
 fi
+
+# Записываем результат в файл
+echo "$ERROR_OUTPUT" >> "$OUTPUT_FILE"
 
 # Добавляем COMMIT в конец файла
 echo "" >> "$OUTPUT_FILE"
@@ -71,6 +75,7 @@ echo "COMMIT;" >> "$OUTPUT_FILE"
 # Обработка файла: удаляем команды, которые могут вызвать проблемы
 echo -e "${YELLOW}3. Обработка SQL файла...${NC}"
 
+# Обработка файла: удаляем команды, которые могут вызвать проблемы
 # Создаем временный файл
 TEMP_FILE=$(mktemp)
 cat "$OUTPUT_FILE" | \
@@ -78,8 +83,10 @@ cat "$OUTPUT_FILE" | \
   grep -v "DROP TABLE.*schema_migrations" | \
   # Удаляем команды CREATE для schema_migrations
   grep -v "CREATE TABLE.*schema_migrations" | \
-  # Заменяем DROP TABLE IF EXISTS на более безопасные команды
-  sed 's/DROP TABLE IF EXISTS/DROP TABLE IF EXISTS CASCADE/g' > "$TEMP_FILE"
+  # Удаляем все команды DROP TABLE (они не нужны, так как мы только добавляем структуру)
+  grep -v "^DROP TABLE" | \
+  # Удаляем пустые строки подряд
+  sed '/^$/N;/^\n$/d' > "$TEMP_FILE"
 
 mv "$TEMP_FILE" "$OUTPUT_FILE"
 
