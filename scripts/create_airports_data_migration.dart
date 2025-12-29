@@ -69,15 +69,8 @@ Future<void> main() async {
     writer.writeln('-- Создано: ${DateTime.now().toIso8601String()}');
     writer.writeln('-- Количество записей: ${result.length}');
     writer.writeln('');
-    writer.writeln('-- Вставляем данные только если таблица пуста');
-    writer.writeln('DO \$\$');
-    writer.writeln('DECLARE');
-    writer.writeln('    record_count INTEGER;');
-    writer.writeln('BEGIN');
-    writer.writeln('    SELECT COUNT(*) INTO record_count FROM airports;');
-    writer.writeln('    ');
-    writer.writeln('    IF record_count = 0 THEN');
-    writer.writeln('        -- Вставляем данные');
+    writer.writeln('-- Вставляем данные (пропускаем дубликаты через ON CONFLICT)');
+    writer.writeln('-- Данные будут вставлены независимо от того, пуста ли таблица');
     writer.writeln('');
 
     int insertedCount = 0;
@@ -113,20 +106,15 @@ Future<void> main() async {
       }
 
       if (columnsToInsert.isNotEmpty) {
-        writer.writeln('        INSERT INTO airports (${columnsToInsert.join(', ')})');
-        writer.writeln('        VALUES (${values.join(', ')})');
-        writer.writeln('        ON CONFLICT (ident) DO NOTHING;');
+        writer.writeln('INSERT INTO airports (${columnsToInsert.join(', ')})');
+        writer.writeln('VALUES (${values.join(', ')})');
+        writer.writeln('ON CONFLICT (ident) DO NOTHING;');
         writer.writeln('');
         insertedCount++;
       }
     }
 
-    writer.writeln('        RAISE NOTICE \'Вставлено записей: %\', $insertedCount;');
-    writer.writeln('    ELSE');
-    writer.writeln('        RAISE NOTICE \'Таблица airports уже содержит данные (%), пропускаем вставку\', record_count;');
-    writer.writeln('    END IF;');
-    writer.writeln('END');
-    writer.writeln('\$\$;');
+    writer.writeln('-- Всего записей для вставки: $insertedCount');
 
     await writer.close();
     print('✅ Файл миграции создан: ${migrationFile.path}');
