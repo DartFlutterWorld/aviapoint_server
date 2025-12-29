@@ -46,22 +46,28 @@ class MigrationManager {
 
     final file = File(filePath);
     if (!await file.exists()) {
-      // Для миграции create_payments_table проверяем, существует ли таблица
-      if (name == 'create_payments_table') {
-        try {
-          final result = await _connection.execute(
-            Sql("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'payments')"),
-          );
-          final tableExists = result.first[0] as bool;
-          if (tableExists) {
-            logger.info('⏭️  Таблица payments уже существует, пропускаем миграцию');
-            await _recordMigration(version, name);
-            return;
+      // Пропускаем миграцию только если это создание таблицы (create_*_table)
+      // и таблица уже существует. Для миграций добавления/изменения полей файл обязателен.
+      if (name.startsWith('create_') && name.endsWith('_table')) {
+        final tableName = _extractTableNameFromMigrationName(name);
+        if (tableName != null) {
+          try {
+            final result = await _connection.execute(
+              Sql.named("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = @table_name)"),
+              parameters: {'table_name': tableName},
+            );
+            final tableExists = result.first[0] as bool;
+            if (tableExists) {
+              logger.info('⏭️  Таблица $tableName уже существует, пропускаем миграцию $name');
+              await _recordMigration(version, name);
+              return;
+            }
+          } catch (e) {
+            logger.info('⚠️  Не удалось проверить существование таблицы $tableName: $e');
           }
-        } catch (e) {
-          logger.info('⚠️  Не удалось проверить существование таблицы payments: $e');
         }
       }
+      // Для всех остальных миграций (добавление полей, изменение структуры) файл обязателен
       throw Exception('Файл миграции не найден: $filePath');
     }
 
@@ -284,6 +290,31 @@ class MigrationManager {
     }
 
     return commands.where((cmd) => cmd.trim().isNotEmpty && !cmd.trim().startsWith('--')).toList();
+  }
+
+  /// Извлекает имя таблицы из имени миграции
+  /// Например: create_payments_table -> payments
+  ///           create_subscriptions_table -> subscriptions
+  String? _extractTableNameFromMigrationName(String migrationName) {
+    // Паттерны для извлечения имени таблицы
+    final patterns = [
+      RegExp(r'^create_(.+)_table$'), // create_payments_table
+      RegExp(r'^create_(.+)$'), // create_payments
+      RegExp(r'^add_.+_to_(.+)$'), // add_user_id_to_payments
+      RegExp(r'^remove_.+_from_(.+)$'), // remove_subscription_fields_from_profiles
+      RegExp(r'^make_.+_in_(.+)$'), // make_payment_id_nullable_in_subscriptions
+      RegExp(r'^add_(.+)_to_(.+)$'), // add_photos_to_airports
+    ];
+
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(migrationName);
+      if (match != null) {
+        // Берем последнюю группу (обычно это имя таблицы)
+        return match.group(match.groupCount);
+      }
+    }
+
+    return null;
   }
 }
 
