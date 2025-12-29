@@ -6,6 +6,7 @@
 /// Создаст файл migrations/030_insert_airports_data.sql с данными из локальной БД
 
 import 'dart:io';
+import 'dart:convert';
 import 'package:postgres/postgres.dart';
 import 'package:aviapoint_server/core/config/config.dart';
 
@@ -97,6 +98,16 @@ Future<void> main() async {
             values.add(value ? 'TRUE' : 'FALSE');
           } else if (value is DateTime) {
             values.add("'${value.toIso8601String()}'::timestamp");
+          } else if (value is List) {
+            // JSONB массив - конвертируем в JSON строку
+            final jsonString = jsonEncode(value);
+            final escapedJson = jsonString.replaceAll("'", "''");
+            values.add("'$escapedJson'::jsonb");
+          } else if (value is Map) {
+            // JSONB объект - конвертируем в JSON строку
+            final jsonString = jsonEncode(value);
+            final escapedJson = jsonString.replaceAll("'", "''");
+            values.add("'$escapedJson'::jsonb");
           } else if (value == null) {
             values.add('NULL');
           } else {
