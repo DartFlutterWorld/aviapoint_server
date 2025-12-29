@@ -59,7 +59,7 @@ class MigrationManager {
             return;
           }
         } catch (e) {
-          logger.warning('Не удалось проверить существование таблицы payments: $e');
+          logger.info('⚠️  Не удалось проверить существование таблицы payments: $e');
         }
       }
       throw Exception('Файл миграции не найден: $filePath');
