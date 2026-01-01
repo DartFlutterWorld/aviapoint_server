@@ -119,3 +119,4 @@ echo -e "   Создано директорий: ${GREEN}$CREATED_COUNT${NC}"
 echo -e "   Уже существовало: ${YELLOW}$EXISTING_COUNT${NC}"
 echo -e "   Всего обработано: $DIR_COUNT"
 
+

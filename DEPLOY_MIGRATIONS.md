@@ -161,3 +161,4 @@ docker exec aviapoint-postgres psql -U postgres -d aviapoint -c "DELETE FROM sch
 
 Затем перезапустите сервер для повторного применения миграций.
 
+

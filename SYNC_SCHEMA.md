@@ -96,3 +96,4 @@ docker exec aviapoint-postgres pg_dump -U postgres -d aviapoint \
   --schema-only > /tmp/schema_backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
+

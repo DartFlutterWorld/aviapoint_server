@@ -13,3 +13,4 @@ class AnswerFlightQuestionRequest {
   Map<String, dynamic> toJson() => _$AnswerFlightQuestionRequestToJson(this);
 }
 
+

@@ -915,6 +915,88 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /api/airports/<code>/reviews:
+    get:
+      tags:
+        - AirportController
+      summary: Получить отзывы об аэропорте
+      operationId: getAirportReviews
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/airports/reviews:
+    post:
+      tags:
+        - AirportController
+      summary: Создать отзыв об аэропорте
+      operationId: createAirportReview
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/airports/reviews/<id>:
+    put:
+      tags:
+        - AirportController
+      summary: Обновить отзыв об аэропорте
+      operationId: updateAirportReview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - AirportController
+      summary: Удалить отзыв об аэропорте
+      operationId: deleteAirportReview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/airports/reviews/<id>/photos:
+    post:
+      tags:
+        - AirportController
+      summary: Загрузить фотографии к отзыву
+      operationId: uploadAirportReviewPhotos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - AirportController
+      summary: Удалить фотографию из отзыва
+      operationId: deleteAirportReviewPhoto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
   /api/feedback:
     post:
       tags:

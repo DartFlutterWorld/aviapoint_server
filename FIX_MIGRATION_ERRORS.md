@@ -66,3 +66,4 @@ DROP TABLE IF EXISTS public.table CASCADE;
 
 ✅ **Данные не затрагиваются** - миграция изменяет только структуру
 
+

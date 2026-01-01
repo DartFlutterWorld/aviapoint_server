@@ -152,6 +152,7 @@ class MigrationManager {
       _MigrationInfo(version: '028', name: 'remove_unique_active_subscription_index', file: 'migrations/remove_unique_active_subscription_index.sql'),
       _MigrationInfo(version: '029', name: 'add_telegram_and_max_to_profiles', file: 'migrations/add_telegram_and_max_to_profiles.sql'),
       _MigrationInfo(version: '030', name: 'insert_airports_data', file: 'migrations/030_insert_airports_data.sql'),
+      _MigrationInfo(version: '031', name: 'create_airport_reviews_table', file: 'migrations/create_airport_reviews_table.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 

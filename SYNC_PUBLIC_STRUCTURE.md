@@ -98,3 +98,4 @@ cd /home/aviapoint_server
 - `create_schema_migration.sh` - создание миграции структуры БД
 - `apply_schema_migration_to_prod.sh` - применение миграции на прод
 
+

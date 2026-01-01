@@ -63,5 +63,35 @@ Router _$AirportControllerRouter(AirportController service) {
     r'/api/airports/<code>/ownership-request',
     service.submitOwnershipRequest,
   );
+  router.add(
+    'GET',
+    r'/api/airports/<code>/reviews',
+    service.getAirportReviews,
+  );
+  router.add(
+    'POST',
+    r'/api/airports/reviews',
+    service.createAirportReview,
+  );
+  router.add(
+    'PUT',
+    r'/api/airports/reviews/<id>',
+    service.updateAirportReview,
+  );
+  router.add(
+    'DELETE',
+    r'/api/airports/reviews/<id>',
+    service.deleteAirportReview,
+  );
+  router.add(
+    'POST',
+    r'/api/airports/reviews/<id>/photos',
+    service.uploadAirportReviewPhotos,
+  );
+  router.add(
+    'DELETE',
+    r'/api/airports/reviews/<id>/photos',
+    service.deleteAirportReviewPhoto,
+  );
   return router;
 }

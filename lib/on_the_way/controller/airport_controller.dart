@@ -1221,4 +1221,707 @@ class AirportController {
       }
     });
   }
+
+  // ========== AIRPORT REVIEWS ==========
+
+  /// Получить отзывы об аэропорте
+  @Route.get('/api/airports/<code>/reviews')
+  @OpenApiRoute()
+  Future<Response> getAirportReviews(Request request) async {
+    return wrapResponse(() async {
+      final code = request.params['code'];
+      if (code == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Airport code is required'}), headers: jsonContentHeaders);
+      }
+
+      final reviews = await _airportRepository.getAirportReviews(code);
+      final reviewsJson = reviews.map((r) => {
+        'id': r['id'],
+        'airport_code': r['airport_code'],
+        'reviewer_id': r['reviewer_id'],
+        'rating': r['rating'],
+        'comment': r['comment'],
+        'photo_urls': r['photo_urls'],
+        'reply_to_review_id': r['reply_to_review_id'],
+        'created_at': (r['created_at'] as DateTime?)?.toIso8601String(),
+        'updated_at': (r['updated_at'] as DateTime?)?.toIso8601String(),
+        'reviewer_first_name': r['reviewer_first_name'],
+        'reviewer_last_name': r['reviewer_last_name'],
+        'reviewer_avatar_url': r['reviewer_avatar_url'],
+      }).toList();
+
+      return Response.ok(jsonEncode(reviewsJson), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Создать отзыв об аэропорте
+  @Route.post('/api/airports/reviews')
+  @OpenApiRoute()
+  Future<Response> createAirportReview(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+      }
+
+      final userIdStr = tokenService.getUserIdFromToken(token);
+      if (userIdStr == null || userIdStr.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final reviewerId = int.parse(userIdStr);
+
+      // Проверяем Content-Type
+      final contentType = request.headers['Content-Type'];
+      if (contentType == null || !contentType.startsWith('multipart/form-data')) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Парсим multipart запрос
+      final mediaType = MediaType.parse(contentType);
+      final boundary = mediaType.parameters['boundary'];
+      if (boundary == null) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Missing boundary in Content-Type'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Читаем тело запроса
+      final bodyBytes = <int>[];
+      await for (final chunk in request.read()) {
+        bodyBytes.addAll(chunk);
+      }
+
+      // Парсим multipart вручную
+      final boundaryMarker = '--$boundary';
+      final boundaryBytes = utf8.encode(boundaryMarker);
+      final parts = <Map<String, dynamic>>[];
+
+      int searchStart = 0;
+      while (true) {
+        final boundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+        if (boundaryIndex == -1) break;
+
+        searchStart = boundaryIndex + boundaryBytes.length;
+        if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 13) searchStart++;
+        if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 10) searchStart++;
+
+        final nextBoundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+        final partEnd = nextBoundaryIndex == -1 ? bodyBytes.length : nextBoundaryIndex;
+
+        if (partEnd > searchStart) {
+          final partBytes = bodyBytes.sublist(searchStart, partEnd);
+          final partData = _parseMultipartPart(partBytes);
+          if (partData != null) {
+            parts.add(partData);
+          }
+        }
+
+        if (nextBoundaryIndex == -1) break;
+        searchStart = nextBoundaryIndex;
+      }
+
+      // Извлекаем данные формы
+      String? airportCode;
+      int? rating;
+      String? comment;
+      int? replyToReviewId;
+      final photoUrls = <String>[];
+
+      // Обрабатываем текстовые поля
+      for (final part in parts) {
+        final contentDisposition = part['content-disposition'] as String?;
+        if (contentDisposition == null) continue;
+
+        final nameMatch = RegExp('name=["\']?([^"\']+)').firstMatch(contentDisposition);
+        if (nameMatch == null) continue;
+
+        final fieldName = nameMatch.group(1);
+        if (fieldName == null) continue;
+
+        // Проверяем, является ли это файлом
+        final isFile = RegExp('filename=').hasMatch(contentDisposition);
+        if (isFile) {
+          continue; // Файлы обработаем отдельно
+        }
+
+        final data = part['data'] as List<int>?;
+        if (data == null) continue;
+
+        final value = utf8.decode(data).trim();
+
+        switch (fieldName) {
+          case 'airport_code':
+            airportCode = value.isNotEmpty ? value : null;
+            break;
+          case 'rating':
+            rating = int.tryParse(value);
+            break;
+          case 'comment':
+            comment = value.isNotEmpty ? value : null;
+            break;
+          case 'reply_to_review_id':
+            replyToReviewId = int.tryParse(value);
+            break;
+        }
+      }
+
+      // Валидация
+      if (airportCode == null || airportCode.isEmpty) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'airport_code is required'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      if (rating == null || rating < 1 || rating > 5) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'rating must be between 1 and 5'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Обрабатываем фотографии
+      final publicDir = Directory('public');
+      if (!await publicDir.exists()) {
+        await publicDir.create(recursive: true);
+      }
+
+      final reviewsDir = Directory('public/airport_reviews');
+      if (!await reviewsDir.exists()) {
+        await reviewsDir.create(recursive: true);
+      }
+
+      for (final part in parts) {
+        final contentDisposition = part['content-disposition'] as String?;
+        if (contentDisposition == null) continue;
+
+        final isPhotoField = RegExp('name=["\']?photos').hasMatch(contentDisposition);
+        if (!isPhotoField) continue;
+
+        final photoData = part['data'] as List<int>?;
+        if (photoData == null || photoData.isEmpty) continue;
+
+        // Валидация размера (максимум 5MB)
+        if (photoData.length > 5 * 1024 * 1024) {
+          return Response.badRequest(
+            body: jsonEncode({'error': 'File size exceeds 5MB limit'}),
+            headers: jsonContentHeaders,
+          );
+        }
+
+        // Определяем расширение
+        String extension = 'jpg';
+        final partContentType = part['content-type'] as String?;
+        if (partContentType != null) {
+          final partMediaType = MediaType.parse(partContentType);
+          if (partMediaType.subtype == 'jpeg' || partMediaType.subtype == 'jpg') {
+            extension = 'jpg';
+          } else if (partMediaType.subtype == 'png') {
+            extension = 'png';
+          }
+        }
+
+        // Сохраняем фото
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final random = DateTime.now().microsecondsSinceEpoch % 1000000;
+        final index = photoUrls.length;
+        final fileName = '${airportCode}.$reviewerId.$timestamp.$random.$index.$extension';
+        final filePath = 'public/airport_reviews/$fileName';
+        final file = File(filePath);
+        await file.writeAsBytes(photoData);
+
+        photoUrls.add('airport_reviews/$fileName');
+      }
+
+      // Создаем отзыв
+      final reviewData = await _airportRepository.createAirportReview(
+        airportCode: airportCode,
+        reviewerId: reviewerId,
+        rating: rating,
+        comment: comment,
+        photoUrls: photoUrls.isNotEmpty ? photoUrls : null,
+        replyToReviewId: replyToReviewId,
+      );
+
+      // Формируем ответ
+      final reviewJson = {
+        'id': reviewData['id'],
+        'airport_code': reviewData['airport_code'],
+        'reviewer_id': reviewData['reviewer_id'],
+        'rating': reviewData['rating'],
+        'comment': reviewData['comment'],
+        'photo_urls': reviewData['photo_urls'],
+        'reply_to_review_id': reviewData['reply_to_review_id'],
+        'created_at': (reviewData['created_at'] as DateTime?)?.toIso8601String(),
+        'updated_at': (reviewData['updated_at'] as DateTime?)?.toIso8601String(),
+        'reviewer_first_name': reviewData['reviewer_first_name'],
+        'reviewer_last_name': reviewData['reviewer_last_name'],
+        'reviewer_avatar_url': reviewData['reviewer_avatar_url'],
+      };
+
+      return Response.ok(jsonEncode(reviewJson), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Обновить отзыв об аэропорте
+  @Route.put('/api/airports/reviews/<id>')
+  @OpenApiRoute()
+  Future<Response> updateAirportReview(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+      }
+
+      final userIdStr = tokenService.getUserIdFromToken(token);
+      if (userIdStr == null || userIdStr.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final userId = int.parse(userIdStr);
+
+      final reviewIdStr = request.params['id'];
+      if (reviewIdStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Review ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final reviewId = int.tryParse(reviewIdStr);
+      if (reviewId == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid review ID'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем, является ли пользователь автором отзыва
+      final isAuthor = await _airportRepository.isReviewAuthor(reviewId, userId);
+      if (!isAuthor) {
+        return Response.forbidden(
+          jsonEncode({'error': 'You can only edit your own reviews'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Читаем тело запроса
+      final body = await request.readAsString();
+      final bodyJson = jsonDecode(body) as Map<String, dynamic>;
+
+      final rating = bodyJson['rating'] as int?;
+      final comment = bodyJson['comment'] as String?;
+
+      if (rating == null || rating < 1 || rating > 5) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'rating must be between 1 and 5'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      try {
+        final reviewData = await _airportRepository.updateAirportReview(
+          reviewId: reviewId,
+          rating: rating,
+          comment: comment,
+        );
+
+        final reviewJson = {
+          'id': reviewData['id'],
+          'airport_code': reviewData['airport_code'],
+          'reviewer_id': reviewData['reviewer_id'],
+          'rating': reviewData['rating'],
+          'comment': reviewData['comment'],
+          'photo_urls': reviewData['photo_urls'],
+          'reply_to_review_id': reviewData['reply_to_review_id'],
+          'created_at': (reviewData['created_at'] as DateTime?)?.toIso8601String(),
+          'updated_at': (reviewData['updated_at'] as DateTime?)?.toIso8601String(),
+          'reviewer_first_name': reviewData['reviewer_first_name'],
+          'reviewer_last_name': reviewData['reviewer_last_name'],
+          'reviewer_avatar_url': reviewData['reviewer_avatar_url'],
+        };
+
+        return Response.ok(jsonEncode(reviewJson), headers: jsonContentHeaders);
+      } catch (e) {
+        if (e.toString().contains('not found')) {
+          return Response.notFound(
+            jsonEncode({'error': e.toString()}),
+            headers: jsonContentHeaders,
+          );
+        }
+        rethrow;
+      }
+    });
+  }
+
+  /// Удалить отзыв об аэропорте
+  @Route.delete('/api/airports/reviews/<id>')
+  @OpenApiRoute()
+  Future<Response> deleteAirportReview(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+      }
+
+      final userIdStr = tokenService.getUserIdFromToken(token);
+      if (userIdStr == null || userIdStr.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final userId = int.parse(userIdStr);
+
+      final reviewIdStr = request.params['id'];
+      if (reviewIdStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Review ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final reviewId = int.tryParse(reviewIdStr);
+      if (reviewId == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid review ID'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем, является ли пользователь автором отзыва
+      final isAuthor = await _airportRepository.isReviewAuthor(reviewId, userId);
+      if (!isAuthor) {
+        return Response.forbidden(
+          jsonEncode({'error': 'You can only delete your own reviews'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      try {
+        await _airportRepository.deleteAirportReview(reviewId);
+        return Response.ok(jsonEncode({'success': true}), headers: jsonContentHeaders);
+      } catch (e) {
+        if (e.toString().contains('not found')) {
+          return Response.notFound(
+            jsonEncode({'error': e.toString()}),
+            headers: jsonContentHeaders,
+          );
+        }
+        rethrow;
+      }
+    });
+  }
+
+  /// Загрузить фотографии к отзыву
+  @Route.post('/api/airports/reviews/<id>/photos')
+  @OpenApiRoute()
+  Future<Response> uploadAirportReviewPhotos(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+      }
+
+      final userIdStr = tokenService.getUserIdFromToken(token);
+      if (userIdStr == null || userIdStr.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final userId = int.parse(userIdStr);
+
+      final reviewIdStr = request.params['id'];
+      if (reviewIdStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Review ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final reviewId = int.tryParse(reviewIdStr);
+      if (reviewId == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid review ID'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем, является ли пользователь автором отзыва
+      final isAuthor = await _airportRepository.isReviewAuthor(reviewId, userId);
+      if (!isAuthor) {
+        return Response.forbidden(
+          jsonEncode({'error': 'You can only add photos to your own reviews'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Проверяем Content-Type
+      final contentType = request.headers['Content-Type'];
+      if (contentType == null || !contentType.startsWith('multipart/form-data')) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Парсим multipart запрос (используем ту же логику, что и в createAirportReview)
+      final mediaType = MediaType.parse(contentType);
+      final boundary = mediaType.parameters['boundary'];
+      if (boundary == null) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Missing boundary in Content-Type'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Читаем тело запроса
+      final bodyBytes = <int>[];
+      await for (final chunk in request.read()) {
+        bodyBytes.addAll(chunk);
+      }
+
+      // Парсим multipart вручную
+      final boundaryMarker = '--$boundary';
+      final boundaryBytes = utf8.encode(boundaryMarker);
+      final parts = <Map<String, dynamic>>[];
+
+      int searchStart = 0;
+      while (true) {
+        final boundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+        if (boundaryIndex == -1) break;
+
+        searchStart = boundaryIndex + boundaryBytes.length;
+        if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 13) searchStart++;
+        if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 10) searchStart++;
+
+        final nextBoundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+        final partEnd = nextBoundaryIndex == -1 ? bodyBytes.length : nextBoundaryIndex;
+
+        if (partEnd > searchStart) {
+          final partBytes = bodyBytes.sublist(searchStart, partEnd);
+          final partData = _parseMultipartPart(partBytes);
+          if (partData != null) {
+            parts.add(partData);
+          }
+        }
+
+        if (nextBoundaryIndex == -1) break;
+        searchStart = nextBoundaryIndex;
+      }
+
+      // Обрабатываем фотографии
+      final photoUrls = <String>[];
+      final publicDir = Directory('public');
+      if (!await publicDir.exists()) {
+        await publicDir.create(recursive: true);
+      }
+
+      final reviewsDir = Directory('public/airport_reviews');
+      if (!await reviewsDir.exists()) {
+        await reviewsDir.create(recursive: true);
+      }
+
+      for (final part in parts) {
+        final contentDisposition = part['content-disposition'] as String?;
+        if (contentDisposition == null) continue;
+
+        final isPhotoField = RegExp('name=["\']?photos').hasMatch(contentDisposition);
+        if (!isPhotoField) continue;
+
+        final photoData = part['data'] as List<int>?;
+        if (photoData == null || photoData.isEmpty) continue;
+
+        // Валидация размера (максимум 5MB)
+        if (photoData.length > 5 * 1024 * 1024) {
+          return Response.badRequest(
+            body: jsonEncode({'error': 'File size exceeds 5MB limit'}),
+            headers: jsonContentHeaders,
+          );
+        }
+
+        // Определяем расширение
+        String extension = 'jpg';
+        final partContentType = part['content-type'] as String?;
+        if (partContentType != null) {
+          final partMediaType = MediaType.parse(partContentType);
+          if (partMediaType.subtype == 'jpeg' || partMediaType.subtype == 'jpg') {
+            extension = 'jpg';
+          } else if (partMediaType.subtype == 'png') {
+            extension = 'png';
+          }
+        }
+
+        // Сохраняем фото
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final random = DateTime.now().microsecondsSinceEpoch % 1000000;
+        final index = photoUrls.length;
+        final fileName = 'review.$reviewId.$timestamp.$random.$index.$extension';
+        final filePath = 'public/airport_reviews/$fileName';
+        final file = File(filePath);
+        await file.writeAsBytes(photoData);
+
+        photoUrls.add('airport_reviews/$fileName');
+      }
+
+      if (photoUrls.isEmpty) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'No photos provided'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      try {
+        final reviewData = await _airportRepository.addAirportReviewPhotos(
+          reviewId: reviewId,
+          photoUrls: photoUrls,
+        );
+
+        final reviewJson = {
+          'id': reviewData['id'],
+          'airport_code': reviewData['airport_code'],
+          'reviewer_id': reviewData['reviewer_id'],
+          'rating': reviewData['rating'],
+          'comment': reviewData['comment'],
+          'photo_urls': reviewData['photo_urls'],
+          'reply_to_review_id': reviewData['reply_to_review_id'],
+          'created_at': (reviewData['created_at'] as DateTime?)?.toIso8601String(),
+          'updated_at': (reviewData['updated_at'] as DateTime?)?.toIso8601String(),
+          'reviewer_first_name': reviewData['reviewer_first_name'],
+          'reviewer_last_name': reviewData['reviewer_last_name'],
+          'reviewer_avatar_url': reviewData['reviewer_avatar_url'],
+        };
+
+        return Response.ok(jsonEncode(reviewJson), headers: jsonContentHeaders);
+      } catch (e) {
+        if (e.toString().contains('not found')) {
+          return Response.notFound(
+            jsonEncode({'error': e.toString()}),
+            headers: jsonContentHeaders,
+          );
+        }
+        rethrow;
+      }
+    });
+  }
+
+  /// Удалить фотографию из отзыва
+  @Route.delete('/api/airports/reviews/<id>/photos')
+  @OpenApiRoute()
+  Future<Response> deleteAirportReviewPhoto(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+      }
+
+      final userIdStr = tokenService.getUserIdFromToken(token);
+      if (userIdStr == null || userIdStr.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final userId = int.parse(userIdStr);
+
+      final reviewIdStr = request.params['id'];
+      if (reviewIdStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Review ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final reviewId = int.tryParse(reviewIdStr);
+      if (reviewId == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid review ID'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем, является ли пользователь автором отзыва
+      final isAuthor = await _airportRepository.isReviewAuthor(reviewId, userId);
+      if (!isAuthor) {
+        return Response.forbidden(
+          jsonEncode({'error': 'You can only delete photos from your own reviews'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Получаем URL фотографии из query параметра
+      final photoUrl = request.url.queryParameters['photo_url'];
+
+      if (photoUrl == null || photoUrl.isEmpty) {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'photo_url is required'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      try {
+        final reviewData = await _airportRepository.deleteAirportReviewPhoto(
+          reviewId: reviewId,
+          photoUrl: photoUrl,
+        );
+
+        // Удаляем файл с диска
+        try {
+          final file = File('public/$photoUrl');
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (e) {
+          print('⚠️ [AirportController] Ошибка удаления файла: $e');
+          // Не прерываем выполнение, если файл не удалось удалить
+        }
+
+        final reviewJson = {
+          'id': reviewData['id'],
+          'airport_code': reviewData['airport_code'],
+          'reviewer_id': reviewData['reviewer_id'],
+          'rating': reviewData['rating'],
+          'comment': reviewData['comment'],
+          'photo_urls': reviewData['photo_urls'],
+          'reply_to_review_id': reviewData['reply_to_review_id'],
+          'created_at': (reviewData['created_at'] as DateTime?)?.toIso8601String(),
+          'updated_at': (reviewData['updated_at'] as DateTime?)?.toIso8601String(),
+          'reviewer_first_name': reviewData['reviewer_first_name'],
+          'reviewer_last_name': reviewData['reviewer_last_name'],
+          'reviewer_avatar_url': reviewData['reviewer_avatar_url'],
+        };
+
+        return Response.ok(jsonEncode(reviewJson), headers: jsonContentHeaders);
+      } catch (e) {
+        if (e.toString().contains('not found')) {
+          return Response.notFound(
+            jsonEncode({'error': e.toString()}),
+            headers: jsonContentHeaders,
+          );
+        }
+        rethrow;
+      }
+    });
+  }
 }

@@ -112,3 +112,4 @@ echo -e "${GREEN}═════════════════════
 echo -e "\n${YELLOW}5. Проверка статуса миграций:${NC}"
 ssh $SERVER_USER@$SERVER_IP "docker exec $SERVER_DB_CONTAINER psql -U $DB_USER -d $DB_NAME -c \"SELECT version, name, executed_at FROM schema_migrations ORDER BY executed_at DESC LIMIT 10;\""
 
+

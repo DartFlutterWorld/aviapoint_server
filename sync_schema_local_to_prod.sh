@@ -120,3 +120,4 @@ echo -e "\n${YELLOW}7. Проверка структуры на продакшн
 echo -e "${YELLOW}   Список таблиц:${NC}"
 ssh $SERVER_USER@$SERVER_IP "docker exec $SERVER_DB_CONTAINER psql -U $DB_USER -d $DB_NAME -c '\dt' | head -20"
 
+

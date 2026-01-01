@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:aviapoint_server/on_the_way/data/model/airport_model.dart';
+import 'package:aviapoint_server/on_the_way/data/model/airport_review_model.dart';
 import 'package:postgres/postgres.dart';
 
 class AirportRepository {
@@ -542,5 +543,313 @@ class AirportRepository {
         'photo_url': photoUrl,
       },
     );
+  }
+
+  // ========== AIRPORT REVIEWS ==========
+
+  /// Получить все отзывы об аэропорте
+  Future<List<Map<String, dynamic>>> getAirportReviews(String airportCode) async {
+    final result = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          ar.id,
+          ar.airport_code,
+          ar.reviewer_id,
+          ar.rating,
+          ar.comment,
+          ar.photo_urls,
+          ar.reply_to_review_id,
+          ar.created_at,
+          ar.updated_at,
+          p.first_name AS reviewer_first_name,
+          p.last_name AS reviewer_last_name,
+          p.avatar_url AS reviewer_avatar_url
+        FROM airport_reviews ar
+        LEFT JOIN profiles p ON ar.reviewer_id = p.id
+        WHERE ar.airport_code = @airport_code
+        ORDER BY ar.created_at DESC
+      '''),
+      parameters: {'airport_code': airportCode},
+    );
+
+    return result.map((row) => row.toColumnMap()).toList();
+  }
+
+  /// Создать отзыв об аэропорте
+  Future<Map<String, dynamic>> createAirportReview({
+    required String airportCode,
+    required int reviewerId,
+    required int rating,
+    String? comment,
+    List<String>? photoUrls,
+    int? replyToReviewId,
+  }) async {
+    // Валидация: если reply_to_review_id указан, проверяем что он существует и принадлежит тому же аэропорту
+    if (replyToReviewId != null) {
+      final replyCheck = await _connection.execute(
+        Sql.named('SELECT id, airport_code FROM airport_reviews WHERE id = @reply_id'),
+        parameters: {'reply_id': replyToReviewId},
+      );
+      if (replyCheck.isEmpty) {
+        throw Exception('Reply review not found');
+      }
+      final replyData = replyCheck.first.toColumnMap();
+      if (replyData['airport_code'] != airportCode) {
+        throw Exception('Reply review does not belong to the same airport');
+      }
+    }
+
+    // Проверяем существование аэропорта
+    final airportCheck = await _connection.execute(
+      Sql.named('SELECT id FROM airports WHERE ident = @code'),
+      parameters: {'code': airportCode},
+    );
+    if (airportCheck.isEmpty) {
+      throw Exception('Airport not found');
+    }
+
+    final photoUrlsJson = photoUrls != null && photoUrls.isNotEmpty ? jsonEncode(photoUrls) : null;
+
+    final result = await _connection.execute(
+      Sql.named('''
+        INSERT INTO airport_reviews 
+          (airport_code, reviewer_id, rating, comment, photo_urls, reply_to_review_id, created_at, updated_at)
+        VALUES 
+          (@airport_code, @reviewer_id, @rating, @comment, @photo_urls::jsonb, @reply_to_review_id, NOW(), NOW())
+        RETURNING id, airport_code, reviewer_id, rating, comment, photo_urls, reply_to_review_id, created_at, updated_at
+      '''),
+      parameters: {
+        'airport_code': airportCode,
+        'reviewer_id': reviewerId,
+        'rating': rating,
+        'comment': comment,
+        'photo_urls': photoUrlsJson,
+        'reply_to_review_id': replyToReviewId,
+      },
+    );
+
+    if (result.isEmpty) {
+      throw Exception('Failed to create review');
+    }
+
+    final reviewData = result.first.toColumnMap();
+
+    // Получаем данные о рецензенте
+    final profileResult = await _connection.execute(
+      Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @reviewer_id'),
+      parameters: {'reviewer_id': reviewerId},
+    );
+
+    if (profileResult.isNotEmpty) {
+      final profileData = profileResult.first.toColumnMap();
+      reviewData['reviewer_first_name'] = profileData['first_name'];
+      reviewData['reviewer_last_name'] = profileData['last_name'];
+      reviewData['reviewer_avatar_url'] = profileData['avatar_url'];
+    }
+
+    return reviewData;
+  }
+
+  /// Обновить отзыв об аэропорте
+  Future<Map<String, dynamic>> updateAirportReview({
+    required int reviewId,
+    required int rating,
+    String? comment,
+  }) async {
+    final result = await _connection.execute(
+      Sql.named('''
+        UPDATE airport_reviews
+        SET rating = @rating, comment = @comment, updated_at = NOW()
+        WHERE id = @review_id
+        RETURNING id, airport_code, reviewer_id, rating, comment, photo_urls, reply_to_review_id, created_at, updated_at
+      '''),
+      parameters: {
+        'review_id': reviewId,
+        'rating': rating,
+        'comment': comment,
+      },
+    );
+
+    if (result.isEmpty) {
+      throw Exception('Review not found');
+    }
+
+    final reviewData = result.first.toColumnMap();
+
+    // Получаем данные о рецензенте
+    final reviewerId = reviewData['reviewer_id'] as int;
+    final profileResult = await _connection.execute(
+      Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @reviewer_id'),
+      parameters: {'reviewer_id': reviewerId},
+    );
+
+    if (profileResult.isNotEmpty) {
+      final profileData = profileResult.first.toColumnMap();
+      reviewData['reviewer_first_name'] = profileData['first_name'];
+      reviewData['reviewer_last_name'] = profileData['last_name'];
+      reviewData['reviewer_avatar_url'] = profileData['avatar_url'];
+    }
+
+    return reviewData;
+  }
+
+  /// Удалить отзыв об аэропорте
+  Future<void> deleteAirportReview(int reviewId) async {
+    final result = await _connection.execute(
+      Sql.named('DELETE FROM airport_reviews WHERE id = @review_id'),
+      parameters: {'review_id': reviewId},
+    );
+
+    if (result.affectedRows == 0) {
+      throw Exception('Review not found');
+    }
+  }
+
+  /// Добавить фотографии к отзыву
+  Future<Map<String, dynamic>> addAirportReviewPhotos({
+    required int reviewId,
+    required List<String> photoUrls,
+  }) async {
+    // Получаем текущие фотографии
+    final currentResult = await _connection.execute(
+      Sql.named('SELECT photo_urls FROM airport_reviews WHERE id = @review_id'),
+      parameters: {'review_id': reviewId},
+    );
+
+    if (currentResult.isEmpty) {
+      throw Exception('Review not found');
+    }
+
+    final currentData = currentResult.first.toColumnMap();
+    final currentPhotoUrls = _parsePhotoUrls(currentData['photo_urls']);
+
+    // Объединяем старые и новые фотографии
+    final allPhotoUrls = <String>[...?currentPhotoUrls, ...photoUrls];
+
+    // Обновляем отзыв
+    final updateResult = await _connection.execute(
+      Sql.named('''
+        UPDATE airport_reviews
+        SET photo_urls = @photo_urls::jsonb, updated_at = NOW()
+        WHERE id = @review_id
+        RETURNING id, airport_code, reviewer_id, rating, comment, photo_urls, reply_to_review_id, created_at, updated_at
+      '''),
+      parameters: {
+        'review_id': reviewId,
+        'photo_urls': jsonEncode(allPhotoUrls),
+      },
+    );
+
+    if (updateResult.isEmpty) {
+      throw Exception('Failed to update review');
+    }
+
+    final reviewData = updateResult.first.toColumnMap();
+
+    // Получаем данные о рецензенте
+    final reviewerId = reviewData['reviewer_id'] as int;
+    final profileResult = await _connection.execute(
+      Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @reviewer_id'),
+      parameters: {'reviewer_id': reviewerId},
+    );
+
+    if (profileResult.isNotEmpty) {
+      final profileData = profileResult.first.toColumnMap();
+      reviewData['reviewer_first_name'] = profileData['first_name'];
+      reviewData['reviewer_last_name'] = profileData['last_name'];
+      reviewData['reviewer_avatar_url'] = profileData['avatar_url'];
+    }
+
+    return reviewData;
+  }
+
+  /// Удалить фотографию из отзыва
+  Future<Map<String, dynamic>> deleteAirportReviewPhoto({
+    required int reviewId,
+    required String photoUrl,
+  }) async {
+    // Получаем текущие фотографии
+    final currentResult = await _connection.execute(
+      Sql.named('SELECT photo_urls FROM airport_reviews WHERE id = @review_id'),
+      parameters: {'review_id': reviewId},
+    );
+
+    if (currentResult.isEmpty) {
+      throw Exception('Review not found');
+    }
+
+    final currentData = currentResult.first.toColumnMap();
+    final currentPhotoUrls = _parsePhotoUrls(currentData['photo_urls']);
+
+    // Удаляем фотографию из списка
+    currentPhotoUrls?.remove(photoUrl);
+
+    // Обновляем отзыв
+    final updateResult = await _connection.execute(
+      Sql.named('''
+        UPDATE airport_reviews
+        SET photo_urls = @photo_urls::jsonb, updated_at = NOW()
+        WHERE id = @review_id
+        RETURNING id, airport_code, reviewer_id, rating, comment, photo_urls, reply_to_review_id, created_at, updated_at
+      '''),
+      parameters: {
+        'review_id': reviewId,
+        'photo_urls': currentPhotoUrls != null && currentPhotoUrls.isNotEmpty ? jsonEncode(currentPhotoUrls) : null,
+      },
+    );
+
+    if (updateResult.isEmpty) {
+      throw Exception('Failed to update review');
+    }
+
+    final reviewData = updateResult.first.toColumnMap();
+
+    // Получаем данные о рецензенте
+    final reviewerId = reviewData['reviewer_id'] as int;
+    final profileResult = await _connection.execute(
+      Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @reviewer_id'),
+      parameters: {'reviewer_id': reviewerId},
+    );
+
+    if (profileResult.isNotEmpty) {
+      final profileData = profileResult.first.toColumnMap();
+      reviewData['reviewer_first_name'] = profileData['first_name'];
+      reviewData['reviewer_last_name'] = profileData['last_name'];
+      reviewData['reviewer_avatar_url'] = profileData['avatar_url'];
+    }
+
+    return reviewData;
+  }
+
+  /// Проверить, является ли пользователь автором отзыва
+  Future<bool> isReviewAuthor(int reviewId, int userId) async {
+    final result = await _connection.execute(
+      Sql.named('SELECT reviewer_id FROM airport_reviews WHERE id = @review_id'),
+      parameters: {'review_id': reviewId},
+    );
+
+    if (result.isEmpty) return false;
+
+    final reviewData = result.first.toColumnMap();
+    return reviewData['reviewer_id'] == userId;
+  }
+
+  /// Вспомогательный метод для парсинга photo_urls
+  List<String>? _parsePhotoUrls(dynamic photoUrlsJson) {
+    if (photoUrlsJson == null) return null;
+    if (photoUrlsJson is List) {
+      return photoUrlsJson.map((e) => e.toString()).toList();
+    }
+    if (photoUrlsJson is String) {
+      try {
+        final decoded = jsonDecode(photoUrlsJson);
+        if (decoded is List) {
+          return decoded.map((e) => e.toString()).toList();
+        }
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 }

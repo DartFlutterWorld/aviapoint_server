@@ -125,3 +125,4 @@ docker exec aviapoint-postgres pg_dump -U postgres -d aviapoint \
   --column-inserts > profiles_backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
+
