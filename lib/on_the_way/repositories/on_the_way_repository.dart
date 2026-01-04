@@ -1305,7 +1305,8 @@ class OnTheWayRepository {
           id,
           name,
           phone,
-          email
+          email,
+          fcm_token
         FROM profiles
         WHERE id = @pilot_id
       '''),
@@ -1317,7 +1318,13 @@ class OnTheWayRepository {
     }
 
     final row = result.first.toColumnMap();
-    return {'id': row['id'], 'name': row['name'], 'phone': row['phone'], 'email': row['email']};
+    return {
+      'id': row['id'],
+      'name': row['name'],
+      'phone': row['phone'],
+      'email': row['email'],
+      'fcm_token': row['fcm_token'],
+    };
   }
 
   // Загрузка фотографий к полету

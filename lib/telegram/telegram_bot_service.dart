@@ -173,4 +173,60 @@ ${comment != null && comment.isNotEmpty ? '💬 <b>Комментарий:</b> $
 
     await sendMessage(message);
   }
+
+  /// Уведомление о создании нового полёта
+  Future<void> notifyFlightCreated({
+    required int flightId,
+    required int pilotId,
+    required String pilotName,
+    required String pilotPhone,
+    required String departureAirport,
+    required String arrivalAirport,
+    required DateTime departureDate,
+    required int availableSeats,
+    required double pricePerSeat,
+    String? aircraftType,
+    List<Map<String, dynamic>>? waypoints,
+  }) async {
+    // Форматируем дату полёта
+    final flightDate = departureDate.toLocal().toString().substring(0, 16);
+
+    // Формируем маршрут с промежуточными точками
+    String routeText = '$departureAirport → $arrivalAirport';
+    if (waypoints != null && waypoints.length > 2) {
+      // Сортируем waypoints по sequence_order
+      final sortedWaypoints = List<Map<String, dynamic>>.from(waypoints)
+        ..sort((a, b) => (a['sequence_order'] as int).compareTo(b['sequence_order'] as int));
+      
+      // Берем промежуточные точки (исключаем первую и последнюю)
+      final intermediatePoints = sortedWaypoints
+          .sublist(1, sortedWaypoints.length - 1)
+          .map((wp) => wp['airport_code'] as String? ?? '')
+          .where((code) => code.isNotEmpty)
+          .toList();
+      
+      if (intermediatePoints.isNotEmpty) {
+        routeText = '$departureAirport → ${intermediatePoints.join(' → ')} → $arrivalAirport';
+      }
+    }
+
+    final message = '''
+✈️ <b>Новый полёт создан</b>
+
+🆔 <b>ID полёта:</b> $flightId
+👤 <b>Пилот ID:</b> $pilotId
+👤 <b>Пилот:</b> $pilotName
+📱 <b>Телефон:</b> $pilotPhone
+
+✈️ <b>Маршрут:</b> $routeText
+📅 <b>Дата вылета:</b> $flightDate
+💺 <b>Свободных мест:</b> $availableSeats
+💵 <b>Цена за место:</b> ${pricePerSeat.toStringAsFixed(0)} ₽
+${aircraftType != null && aircraftType.isNotEmpty ? '🛩️ <b>Тип самолёта:</b> $aircraftType' : ''}
+
+🕐 <b>Время создания:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+''';
+
+    await sendMessage(message);
+  }
 }

@@ -170,6 +170,40 @@ class OnTheWayController {
         waypoints: waypoints,
       );
 
+      // Отправляем уведомление в Telegram о создании полёта
+      try {
+        final pilotInfo = await _onTheWayRepository.getPilotInfoForNotification(pilotId);
+        final pilotName = pilotInfo['name'] as String? ?? 'Пилот';
+        final pilotPhone = pilotInfo['phone'] as String? ?? 'Не указан';
+
+        // Преобразуем waypoints в формат для уведомления
+        List<Map<String, dynamic>>? waypointsForNotification;
+        if (flight.waypoints != null && flight.waypoints!.isNotEmpty) {
+          waypointsForNotification = flight.waypoints!.map((wp) => {
+            'airport_code': wp.airportCode,
+            'sequence_order': wp.sequenceOrder,
+          }).toList();
+        }
+
+        final telegramBotService = TelegramBotService();
+        await telegramBotService.notifyFlightCreated(
+          flightId: flight.id,
+          pilotId: pilotId,
+          pilotName: pilotName,
+          pilotPhone: pilotPhone,
+          departureAirport: flight.departureAirport,
+          arrivalAirport: flight.arrivalAirport,
+          departureDate: flight.departureDate,
+          availableSeats: flight.availableSeats,
+          pricePerSeat: flight.pricePerSeat,
+          aircraftType: flight.aircraftType,
+          waypoints: waypointsForNotification,
+        );
+      } catch (e) {
+        print('⚠️ [OnTheWayController] Ошибка отправки Telegram уведомления о создании полёта: $e');
+        // Не прерываем выполнение, если уведомление не отправилось
+      }
+
       // Фотографии загружаются отдельным запросом через uploadFlightPhotos (как для аэропортов)
       return Response.ok(jsonEncode(flight.toJson()), headers: jsonContentHeaders);
     });

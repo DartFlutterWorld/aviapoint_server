@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:aviapoint_server/logger/logger.dart';
 import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
-import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
+import 'package:aviapoint_server/push_notifications/fcm_service.dart';
 
 /// Сервис для автоматического управления статусами полётов
 class FlightStatusService {
@@ -144,34 +144,35 @@ class FlightStatusService {
 
         if (hoursSinceDeparture >= 12) {
           try {
-            // Получаем информацию о пилоте для уведомления (опционально, для будущего использования)
-            // final pilotInfo = await _repository.getPilotInfoForNotification(flight.pilotId);
+            // Получаем информацию о пилоте для уведомления
+            final pilotInfo = await _repository.getPilotInfoForNotification(flight.pilotId);
+            final fcmToken = pilotInfo['fcm_token'] as String?;
 
-            // Отправляем уведомление в Telegram
-            final telegramBotService = TelegramBotService();
-            final message = '''
-⏰ <b>Напоминание о завершении полёта</b>
+            bool notificationSent = false;
 
-✈️ <b>Полёт:</b> ${flight.departureAirport} → ${flight.arrivalAirport}
-📅 <b>Дата полёта:</b> ${flight.departureDate.toLocal().toString().substring(0, 16)}
-🆔 <b>ID полёта:</b> ${flight.id}
+            // Отправляем push-уведомление пилоту, если есть FCM токен
+            if (fcmToken != null && fcmToken.isNotEmpty) {
+              final fcmService = FcmService();
+              final pushSent = await fcmService.notifyPilotToCompleteFlight(
+                fcmToken: fcmToken,
+                departureAirport: flight.departureAirport,
+                arrivalAirport: flight.arrivalAirport,
+                departureDate: flight.departureDate,
+                flightId: flight.id,
+                hoursSinceDeparture: hoursSinceDeparture,
+              );
 
-⏱️ <b>Прошло времени:</b> ${hoursSinceDeparture} часов
+              if (pushSent) {
+                notificationSent = true;
+                logger.info('✅ [FlightStatusService] Push-уведомление отправлено пилоту полёта #${flight.id}');
+              }
+            }
 
-💡 <b>Не забудьте завершить полёт!</b>
-После завершения пассажиры и вы сможете оставлять отзывы друг о друге.
-
-🕐 <b>Время:</b> ${now.toLocal().toString().substring(0, 19)}
-''';
-
-            final sent = await telegramBotService.sendMessage(message);
-
-            if (sent) {
+            if (notificationSent) {
               _notifiedFlights[flight.id] = true;
               notifiedCount++;
-              logger.info('✅ [FlightStatusService] Уведомление отправлено пилоту полёта #${flight.id}');
             } else {
-              logger.info('⚠️ [FlightStatusService] Не удалось отправить уведомление для полёта #${flight.id}');
+              logger.info('⚠️ [FlightStatusService] Не удалось отправить push-уведомление для полёта #${flight.id} (нет FCM токена)');
             }
           } catch (e) {
             logger.severe('❌ [FlightStatusService] Ошибка при отправке уведомления для полёта #${flight.id}: $e');

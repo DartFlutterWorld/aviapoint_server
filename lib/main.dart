@@ -18,6 +18,8 @@ import 'package:aviapoint_server/on_the_way/controller/on_the_way_controller.dar
 import 'package:aviapoint_server/on_the_way/controller/feedback_controller.dart';
 import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
 import 'package:aviapoint_server/on_the_way/services/flight_status_service.dart';
+import 'package:aviapoint_server/push_notifications/fcm_service.dart';
+import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
 import 'package:postgres/postgres.dart';
 import 'package:talker/talker.dart';
 import 'package:shelf/shelf.dart';
@@ -48,6 +50,14 @@ Future<void> main() async {
   logger.info('Waiting for all dependencies to be ready...');
   await getIt.allReady();
   logger.info('All dependencies are ready');
+
+  // Инициализация Telegram бота
+  TelegramBotService().init();
+  logger.info('Telegram bot service initialized');
+
+  // Инициализация FCM сервиса для push-уведомлений
+  FcmService().init();
+  logger.info('FCM service initialized');
 
   // Запускаем сервис автоматического управления статусами полётов
   final onTheWayRepository = await getIt.getAsync<OnTheWayRepository>();

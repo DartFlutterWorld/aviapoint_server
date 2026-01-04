@@ -119,4 +119,27 @@ class ProfileRepository {
     final serializedState = result.first.toColumnMap();
     return ProfileModel.fromJson(serializedState);
   }
+
+  /// Обновить FCM токен пользователя
+  Future<void> updateFcmToken({required int id, required String? fcmToken}) async {
+    await _connection.execute(
+      Sql.named('UPDATE profiles SET fcm_token = @fcmToken WHERE id = @id'),
+      parameters: {'id': id, 'fcmToken': fcmToken},
+    );
+  }
+
+  /// Получить FCM токен пользователя
+  Future<String?> getFcmToken(int userId) async {
+    final result = await _connection.execute(
+      Sql.named('SELECT fcm_token FROM profiles WHERE id = @id'),
+      parameters: {'id': userId},
+    );
+
+    if (result.isEmpty) {
+      return null;
+    }
+
+    final row = result.first.toColumnMap();
+    return row['fcm_token'] as String?;
+  }
 }

@@ -416,6 +416,50 @@ class ProfileController {
     });
   }
 
+  ///
+  /// Сохранение FCM токена
+  ///
+  /// Сохранение Firebase Cloud Messaging токена для отправки push-уведомлений
+  ///
+  @Route.post('/api/profile/fcm-token')
+  @OpenApiRoute()
+  Future<Response> saveFcmToken(Request request) async {
+    return wrapResponse(() async {
+      // Проверяем аутентификацию
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      // Валидация токена
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}));
+      }
+
+      // Получаем ID пользователя из токена
+      final id = tokenService.getUserIdFromToken(token);
+      if (id == null || id.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      // Парсим тело запроса
+      final body = await request.readAsString();
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      final fcmToken = json['fcm_token'] as String?;
+
+      await _profileRepository.updateFcmToken(
+        id: int.parse(id),
+        fcmToken: fcmToken,
+      );
+
+      return Response.ok(jsonEncode({'success': true}), headers: jsonContentHeaders);
+    });
+  }
+
   // Вспомогательный метод для поиска байтов в массиве
   int _indexOfBytes(List<int> haystack, List<int> needle, int start) {
     if (needle.isEmpty) return start;
