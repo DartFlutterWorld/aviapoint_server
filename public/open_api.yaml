@@ -759,6 +759,16 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /api/profile/fcm-token:
+    post:
+      tags:
+        - ProfileController
+      summary: Сохранение FCM токена
+      description: "Сохранение Firebase Cloud Messaging токена для отправки push-уведомлений"
+      operationId: saveFcmToken
+      responses:
+        200:
+          description: "Operation completed!"
   /api/airports:
     get:
       tags:
@@ -1006,6 +1016,48 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /api/aircraft/manufacturers:
+    get:
+      tags:
+        - AircraftCatalogController
+      summary: Получить всех производителей
+      operationId: getManufacturers
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/aircraft/models:
+    get:
+      tags:
+        - AircraftCatalogController
+      summary: Получить модели самолётов
+      operationId: getAircraftModels
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/aircraft/models/<id>:
+    get:
+      tags:
+        - AircraftCatalogController
+      summary: Получить модель самолёта по ID
+      operationId: getAircraftModelById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/aircraft/search:
+    get:
+      tags:
+        - AircraftCatalogController
+      summary: Поиск моделей самолётов для автодополнения
+      operationId: searchAircraftModels
+      responses:
+        200:
+          description: "Operation completed!"
 components: { }
 tags:
   - name: PaymentController
@@ -1020,3 +1072,4 @@ tags:
   - name: ProfileController
   - name: AirportController
   - name: FeedbackController
+  - name: AircraftCatalogController

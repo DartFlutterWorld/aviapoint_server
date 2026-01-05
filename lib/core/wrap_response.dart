@@ -15,6 +15,8 @@ Future<Response> wrapResponse(FutureOr<Response> Function() createBody) async {
 
     return result;
   } on Object catch (e, s) {
+    print('❌ [wrapResponse] Error: $e');
+    print('Stack trace:\n$s');
     return Response.badRequest(
       body: jsonEncode({'error': e.toString(), 'stack_trace': s.toString()}),
       headers: jsonContentHeaders,

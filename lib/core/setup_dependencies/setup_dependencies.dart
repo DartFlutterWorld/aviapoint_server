@@ -23,10 +23,12 @@ import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
 import 'package:aviapoint_server/on_the_way/controller/airport_controller.dart';
 import 'package:aviapoint_server/on_the_way/controller/on_the_way_controller.dart';
 import 'package:aviapoint_server/on_the_way/controller/feedback_controller.dart';
+import 'package:aviapoint_server/on_the_way/controller/aircraft_catalog_controller.dart';
 import 'package:aviapoint_server/on_the_way/repositories/airport_repository.dart';
 import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
 import 'package:aviapoint_server/on_the_way/repositories/feedback_repository.dart';
 import 'package:aviapoint_server/on_the_way/repositories/airport_ownership_repository.dart';
+import 'package:aviapoint_server/on_the_way/repositories/aircraft_catalog_repository.dart';
 import 'package:postgres/postgres.dart';
 import 'package:get_it/get_it.dart';
 
@@ -195,6 +197,18 @@ Future<void> setupDependencies() async {
   getIt.registerSingletonAsync<FeedbackController>(() async {
     final feedbackRepository = await getIt.getAsync<FeedbackRepository>();
     return FeedbackController(feedbackRepository: feedbackRepository);
+  });
+
+  // Aircraft Catalog Repository
+  getIt.registerSingletonAsync<AircraftCatalogRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return AircraftCatalogRepository(connection: connection);
+  });
+
+  // Aircraft Catalog Controller
+  getIt.registerSingletonAsync<AircraftCatalogController>(() async {
+    final repository = await getIt.getAsync<AircraftCatalogRepository>();
+    return AircraftCatalogController(repository: repository);
   });
 
   // Инициализируем Telegram бота

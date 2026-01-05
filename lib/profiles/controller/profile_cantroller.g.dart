@@ -33,5 +33,10 @@ Router _$ProfileControllerRouter(ProfileController service) {
     r'/api/profile/photo',
     service.uploadProfilePhoto,
   );
+  router.add(
+    'POST',
+    r'/api/profile/fcm-token',
+    service.saveFcmToken,
+  );
   return router;
 }

@@ -154,6 +154,11 @@ class MigrationManager {
       _MigrationInfo(version: '030', name: 'insert_airports_data', file: 'migrations/030_insert_airports_data.sql'),
       _MigrationInfo(version: '031', name: 'create_airport_reviews_table', file: 'migrations/create_airport_reviews_table.sql'),
       _MigrationInfo(version: '032', name: 'add_fcm_token_to_profiles', file: 'migrations/add_fcm_token_to_profiles.sql'),
+      _MigrationInfo(version: '033', name: 'create_aircraft_types_table', file: 'migrations/create_aircraft_types_table.sql'),
+      _MigrationInfo(version: '034', name: 'insert_aircraft_types_from_planecheck_full', file: 'migrations/insert_aircraft_types_from_planecheck_full.sql'),
+      _MigrationInfo(version: '035', name: 'drop_aircraft_types_table', file: 'migrations/drop_aircraft_types_table.sql'),
+      _MigrationInfo(version: '036', name: 'create_aircraft_catalog_tables', file: 'migrations/create_aircraft_catalog_tables.sql'),
+      _MigrationInfo(version: '037', name: 'insert_aircraft_catalog_data_full', file: 'migrations/insert_aircraft_catalog_data_full.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 

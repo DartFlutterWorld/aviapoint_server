@@ -16,6 +16,7 @@ import 'package:aviapoint_server/core/migrations/migration_manager.dart';
 import 'package:aviapoint_server/on_the_way/controller/airport_controller.dart';
 import 'package:aviapoint_server/on_the_way/controller/on_the_way_controller.dart';
 import 'package:aviapoint_server/on_the_way/controller/feedback_controller.dart';
+import 'package:aviapoint_server/on_the_way/controller/aircraft_catalog_controller.dart';
 import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
 import 'package:aviapoint_server/on_the_way/services/flight_status_service.dart';
 import 'package:aviapoint_server/push_notifications/fcm_service.dart';
@@ -68,6 +69,7 @@ Future<void> main() async {
   // Убеждаемся, что контроллеры загружены
   await getIt.getAsync<AirportController>();
   await getIt.getAsync<FeedbackController>();
+  await getIt.getAsync<AircraftCatalogController>();
 
   // Проверяем что соединение с БД установлено
   Connection? connection;
@@ -115,6 +117,7 @@ Future<void> main() async {
       .add(getIt<OnTheWayController>().router)
       .add(getIt<AirportController>().router)
       .add(getIt<FeedbackController>().router)
+      .add(getIt<AircraftCatalogController>().router)
       .add(logStaticRequests(staticHandler))
       .add(Router()..mount('/api/openapi', SwaggerUI('public/open_api.yaml', docExpansion: DocExpansion.list, syntaxHighlightTheme: SyntaxHighlightTheme.tomorrowNight, title: 'Swagger AviaPoint')))
       .handler;
