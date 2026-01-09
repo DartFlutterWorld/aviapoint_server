@@ -26,10 +26,12 @@ class TokenService {
 
   String _generateJWT(String userId, Duration expiry, {String purpose = 'access'}) {
     final header = _base64UrlEncode(jsonEncode({'alg': 'HS256', 'typ': 'JWT'}));
+    // Используем UTC для iat и exp, чтобы избежать проблем с часовыми поясами
+    final now = DateTime.now().toUtc();
     final payload = _base64UrlEncode(jsonEncode({
       'sub': userId,
-      'iat': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      'exp': DateTime.now().add(expiry).millisecondsSinceEpoch ~/ 1000,
+      'iat': now.millisecondsSinceEpoch ~/ 1000,
+      'exp': now.add(expiry).millisecondsSinceEpoch ~/ 1000,
       'jti': _generateSecureRandomString(32),
       if (purpose != 'access') 'purpose': purpose,
     }));
@@ -53,12 +55,13 @@ class TokenService {
       }
 
       final payloadMap = JwtDecoder.decode(token);
-      final expiry = DateTime.fromMillisecondsSinceEpoch(payloadMap['exp'] * 1000);
-      final now = DateTime.now();
+      // exp в JWT - это UTC timestamp в секундах
+      final expiry = DateTime.fromMillisecondsSinceEpoch(payloadMap['exp'] * 1000, isUtc: true);
+      final now = DateTime.now().toUtc();
       final isValid = expiry.isAfter(now);
 
       if (!isValid) {
-        print('Token validation failed: expired. Expiry: $expiry, Now: $now');
+        print('Token validation failed: expired. Expiry: $expiry (UTC), Now: $now (UTC)');
       }
 
       return isValid;

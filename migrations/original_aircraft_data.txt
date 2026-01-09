@@ -1,0 +1,436 @@
+Beech
+ALL  |  17 Staggerwing  |  18  |  23  |  24 Sierra  |  Bonanza 33 Series  |  Bonanza 35 Series (V-tail)  |  36 Bonanza  |  36 Turbine Bonanza  |  55 Baron  |  56 Turbo Baron  |  58 Baron Series  |  60 Duke  |  76 Duchess  |  95 Travel Air  |  King Air A90 - E90  |  F90 King Air  |  350 Super King Air
+
+Cessna
+ALL  |  120  |  140  |  150  |  152  |  Airmaster  |  170  |  172 / Skyhawk  |  172-RG Cutlass  |  175  |  177 Cardinal  |  177-RG Cardinal  |  180  |  182 / Skylane  |  182 Skylane RG  |  185  |  195  |  206 Stationair / Skywagon  |  206 Turbine  |  207 Stationair 7 / 8  |  207 Soloy Turbine  |  208 Caravan  |  210  |  P-210 Pressurized Centurion  |  P-210 Turbine Silver Eagle  |  T-303 Crusader  |  310  |  335  |  337 Skymaster  |  340  |  401 / 402  |  404 Titan  |  F-406 Caravan 2  |  411  |  414 Series  |  421 Golden Eagle  |  425 Conquest 1  |  500 Citation 1  |  501 Citation 1SP  |  510 Citation Mustang  |  525 Citation  |  525-A Citation CJ2  |  550 Citation 2
+
+Cirrus
+ALL  |  SR20 / SRV  |  SR22  |  SF50 Vision Jet
+
+Diamond
+ALL  |  DA20 / DV20  |  (Super) Dimona  |  DA20 / DV20  |  DA40 Star  |  DA42 Twin Star  |  DA50 RG  |  DA62
+
+Mooney
+ALL  |  M20 Series (normally-aspirated)  |  M20 Series (turbo)
+
+Piper
+ALL  |  J-3 Cub Series  |  J-5 Cub Cruiser  |  J-3 Cub Series  |  PA-18 Super Cub  |  PA-22 Colt / Tri-Pacer  |  PA-23 Apache  |  PA-23 Aztec  |  PA-24 Comanche  |  PA-25 Pawnee  |  PA-28 Cherokee / Warrior / Archer  |  PA-28 Cherokee / Dakota (6 cylinder)  |  PA-28 Arrow Series (normally-aspirated)  |  PA-28 Arrow Series (turbo)  |  Twin Comanche Series  |  PA-31 Navajo / Chieftain  |  PA-31T-500 Cheyenne  |  PA-31 Cheyenne II  |  PA-32 Cherokee 6 / Saratoga / 6X  |  PA-32 Lance / Saratoga (retractable)  |  PA-32 Lance II (T-tail)  |  PA-34 Seneca  |  PA-38 Tomahawk  |  PA-44 Seminole  |  PA-46 Malibu / Mirage  |  PA-46 Meridian / JetPROP DLX  |  PA-46-701TP M700  |  PA-46 Meridian / JetPROP DLX  |  Aerostar (Ted Smith / Piper) Series
+
+Robin
+ALL  |  DR-220 / 221  |  DR-200 / 250  |  DR-253 Régent  |  DR-300 Series  |  DR-400 / 500  |  HR-100  |  HR-200  |  R-1180 Aiglon
+
+Socata
+ALL  |  Rallye (Morane / Socata / PZL) Series  |  ST-10  |  TB-9 Tampico  |  TB-10 / 200 Tobago  |  TB-20 / 21 Trinidad  |  TB-30 Epsilon  |  TBM-700  |  TBM-850  |  TBM-900 Series
+
+Other manufacturers
+Aermacchi
+MB-326	Aero
+ALL  |  45  |  AT-3
+Aero Designs
+Pulsar	Aero East Europe
+Sila 450 C (UL)
+Aerokopter
+ZA-6	Aeropilot
+ALL  |  Legend 540 (UL)  |  Legend 600 (UL)
+Aeroprakt
+ALL  |  A-22 (UL)  |  A-22 L (UL)  |  A-22 LS (UL)  |  A-22 LS 600 kg (UL)  |  A-32 (UL)  |  A-32 L (UL)	Aeropro
+A220
+Aeros-Piuma Trike
+Discus T 13 (UL)	Aerosette
+MH-46 Eclipse (UL)
+Aerospatiale
+ALL  |  Alouette 2  |  Gazelle	Aerospool
+ALL  |  WT-9 Dynamic  |  WT-9 Dynamic (UL)  |  WT-9 Dynamic Club TOW (UL)  |  WT-9 Dynamic OK-Edition (UL)  |  WT-9 Dynamic RG (UL)  |  WT-9 Dynamic RG 600 (UL)
+Aerosport
+ALL  |  CH-7 Kompress 2 (UL)  |  Woody Pusher	Aerosviluppi
+AS-10 Moni (UL)
+Aerotechnik
+P-220 S (UL)	Agusta
+ALL  |  A-109  |  A-119 Koala
+Agusta-Bell
+ALL  |  Bell 47G  |  Augusta / Bell 206	Airbus Helicopters
+ALL  |  Eurocopter Colibri  |  Aerospatiale / Eurocopter / Airbus Ecureuil Series
+Airdrome
+Sopwith Baby (UL)	Airlony
+Skylane (UL)
+Airplane Factory
+Sling 4	Albastar
+ALL  |  Albatros (UL)  |  AS-15M
+Albatros Oeffag
+D.III replica (UL)	Alpi
+ALL  |  Pioneer 200  |  Pioneer 200 (UL)  |  Pioneer 300 (UL)  |  Pioneer 300 / 330  |  Pioneer 300 Griffon (UL)  |  Pioneer 400
+Altitude
+Radial Rocket	Altus
+ST 912ULS (UL)
+AMC
+GN-1 Aircamper (Pietenpol) (UL)	American Champion
+Bellanca 8 Scout / Decathlon
+Antonov
+An-2 Series (Antonov / PZL-Mielec)	Apollo
+ALL  |  Delta Jet 2 (UL)  |  Fox (UL)  |  Gyro AG1 (UL)
+Aquila
+210/211/212 Series	ATEC
+ALL  |  122 Zephyr (UL)  |  321 Faeta (UL)  |  321 Faeta NG (UL)
+Auster
+5 Alpha	AutoGyro
+ALL  |  Calidus (UL)  |  Cavalon (UL)  |  MTO (UL)  |  MTOSport Classic (UL)
+Aviat
+ALL  |  A-1 Husky  |  S-2	Aviation Scotland
+ARV-1 Super 2
+AVIO-SMA
+Fun-Fly Sport (UL)	AVRO
+652 Anson
+Beagle
+Auster 6 Series	Bell
+ALL  |  Augusta / Bell 206  |  407  |  427  |  430  |  505 Jet Ranger X  |  AH-1 HueyCobra
+Bellanca
+ALL  |  Aeronca 7 Champion Series  |  7 Citabria Series	Belmont
+DW200 (UL)
+Blackshape
+ALL  |  BK-100 Prime  |  BK-100 Prime Veloce (UL)  |  BS 100 Prime (UL)  |  BS-100 Prime (UL)  |  Prime 100 Epa Power (UL)	Blackwing
+ALL  |  600 RG (UL)  |  BW-650 (UL)
+Boeing Stearman
+Kaydet	Bölkow
+ALL  |  Bo-207 / Kl-107  |  Bo-208 / MFI-9 Junior
+Boisavia
+Mercurey	Bombardier
+ALL  |  Canadair CL-600 Challenger  |  Learjet 45
+Brandli
+BX-2 Cherry	Breezer
+ALL  |  B400-6 (UL)  |  CR (UL)
+British Aerospace
+Hawk	Britten-Norman
+ALL  |  Islander  |  Islander (turbine)
+BRM
+Citius Sport (UL)	BRM Aero
+ALL  |  Bristell B23  |  Bristell NG-5  |  Bristell NG-5 (UL)  |  Bristell NG-5 G3X (UL)  |  Bristell UL (UL)  |  Bristell UL RG (UL)
+Bücker
+ALL  |  Bü-131 Jungmann  |  Bü-133 Jungmeister  |  Bü-181 Bestmann  |  Jungmann UL (UL)	Campavia
+ALL  |  Milan (UL)  |  Springbok (UL)
+CASA
+C-212 Aviocar	Cassutt
+Special
+Celier
+Xenon 2 (UL)	CFM
+ALL  |  SA-2 Star Streak  |  Shadow D project (UL)
+Coavio
+DF-2000 (UL)	Columbia
+Cessna 400
+Comco
+Ikarus C42C (UL)	Comco Ikarus
+ALL  |  C42B (UL)  |  C42CS (UL)
+Commander
+(Rockwell) Commander 112 / 114 / 115	CSA
+SportCruiser / PiperSport Series
+CZAW
+ALL  |  SportCruiser / PiperSport Series  |  SportCruiser 915iS (UL)	CzechMade
+Twin Tulak (UL)
+Daher
+Socata TBM-900 Series	Dallach
+ALL  |  D-4 Fascination  |  D-4 Fascination BK (UL)
+Dassault
+Falcon 50	Dassault-Breguet
+1150 Atlantic
+De Havilland
+ALL  |  DH-60 Moth  |  DH-82 Tiger Moth  |  Vampire  |  DH-104 Dove  |  DHC-1 Chipmunk	Deperdussin
+TT
+Direct Fly
+Alto NG (UL)	Dornier
+Do-27
+Douglas
+ALL  |  AD Skyraider  |  DC-3 / C-47	Dova
+Dv-1 Skylark (UL)
+Dova DV-1
+Skylark (UL)	DTA
+Voyageur II trike (UL)
+DynAero
+ALL  |  MC-100 Ban-Bi  |  MCR-4 S (UL)	Dynali
+H-3
+EAA
+Biplane	Eclipse
+500/550
+EDM Aerotec
+CoAX 600 (UL)	EDRA
+Super Petrel 100 (UL)
+Ekolot
+ALL  |  JK-05 Junior (UL)  |  KR-030 Topaz (UL)	Ellipse
+Spirit RG 600kg MTOW (UL)
+Embraer
+EMB-500 Phenom 100	Enstrom
+ALL  |  F-28 / 280  |  480(B)
+Erco
+Ercoupe (Erco / Alon / Forney)	Eurocopter
+ALL  |  Aerospatiale / Eurocopter / Airbus Ecureuil Series  |  AS-355 Ecureuil 2  |  Colibri  |  EC-130  |  EC-135
+Evektor
+ALL  |  EV-97 Eurostar (UL)  |  EV-97 Eurostar SL (UL)  |  EV-97R Eurostar (UL)  |  SportStar	Extra
+ALL  |  200  |  300  |  400  |  500  |  NG
+Fairchild
+ALL  |  F-24  |  SA-226 / 227 Merlin / Metro	FAJ Jastreb
+Vuk-T
+FAMA
+K-209M Jetcopter	Fantasy Air
+Allegro (UL)
+FD-Composites
+ArrowCopter AC20	FFA
+AS-202
+FIAT
+ALL  |  G-46  |  G-91	Fieseler
+Storch / Morane Criquet
+Fisher
+ALL  |  FP-404 (UL)  |  FP404 (UL)	FK
+FK9 ELA (UL)
+FK-Lightplanes
+ALL  |  FK-9 (UL)  |  FK-9 Mk 4 (UL)	Fletcher
+FU-24
+Flight Constructive
+ALL  |  FC-3 Etude  |  FC-4 Sport	Flight Design
+ALL  |  CT  |  CTLS (UL)  |  CTLS 600 (UL)  |  CTSW (UL)  |  MC
+Fly Synthesis
+ALL  |  Storch HS (UL)  |  Storch S (UL)  |  Syncro (UL)  |  Texan (UL)  |  Texan Evo RG (UL)	Fly-Fan
+Shark
+Focke-Wulf
+Fw-44 Stieglitz	Fokker
+ALL  |  Dr-1 Replica  |  F-27
+Folland
+Fo-144 Gnat	Fouga
+Magister / Zéphyr
+Fournier
+ALL  |  RF-3  |  RF-5  |  RF-6 / Slingsby T-67	FVA
+18.3 Silberkrähe
+G1 Aviation
+G1-D600 (UL)	Gardan
+ALL  |  Minicab  |  GY-80 Horizon
+General Avia
+F-22 Pinguino	Gippsland
+GA-8 Airvan
+Glasair
+ALL  |  I / II / III  |  GlaStar / Sportsman	Glaser-Dirks
+DG 300 Elan
+Globe
+GC-1 Swift	Gogetair
+G-750
+Golden Avio
+F30 (UL)	Grob
+ALL  |  G-102 Astir CS77  |  G-103 Twin Astir  |  G-109  |  G-115
+Groppo
+ALL  |  Trail (UL)  |  Trail 914 (UL)	Grumman American
+ALL  |  Yankee Series  |  Grumman AA-5 Series
+Guimbal
+G-2 Cabri	Gyroflug
+SC-01 Speed Canard
+Halley
+ALL  |  Apollo Fox (UL)  |  Apollo Fox 3 (UL)	Harmon
+Rocket
+Hawker
+ALL  |  (Sea) Fury  |  Tempest	Heli-Sport
+CH-7 Kompress
+Hirth
+Hi-27 Acrostar	Hoffmann
+(Super) Dimona
+IAR
+IS-28M2	ICA
+IAR-823
+ICP
+ALL  |  Amigo (UL)  |  Bingo 4S (UL)  |  Savannah (UL)  |  Savannah 740 Classic (UL)  |  Savannah  |  Savannah S (UL)  |  Savannah SR (UL)	Jabiru
+ALL  |  450 (UL)  |  Calypso (UL)  |  J160C (UL)  |  SP 470 (UL)
+JMB Aircraft
+ALL  |  VL-3 (UL)  |  VL-3 912is (UL)  |  VL-3 912ULS as new (UL)  |  VL-3 914 turbo (UL)  |  VL-3 915is (UL)  |  VL-3 916iS (UL)  |  VL-3 916is Evolution (UL)  |  VL-3 Evolution  |  VL-3 Evolution (UL)  |  VL-3 Evolution 912 ULS (UL)  |  VL-3 Evolution 912iS (UL)  |  VL-3 Evolution 912ULS (UL)  |  VL-3 Evolution 915iS (UL)  |  VL-3 Evolution 915iS IFR (UL)  |  VL-3 Evolution RG (UL)  |  VL-3 R 915 (UL)  |  VL-3 RG (UL)  |  VL-3 RG Evolution (UL)  |  VL3 912ULS (as new) (UL)	Jodel
+ALL  |  D-18 (UL)  |  D-9 Bébé ULM (UL)  |  D-11 / 110 / 120 Series  |  D-18 / D-19 / D-20  |  D-11 / 110 / 120 Series  |  D-140  |  DR-100 / 1050
+Jurca
+MJ-77 Gnatsum	Just
+SuperSTOL
+Kamov
+Ka-26	Kappa 77
+Sova KP2U (UL)
+KFA
+Explorer UL 600 (Kitfox 7) (UL)	Kitfox
+Mk IV 912 speedster (UL)
+Klemm
+KL-35	Kubicek
+M-4 Irbis (UL)
+LAK
+12	Lake
+LA-4 / 200 Renegade
+Lancair
+ALL  |  200 / 235 / 320 / 360  |  4  |  Legacy	Laser
+Akro / Z
+LET
+ALL  |  L-13 Blanik  |  Brigadyr  |  LET/Zlin Z-37 Cmélak	Lockheed
+ALL  |  C-130 Hercules  |  L-12 Electra Junior
+Luscombe
+8 / Silvaire	Magnaghi
+ALL  |  Sky Arrow  |  Sky Arrow (UL)
+Magni
+ALL  |  M-16 Tandem Trainer (UL)  |  M-24 Orion (UL)	Manuf. Aeron.
+MA12 Passero project (UL)
+Maule
+ALL  |  M-4  |  M-5  |  M-7 Series	Max Holste
+MH-1521 Broussard
+MBB Eurocopter
+Bo-105	McDonnell Douglas
+ALL  |  Hughes 500  |  MD-520  |  MD-900 Explorer
+Messerschmitt
+109 / HA-1112	Mil
+ALL  |  Mi-2 Series  |  Mi-26
+Miles
+M-38 Messenger	Mitsubishi
+MU-2
+Monocoupe
+90	Morane
+ALL  |  MS-315 / 317  |  Rallye (Morane / Socata / PZL) Series
+Motodelta
+Trike (UL)	Mudry
+ALL  |  CAP-10  |  CAP-20  |  CAP-230 / 231 / 232
+Murphy
+ALL  |  Rebel  |  Renegade  |  Renegate Spirit (UL)	Mylius
+MY-103 Mistral
+Nando Groppo
+G70	Naval Aircraft Factory
+N3N
+Neukom
+Elfe S4D project	NEW AVIO C205
+C205 SNIPER (UL)
+Nicollier
+HN-700 Menestrel 2	Nord
+Norécrin
+Norman
+NAC-1 Freelance	North American
+ALL  |  B-25 Mitchell  |  P-51 Mustang  |  Texan / Harvard  |  T-28 Trojan
+Oberlerchner
+Mg 19b	OMF
+160 Symphony
+Orlican
+M-8 Eagle (UL)	Partenavia
+ALL  |  P-64 / 66  |  P-68 (Partenavia / Vulcanair)
+Pavel Míšek
+M-1 Blade (UL)	Pelegrin
+ALL  |  Tarragon  |  Tarragon (UL)
+Piaggio
+P-149	Piel
+ALL  |  Emeraude  |  Super Emeraude CP-1300 Series  |  Béryl
+Pietenpol
+ALL  |  Aircamper (UL)  |  B-4 Aircamper	Pilatus
+ALL  |  P-2  |  P-3  |  PC-6 Turbo-Porter  |  PC-9  |  PC-12
+Pipistrel
+ALL  |  Alpha Electro (UL)  |  Alpha Trainer  |  Alpha Trainer (UL)  |  Virus LSA Series  |  Panthera  |  Sinus (UL)  |  Sinus 912 (UL)  |  Sinus LSA  |  Sinus Max (UL)  |  Taurus 503  |  Taurus Electro (UL)  |  Virus LSA Series  |  Velis Electro  |  Virus 912 UL (UL)  |  Virus LSA Series  |  Virus SW (UL)  |  Virus SW 100 (UL)  |  Virus SW 100 iS DULV (UL)  |  Virus SW 600 D (DULV) (UL)  |  Virus SW100 iS (UL)	Pitts
+ALL  |  Model 12 Series  |  S-1  |  S-2
+Polaris Motor
+FIB 582 UL (UL)	Porto
+ALL  |  Risen (UL)  |  Risen FG 912iS (UL)
+Porto Risen
+912 ULS (UL)	Promecc
+ALL  |  Freccia FG (UL)  |  Pegaso (UL)
+PZL-Mielec
+An-2 Series (Antonov / PZL-Mielec)	PZL-Okecie
+ALL  |  PZL-101 Gawron  |  PZL-104 Wilga  |  PZL-104M Wilga 2000  |  Rallye (Morane / Socata / PZL) Series
+Quicksilver
+GT 400 (UL)	Rans
+ALL  |  S-6 Coyote 2 ES (UL)  |  S-9 Chaos (UL)  |  S-6 Coyote 2
+Raytheon
+390 Premier 1	Remos
+ALL  |  GX  |  GX (UL)
+Renaissance
+Berkut	Republic
+RC-3 Seabee
+Robinson
+ALL  |  R-22  |  R-44  |  R-66  |  R22 CL02 Turbine (UL)	Rockwell
+(Rockwell) Commander 112 / 114 / 115
+Roko
+Via NG-6 (UL)	Roko Aero
+NG-4
+Rotary Air Force
+RAF-2000	Rotorsport
+Calidus
+Rotorway
+Exec	Ruschmeyer
+R90-230RG
+Rutan
+ALL  |  33 VariEze  |  61 Long-EZ  |  Cozy Series (Rutan / AeroCad)	SAAB
+91 Safir
+SAI
+KZ-7 Laerke	Scheibe
+ALL  |  SF-25 Falke  |  SF-28 Tandem Falke
+Schempp-Hirth
+Discus CS	Schleicher
+ALL  |  ASW 20 C  |  Ka 7  |  Ka-4M (UL)
+Schweizer
+200 - 300 Series (Hughes / Schweizer)	Sequoia
+F-8L Falco (Aviamilano / Sequoia)
+SG
+ALL  |  Storm 400 Special (UL)  |  Storm 500 XL (UL)	Shark Aero
+Shark (UL)
+Sherwood Ranger
+XP Aero (UL)	Short
+360
+SIAI-Marchetti
+ALL  |  S-205 (fixed gear)  |  S-205 (retractable)  |  S-208  |  SF-260	Sikorsky
+H-60 Black Hawk Series
+SkyCruiser
+Sky Rotor (UL)	Skyleader
+ALL  |  200 (UL)  |  400 Mk IV Sport (UL)
+Slingsby
+Fournier RF-6 / Slingsby T-67	Sonaca
+S-200 Series
+Sonex
+Sonex	Sopwith
+Pup
+Spacek
+ALL  |  SD-1 Minisport (UL)  |  SD-1 Minisport TG (UL)  |  SD-1 TD project (UL)  |  SD-1 TG MiniSport (UL)	Stampe
+SV-4
+Steen
+Skybolt	Stemme
+ALL  |  Remos GX (UL)  |  S-10  |  S-12
+Stern
+ST-87 Vega	Stinson
+ALL  |  SM-8A Detroiter  |  SR Reliant
+Stolp
+SA-700 Acroduster	Storm
+Century (UL)
+Sukhoi
+ALL  |  Su-26  |  Su-29	Supermarine Aircraft
+Spitfire (scaled)
+SZD
+ALL  |  41A Jantar Std  |  42-2 Jantar 2B project	TEAM
+Mini-MAX 1500R Sport (UL)
+Technoavia
+SP-91 Slava	Tecnam
+ALL  |  P-2002 Sierra (UL)  |  P-2002 Sierra Mk ll (UL)  |  P-92 Eaglet (UL)  |  P-92  |  P-92 Echo (UL)  |  P-92 Echo 2000 RG (UL)  |  P-92 Echo Mk II (UL)  |  P-92 S (UL)  |  P-96 Golf (UL)  |  P-2002  |  P-2008  |  P-2010  |  P-2006T
+Ted Smith
+Aerostar (Ted Smith / Piper) Series	Titan
+T-51 Mustang
+TL Ultralight
+ALL  |  Stream 600 kg (UL)  |  Stream 600kg (UL)  |  TL-2000 Sting  |  TL-2000 Sting S4 (UL)  |  TL-3000 Sirius (UL)  |  TL-3000 Sirius  |  TL-96 Star (UL)	Tomark
+ALL  |  SD-4 Viper (UL)  |  SD-4 Viper Attack (UL)  |  SD-4 Viper
+Travel Air
+10	Trixy
+G 4-2 R (UL)
+UL-JIH Sedlacek
+Fascination F-100 (UL)	ULBI
+WT-01 Wild Thing (UL)
+Ultravia
+Pelican	Uniplanes-Dornier
+Flywhale FW650 (UL)
+Urban
+UFM-13 Lambada	Urban Air
+UFM-10 Samba (UL)
+Vans
+ALL  |  RV-4  |  RV-6  |  RV-7  |  RV-8  |  RV-9  |  RV-10  |  RV-12  |  RV-14	Velocity
+173
+Vogt
+Lo 100	Vought
+F4U Corsair
+Vulcanair
+P-68 (Partenavia / Vulcanair)	WACO
+F Series
+WAR
+Focke-Wulf 190	Wassmer
+WA-41 Baladou
+Wheeler
+Express 90 / 2000 / Loadmaster	XtremeAir
+ALL  |  XA42 / Sbach 342  |  XA41 / Sbach 300  |  XA42 / Sbach 342
+Yakovlev
+ALL  |  Yak-3  |  Yak-9  |  Yak-11  |  Yak-18 (2-seat)  |  Yak-18T (4-seat)  |  Yak-50  |  Yak-52	Zenair
+ALL  |  CH-250 Zénith  |  CH-600 / 601 Zodiac  |  CH-701 Zodiac (UL)
+Zenith
+CH-601 Zodiac XL (UL)	Zlin
+ALL  |  Norden (UL)  |  Savage (UL)  |  Savage Cruiser (UL)  |  Savage Cub (UL)  |  Savage Shock Cub (UL)  |  LET Z-37 Agro Turbo  |  LET/Zlin Z-37 Cmélak  |  Z-50  |  Z-42 / 142 / 242  |  Z-43 / 143  |  Z-26 Trener Series  |  Savage

@@ -229,4 +229,56 @@ ${aircraftType != null && aircraftType.isNotEmpty ? '🛩️ <b>Тип само�
 
     await sendMessage(message);
   }
+
+  /// Уведомление о создании новой статьи блога
+  Future<void> notifyBlogArticleCreated({
+    required int articleId,
+    required int authorId,
+    required String authorName,
+    required String authorPhone,
+    required String title,
+    String? excerpt,
+    required String status,
+    String? categoryName,
+    String? aircraftModelName,
+  }) async {
+    // Определяем статус статьи
+    String statusText = status;
+    switch (status.toLowerCase()) {
+      case 'draft':
+        statusText = 'Черновик';
+        break;
+      case 'published':
+        statusText = 'Опубликовано';
+        break;
+      case 'archived':
+        statusText = 'Архив';
+        break;
+    }
+
+    // Обрезаем excerpt, если он слишком длинный
+    String? excerptText = excerpt;
+    if (excerptText != null && excerptText.length > 200) {
+      excerptText = '${excerptText.substring(0, 200)}...';
+    }
+
+    final message = '''
+📝 <b>Новая статья блога создана</b>
+
+🆔 <b>ID статьи:</b> $articleId
+👤 <b>Автор ID:</b> $authorId
+👤 <b>Автор:</b> $authorName
+📱 <b>Телефон:</b> $authorPhone
+
+📌 <b>Название:</b> $title
+${excerptText != null && excerptText.isNotEmpty ? '📄 <b>Краткое описание:</b> $excerptText' : ''}
+📊 <b>Статус:</b> $statusText
+${categoryName != null && categoryName.isNotEmpty ? '📂 <b>Категория:</b> $categoryName' : ''}
+${aircraftModelName != null && aircraftModelName.isNotEmpty ? '🛩️ <b>Модель самолёта:</b> $aircraftModelName' : ''}
+
+🕐 <b>Время создания:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+''';
+
+    await sendMessage(message);
+  }
 }

@@ -749,6 +749,15 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+    delete:
+      tags:
+        - ProfileController
+      summary: Удаление аккаунта
+      description: Удаление аккаунта текущего авторизованного пользователя
+      operationId: deleteAccount
+      responses:
+        200:
+          description: "Operation completed!"
   /api/profile/photo:
     post:
       tags:
@@ -1058,6 +1067,147 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /api/blog/categories:
+    get:
+      tags:
+        - BlogController
+      summary: Получить все категории блога
+      operationId: getCategories
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/blog/articles:
+    get:
+      tags:
+        - BlogController
+      summary: Получить список статей блога
+      operationId: getArticles
+      responses:
+        200:
+          description: "Operation completed!"
+    post:
+      tags:
+        - BlogController
+      summary: Создать статью (требуется авторизация)
+      operationId: createArticle
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/blog/articles/<id>:
+    get:
+      tags:
+        - BlogController
+      summary: Получить детальную информацию о статье по ID
+      operationId: getArticleById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    put:
+      tags:
+        - BlogController
+      summary: Обновить статью (требуется авторизация и права автора)
+      operationId: updateArticle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - BlogController
+      summary: Удалить статью (требуется авторизация и права автора)
+      operationId: deleteArticle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/blog/tags:
+    get:
+      tags:
+        - BlogController
+      summary: Получить все теги
+      operationId: getTags
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/blog/articles/<id>/content-images:
+    post:
+      tags:
+        - BlogController
+      summary: Загрузить изображение для контента статьи (для существующих статей)
+      operationId: uploadContentImage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/blog/articles/content-images/upload:
+    post:
+      tags:
+        - BlogController
+      summary: Загрузить изображение для контента новой статьи (временный endpoint)
+      operationId: uploadContentImageTemporary
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/app-settings:
+    get:
+      tags:
+        - AppSettingsController
+      summary: Получить все настройки приложения
+      operationId: getAllSettings
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/app-settings/<key>:
+    get:
+      tags:
+        - AppSettingsController
+      summary: Получить настройку по ключу
+      operationId: getSettingByKey
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/app-settings/<key>/value:
+    get:
+      tags:
+        - AppSettingsController
+      summary: "Получить значение настройки по ключу (упрощенный endpoint, возвращает только значение)"
+      operationId: getSettingValue
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
 components: { }
 tags:
   - name: PaymentController
@@ -1073,3 +1223,5 @@ tags:
   - name: AirportController
   - name: FeedbackController
   - name: AircraftCatalogController
+  - name: BlogController
+  - name: AppSettingsController

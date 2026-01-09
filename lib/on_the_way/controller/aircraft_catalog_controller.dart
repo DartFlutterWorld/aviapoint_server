@@ -20,9 +20,7 @@ class AircraftCatalogController {
   @OpenApiRoute()
   Future<Response> getManufacturers(Request request) async {
     return wrapResponse(() async {
-      final activeOnly = request.url.queryParameters['active_only'] != 'false';
-
-      final manufacturers = await _repository.getManufacturers(activeOnly: activeOnly);
+      final manufacturers = await _repository.getManufacturers();
 
       return Response.ok(jsonEncode(manufacturers.map((m) => m.toJson()).toList()), headers: jsonContentHeaders);
     });
@@ -36,14 +34,11 @@ class AircraftCatalogController {
       final manufacturerIdStr = request.url.queryParameters['manufacturer_id'];
       final manufacturerId = manufacturerIdStr != null ? int.tryParse(manufacturerIdStr) : null;
 
-      final category = request.url.queryParameters['category'];
-      final engineType = request.url.queryParameters['engine_type'];
-      final activeOnly = request.url.queryParameters['active_only'] != 'false';
       final searchQuery = request.url.queryParameters['q'];
 
       print('✈️ [AircraftCatalogController] GET /api/aircraft/models?manufacturer_id=$manufacturerId&q=$searchQuery');
 
-      final models = await _repository.getAircraftModels(manufacturerId: manufacturerId, category: category, engineType: engineType, activeOnly: activeOnly, searchQuery: searchQuery);
+      final models = await _repository.getAircraftModels(manufacturerId: manufacturerId, searchQuery: searchQuery);
 
       print('✈️ [AircraftCatalogController] Found ${models.length} models');
 
@@ -86,7 +81,7 @@ class AircraftCatalogController {
         return Response.badRequest(body: jsonEncode({'error': 'Search query parameter "q" is required'}), headers: jsonContentHeaders);
       }
 
-      final models = await _repository.getAircraftModels(activeOnly: true, searchQuery: searchQuery);
+      final models = await _repository.getAircraftModels(searchQuery: searchQuery);
 
       return Response.ok(jsonEncode(models.map((m) => m.toJson()).toList()), headers: jsonContentHeaders);
     });

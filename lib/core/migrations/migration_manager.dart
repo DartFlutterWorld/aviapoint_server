@@ -159,6 +159,20 @@ class MigrationManager {
       _MigrationInfo(version: '035', name: 'drop_aircraft_types_table', file: 'migrations/drop_aircraft_types_table.sql'),
       _MigrationInfo(version: '036', name: 'create_aircraft_catalog_tables', file: 'migrations/create_aircraft_catalog_tables.sql'),
       _MigrationInfo(version: '037', name: 'insert_aircraft_catalog_data_full', file: 'migrations/insert_aircraft_catalog_data_full.sql'),
+      _MigrationInfo(version: '038', name: 'create_blog_tables', file: 'migrations/create_blog_tables.sql'),
+      _MigrationInfo(version: '039', name: 'remove_blog_article_meta_fields', file: 'migrations/remove_blog_article_meta_fields.sql'),
+      _MigrationInfo(version: '040', name: 'update_blog_categories', file: 'migrations/update_blog_categories.sql'),
+      _MigrationInfo(version: '041', name: 'force_update_blog_categories', file: 'migrations/041_force_update_blog_categories.sql'),
+      _MigrationInfo(version: '042', name: 'force_update_blog_categories_v2', file: 'migrations/042_force_update_blog_categories.sql'),
+      _MigrationInfo(version: '043', name: 'update_blog_categories_final', file: 'migrations/043_update_blog_categories_final.sql'),
+      _MigrationInfo(version: '044', name: 'insert_new_blog_categories', file: 'migrations/044_insert_new_blog_categories.sql'),
+      _MigrationInfo(version: '045', name: 'drop_and_recreate_blog_categories', file: 'migrations/045_drop_and_recreate_blog_categories.sql'),
+      _MigrationInfo(version: '046', name: 'insert_blog_categories', file: 'migrations/046_insert_blog_categories.sql'),
+      _MigrationInfo(version: '047', name: 'add_slug_to_blog_articles', file: 'migrations/040_add_slug_to_blog_articles.sql'),
+      _MigrationInfo(version: '048', name: 'create_app_settings_table', file: 'migrations/create_app_settings_table.sql'),
+      _MigrationInfo(version: '049', name: 'remove_blog_article_slug', file: 'migrations/remove_blog_article_slug.sql'),
+      _MigrationInfo(version: '050', name: 'drop_aircraft_catalog_view', file: 'migrations/051_drop_aircraft_catalog_view.sql'),
+      _MigrationInfo(version: '051', name: 'simplify_aircraft_tables', file: 'migrations/053_simplify_aircraft_tables.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 

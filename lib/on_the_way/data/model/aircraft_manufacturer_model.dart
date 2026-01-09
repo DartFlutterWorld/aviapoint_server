@@ -6,37 +6,16 @@ part 'aircraft_manufacturer_model.g.dart';
 class AircraftManufacturerModel {
   final int id;
   final String name;
-  final String? country;
-  final String? website;
-  final String? description;
-  @JsonKey(name: 'is_active')
-  final bool isActive;
-  @JsonKey(name: 'created_at', toJson: _dateTimeToJsonNullable, fromJson: _dateTimeFromJsonNullable)
-  final DateTime? createdAt;
-  @JsonKey(name: 'updated_at', toJson: _dateTimeToJsonNullable, fromJson: _dateTimeFromJsonNullable)
-  final DateTime? updatedAt;
 
   AircraftManufacturerModel({
     required this.id,
     required this.name,
-    this.country,
-    this.website,
-    this.description,
-    this.isActive = true,
-    this.createdAt,
-    this.updatedAt,
   });
 
   factory AircraftManufacturerModel.fromJson(Map<String, dynamic> json) {
     return AircraftManufacturerModel(
       id: _intFromJson(json['id']),
       name: _stringFromJson(json['name']),
-      country: _stringFromJsonNullable(json['country']),
-      website: _stringFromJsonNullable(json['website']),
-      description: _stringFromJsonNullable(json['description']),
-      isActive: _boolFromJson(json['is_active']) ?? true,
-      createdAt: _dateTimeFromJsonNullable(json['created_at']),
-      updatedAt: _dateTimeFromJsonNullable(json['updated_at']),
     );
   }
 

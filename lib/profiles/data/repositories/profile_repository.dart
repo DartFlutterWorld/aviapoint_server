@@ -142,4 +142,42 @@ class ProfileRepository {
     final row = result.first.toColumnMap();
     return row['fcm_token'] as String?;
   }
+
+  /// Удалить аккаунт пользователя
+  /// Удаляет профиль и все связанные данные
+  /// CASCADE автоматически удалит связанные данные из следующих таблиц:
+  /// - bookings (passenger_id)
+  /// - flights (pilot_id)
+  /// - reviews (reviewer_id, reviewed_id)
+  /// - airport_ownership_requests (user_id)
+  /// - airport_visitor_photos (user_id)
+  /// - flight_photos (uploaded_by)
+  /// - subscriptions (user_id)
+  Future<void> deleteAccount({required int id}) async {
+    // Начинаем транзакцию
+    await _connection.execute(Sql('BEGIN'));
+
+    try {
+      // Удаляем FCM токен из профиля (очищаем перед удалением)
+      await _connection.execute(
+        Sql.named('UPDATE profiles SET fcm_token = NULL WHERE id = @id'),
+        parameters: {'id': id},
+      );
+
+      // Удаляем профиль (CASCADE автоматически удалит связанные данные)
+      await _connection.execute(
+        Sql.named('DELETE FROM profiles WHERE id = @id'),
+        parameters: {'id': id},
+      );
+
+      // Коммитим транзакцию
+      await _connection.execute(Sql('COMMIT'));
+      logger.info('Account deleted successfully: user_id=$id');
+    } catch (e) {
+      // Откатываем транзакцию в случае ошибки
+      await _connection.execute(Sql('ROLLBACK'));
+      logger.severe('Error deleting account: user_id=$id, error=$e');
+      rethrow;
+    }
+  }
 }

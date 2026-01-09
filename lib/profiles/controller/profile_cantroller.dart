@@ -94,8 +94,8 @@ class ProfileController {
         // Проверяем, истек ли токен или он невалидный по другой причине
         try {
           final payload = JwtDecoder.decode(token);
-          final expiry = DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000);
-          final now = DateTime.now();
+          final expiry = DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000, isUtc: true);
+          final now = DateTime.now().toUtc();
           if (now.isAfter(expiry)) {
             // Токен истек - возвращаем специальный код для обновления
             return Response.unauthorized(
@@ -148,8 +148,8 @@ class ProfileController {
         // Проверяем, истек ли токен или он невалидный по другой причине
         try {
           final payload = JwtDecoder.decode(token);
-          final expiry = DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000);
-          final now = DateTime.now();
+          final expiry = DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000, isUtc: true);
+          final now = DateTime.now().toUtc();
           if (now.isAfter(expiry)) {
             // Токен истек - возвращаем специальный код для обновления
             return Response.unauthorized(
@@ -212,8 +212,8 @@ class ProfileController {
         logger.severe('Invalid token received. Token: ${token.substring(0, 20)}...');
         try {
           final payload = JwtDecoder.decode(token);
-          final expiry = DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000);
-          final now = DateTime.now();
+          final expiry = DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000, isUtc: true);
+          final now = DateTime.now().toUtc();
           if (now.isAfter(expiry)) {
             return Response.unauthorized(
               jsonEncode({'error': 'Token expired', 'code': 'TOKEN_EXPIRED', 'message': 'Access token has expired. Please refresh your token using the refresh_token.'}),
@@ -457,6 +457,73 @@ class ProfileController {
       );
 
       return Response.ok(jsonEncode({'success': true}), headers: jsonContentHeaders);
+    });
+  }
+
+  ///
+  /// Удаление аккаунта
+  ///
+  /// Удаление аккаунта текущего авторизованного пользователя
+  ///
+  @Route.delete('/api/profile')
+  @OpenApiRoute()
+  Future<Response> deleteAccount(Request request) async {
+    return wrapResponse(() async {
+      // Проверяем аутентификацию
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}));
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      // Валидация токена
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        logger.severe('Invalid token received for account deletion. Token: ${token.substring(0, 20)}...');
+        try {
+          final payload = JwtDecoder.decode(token);
+          final expiry = DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000, isUtc: true);
+          final now = DateTime.now().toUtc();
+          if (now.isAfter(expiry)) {
+            return Response.unauthorized(
+              jsonEncode({'error': 'Token expired', 'code': 'TOKEN_EXPIRED', 'message': 'Access token has expired. Please refresh your token using the refresh_token.'}),
+              headers: {...jsonContentHeaders, 'X-Token-Status': 'expired'},
+            );
+          }
+        } catch (e) {
+          // Токен невалидный по другой причине
+        }
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token', 'code': 'INVALID_TOKEN'}), headers: {...jsonContentHeaders, 'X-Token-Status': 'invalid'});
+      }
+
+      // Получаем ID пользователя из токена
+      final id = tokenService.getUserIdFromToken(token);
+      if (id == null || id.isEmpty) {
+        logger.severe('Cannot extract user ID from token for account deletion');
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}));
+      }
+
+      final userId = int.parse(id);
+
+      try {
+        // Удаляем аккаунт
+        await _profileRepository.deleteAccount(id: userId);
+
+        logger.info('Account deleted successfully: user_id=$userId');
+
+        return Response.ok(
+          jsonEncode({'message': 'Account deleted successfully'}),
+          headers: jsonContentHeaders,
+        );
+      } catch (e) {
+        logger.severe('Error deleting account: user_id=$userId, error=$e');
+        return Response.internalServerError(
+          body: jsonEncode({'error': 'Failed to delete account'}),
+          headers: jsonContentHeaders,
+        );
+      }
     });
   }
 

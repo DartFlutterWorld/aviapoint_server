@@ -118,31 +118,6 @@ COMMENT ON COLUMN aircraft_model_specs.range_km IS 'Дальность полё�
 -- ============================================
 -- Представления для удобства запросов
 -- ============================================
-
--- Представление: полная информация о моделях с производителями
-CREATE OR REPLACE VIEW aircraft_catalog_view AS
-SELECT 
-    m.id as manufacturer_id,
-    m.name as manufacturer_name,
-    m.country as manufacturer_country,
-    am.id as model_id,
-    am.model_code,
-    am.full_name,
-    am.category,
-    am.engine_type,
-    am.engine_count,
-    am.is_active as model_active,
-    ams.seats,
-    ams.max_speed_kmh,
-    ams.cruise_speed_kmh,
-    ams.range_km,
-    ams.photo_url,
-    am.created_at,
-    am.updated_at
-FROM aircraft_models am
-INNER JOIN manufacturers m ON am.manufacturer_id = m.id
-LEFT JOIN aircraft_model_specs ams ON am.id = ams.aircraft_model_id
-WHERE m.is_active = true AND am.is_active = true;
-
-COMMENT ON VIEW aircraft_catalog_view IS 'Полный каталог самолётов с производителями и характеристиками';
+-- Примечание: Представление aircraft_catalog_view было удалено миграцией 051,
+-- так как не используется в коде. Фронтенд работает напрямую с таблицами через JOIN.
 

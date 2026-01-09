@@ -218,9 +218,6 @@ class OnTheWayRepository {
     }
 
     print('🔵 [OnTheWayRepository] fetchFlights returned ${flightsWithWaypoints.length} flights');
-    for (var flight in flightsWithWaypoints) {
-      print('🔵 [OnTheWayRepository] Flight id=${flight.id}, status=${flight.status}, waypoints=${flight.waypoints?.length ?? 0}');
-    }
 
     return flightsWithWaypoints;
   }
@@ -1303,7 +1300,8 @@ class OnTheWayRepository {
       Sql.named('''
         SELECT 
           id,
-          name,
+          first_name,
+          last_name,
           phone,
           email,
           fcm_token
@@ -1318,9 +1316,15 @@ class OnTheWayRepository {
     }
 
     final row = result.first.toColumnMap();
+    final firstName = row['first_name'] as String? ?? '';
+    final lastName = row['last_name'] as String? ?? '';
+    final fullName = '$firstName $lastName'.trim();
+    
     return {
       'id': row['id'],
-      'name': row['name'],
+      'name': fullName.isNotEmpty ? fullName : 'Пилот',
+      'first_name': firstName,
+      'last_name': lastName,
       'phone': row['phone'],
       'email': row['email'],
       'fcm_token': row['fcm_token'],

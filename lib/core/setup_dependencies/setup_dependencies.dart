@@ -29,6 +29,10 @@ import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.d
 import 'package:aviapoint_server/on_the_way/repositories/feedback_repository.dart';
 import 'package:aviapoint_server/on_the_way/repositories/airport_ownership_repository.dart';
 import 'package:aviapoint_server/on_the_way/repositories/aircraft_catalog_repository.dart';
+import 'package:aviapoint_server/blog/controller/blog_controller.dart';
+import 'package:aviapoint_server/blog/repositories/blog_repository.dart';
+import 'package:aviapoint_server/app_settings/controller/app_settings_controller.dart';
+import 'package:aviapoint_server/app_settings/data/repositories/app_settings_repository.dart';
 import 'package:postgres/postgres.dart';
 import 'package:get_it/get_it.dart';
 
@@ -209,6 +213,30 @@ Future<void> setupDependencies() async {
   getIt.registerSingletonAsync<AircraftCatalogController>(() async {
     final repository = await getIt.getAsync<AircraftCatalogRepository>();
     return AircraftCatalogController(repository: repository);
+  });
+
+  // Blog Repository
+  getIt.registerSingletonAsync<BlogRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return BlogRepository(connection: connection);
+  });
+
+  // Blog Controller
+  getIt.registerSingletonAsync<BlogController>(() async {
+    final repository = await getIt.getAsync<BlogRepository>();
+    return BlogController(repository: repository);
+  });
+
+  // App Settings Repository
+  getIt.registerSingletonAsync<AppSettingsRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return AppSettingsRepository(connection: connection);
+  });
+
+  // App Settings Controller
+  getIt.registerSingletonAsync<AppSettingsController>(() async {
+    final repository = await getIt.getAsync<AppSettingsRepository>();
+    return AppSettingsController(repository: repository);
   });
 
   // Инициализируем Telegram бота
