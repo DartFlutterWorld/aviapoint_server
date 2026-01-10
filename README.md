@@ -79,6 +79,9 @@ http://83.166.246.205:8082
 # Смотреть логи в реальном времени
 docker logs -f aviapoint-server
 
+docker logs aviapoint-server --tail=50
+
+
 # Проверка и перезапуск сервера на проде (если 502 Bad Gateway)
 ./check_and_restart_server.sh
 

@@ -135,10 +135,7 @@ class BlogController {
         final mediaType = MediaType.parse(contentType);
         final boundary = mediaType.parameters['boundary'];
         if (boundary == null) {
-          return Response.badRequest(
-            body: jsonEncode({'error': 'Missing boundary in Content-Type'}),
-            headers: jsonContentHeaders,
-          );
+          return Response.badRequest(body: jsonEncode({'error': 'Missing boundary in Content-Type'}), headers: jsonContentHeaders);
         }
 
         // Читаем тело запроса
@@ -223,10 +220,7 @@ class BlogController {
 
           // Валидация размера (максимум 5MB)
           if (photoData.length > 5 * 1024 * 1024) {
-            return Response.badRequest(
-              body: jsonEncode({'error': 'File size exceeds 5MB limit'}),
-              headers: jsonContentHeaders,
-            );
+            return Response.badRequest(body: jsonEncode({'error': 'File size exceeds 5MB limit'}), headers: jsonContentHeaders);
           }
 
           // Определяем расширение
@@ -262,44 +256,29 @@ class BlogController {
       // Валидация
       final title = articleData['title'] as String? ?? '';
       if (title.isEmpty) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Title is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Title is required'}), headers: jsonContentHeaders);
       }
 
       final content = articleData['content'] as String? ?? '';
       if (content.isEmpty) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Content is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Content is required'}), headers: jsonContentHeaders);
       }
 
       // Валидация категории (обязательное поле)
       final categoryId = articleData['category_id'] != null ? int.tryParse(articleData['category_id'].toString()) : null;
       if (categoryId == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Category is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Category is required'}), headers: jsonContentHeaders);
       }
 
       // Валидация краткого описания (обязательное поле)
       final excerpt = articleData['excerpt'] as String? ?? '';
       if (excerpt.isEmpty) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Excerpt is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Excerpt is required'}), headers: jsonContentHeaders);
       }
 
       // Валидация обложки (обязательное поле)
       if (coverImageUrl == null || coverImageUrl.isEmpty) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Cover image is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Cover image is required'}), headers: jsonContentHeaders);
       }
 
       // Создаем статью
@@ -317,6 +296,7 @@ class BlogController {
 
       // Отправляем уведомление в Telegram о создании статьи
       try {
+        print('📤 [BlogController] Начинаю отправку уведомления в Telegram о создании статьи ID: ${article.id}');
         final author = article.author;
         if (author != null) {
           final authorName = '${author.firstName ?? ''} ${author.lastName ?? ''}'.trim();
@@ -331,6 +311,13 @@ class BlogController {
             aircraftModelName = name.isEmpty ? null : name;
           }
 
+          // Получаем базовый URL сервера для формирования полного пути к изображению
+          final baseUrl = Platform.environment['BASE_URL'] ??
+              Platform.environment['SERVER_BASE_URL'] ??
+              'https://avia-point.com';
+
+          print('📤 [BlogController] Вызываю notifyBlogArticleCreated с параметрами: title=$title, content.length=${content.length}, coverImageUrl=$coverImageUrl');
+          
           await TelegramBotService().notifyBlogArticleCreated(
             articleId: article.id,
             authorId: authorId,
@@ -338,14 +325,22 @@ class BlogController {
             authorPhone: authorPhone,
             title: title,
             excerpt: article.excerpt,
+            content: content,
+            coverImageUrl: coverImageUrl,
             status: article.status,
             categoryName: categoryName,
             aircraftModelName: aircraftModelName,
+            baseUrl: baseUrl,
           );
+          
+          print('✅ [BlogController] Уведомление в Telegram отправлено успешно');
+        } else {
+          print('⚠️ [BlogController] Автор статьи не найден, пропускаю отправку уведомления');
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
         // Логируем ошибку, но не прерываем выполнение
-        print('⚠️ [BlogController] Ошибка отправки Telegram уведомления о создании статьи: $e');
+        print('❌ [BlogController] Ошибка отправки Telegram уведомления о создании статьи: $e');
+        print('❌ [BlogController] Stack trace: $stackTrace');
       }
 
       return Response.ok(jsonEncode(article.toJson()), headers: jsonContentHeaders);
@@ -380,18 +375,12 @@ class BlogController {
 
       final idStr = request.params['id'];
       if (idStr == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Article ID is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Article ID is required'}), headers: jsonContentHeaders);
       }
 
       final id = int.tryParse(idStr);
       if (id == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Invalid article ID'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid article ID'}), headers: jsonContentHeaders);
       }
 
       // Проверяем Content-Type
@@ -406,10 +395,7 @@ class BlogController {
         final mediaType = MediaType.parse(contentType);
         final boundary = mediaType.parameters['boundary'];
         if (boundary == null) {
-          return Response.badRequest(
-            body: jsonEncode({'error': 'Missing boundary in Content-Type'}),
-            headers: jsonContentHeaders,
-          );
+          return Response.badRequest(body: jsonEncode({'error': 'Missing boundary in Content-Type'}), headers: jsonContentHeaders);
         }
 
         // Читаем тело запроса
@@ -494,10 +480,7 @@ class BlogController {
 
           // Валидация размера (максимум 5MB)
           if (photoData.length > 5 * 1024 * 1024) {
-            return Response.badRequest(
-              body: jsonEncode({'error': 'File size exceeds 5MB limit'}),
-              headers: jsonContentHeaders,
-            );
+            return Response.badRequest(body: jsonEncode({'error': 'File size exceeds 5MB limit'}), headers: jsonContentHeaders);
           }
 
           // Определяем расширение
@@ -548,16 +531,10 @@ class BlogController {
         return Response.ok(jsonEncode(article.toJson()), headers: jsonContentHeaders);
       } catch (e) {
         if (e.toString().contains('Unauthorized')) {
-          return Response.forbidden(
-            jsonEncode({'error': e.toString()}),
-            headers: jsonContentHeaders,
-          );
+          return Response.forbidden(jsonEncode({'error': e.toString()}), headers: jsonContentHeaders);
         }
         if (e.toString().contains('not found')) {
-          return Response.notFound(
-            jsonEncode({'error': e.toString()}),
-            headers: jsonContentHeaders,
-          );
+          return Response.notFound(jsonEncode({'error': e.toString()}), headers: jsonContentHeaders);
         }
         rethrow;
       }
@@ -592,18 +569,12 @@ class BlogController {
 
       final idStr = request.params['id'];
       if (idStr == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Article ID is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Article ID is required'}), headers: jsonContentHeaders);
       }
 
       final id = int.tryParse(idStr);
       if (id == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Invalid article ID'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid article ID'}), headers: jsonContentHeaders);
       }
 
       try {
@@ -611,19 +582,13 @@ class BlogController {
         final deleted = await _repository.deleteArticle(id: id, authorId: authorId);
 
         if (!deleted) {
-          return Response.notFound(
-            jsonEncode({'error': 'Article not found'}),
-            headers: jsonContentHeaders,
-          );
+          return Response.notFound(jsonEncode({'error': 'Article not found'}), headers: jsonContentHeaders);
         }
 
         return Response(204);
       } catch (e) {
         if (e.toString().contains('Unauthorized')) {
-          return Response.forbidden(
-            jsonEncode({'error': e.toString()}),
-            headers: jsonContentHeaders,
-          );
+          return Response.forbidden(jsonEncode({'error': e.toString()}), headers: jsonContentHeaders);
         }
         rethrow;
       }
@@ -659,53 +624,35 @@ class BlogController {
       // Получаем ID статьи
       final idStr = request.params['id'];
       if (idStr == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Article ID is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Article ID is required'}), headers: jsonContentHeaders);
       }
 
       final articleId = int.tryParse(idStr);
       if (articleId == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Invalid article ID'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid article ID'}), headers: jsonContentHeaders);
       }
 
       // Проверяем, что статья существует и пользователь является автором
       final article = await _repository.getArticle(id: articleId);
       if (article == null) {
-        return Response.notFound(
-          jsonEncode({'error': 'Article not found'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.notFound(jsonEncode({'error': 'Article not found'}), headers: jsonContentHeaders);
       }
 
       if (article.authorId != userId) {
-        return Response.forbidden(
-          jsonEncode({'error': 'You can only upload images to your own articles'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.forbidden(jsonEncode({'error': 'You can only upload images to your own articles'}), headers: jsonContentHeaders);
       }
 
       // Проверяем Content-Type
       final contentType = request.headers['Content-Type'];
       if (contentType == null || !contentType.startsWith('multipart/form-data')) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}), headers: jsonContentHeaders);
       }
 
       // Парсим multipart запрос
       final mediaType = MediaType.parse(contentType);
       final boundary = mediaType.parameters['boundary'];
       if (boundary == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Missing boundary in Content-Type'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Missing boundary in Content-Type'}), headers: jsonContentHeaders);
       }
 
       // Читаем тело запроса
@@ -777,10 +724,7 @@ class BlogController {
 
         // Валидация размера (максимум 5MB)
         if (imageData.length > 5 * 1024 * 1024) {
-          return Response.badRequest(
-            body: jsonEncode({'error': 'File size exceeds 5MB limit'}),
-            headers: jsonContentHeaders,
-          );
+          return Response.badRequest(body: jsonEncode({'error': 'File size exceeds 5MB limit'}), headers: jsonContentHeaders);
         }
 
         // Определяем расширение
@@ -810,16 +754,10 @@ class BlogController {
       }
 
       if (imageUrl == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'No image provided'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'No image provided'}), headers: jsonContentHeaders);
       }
 
-      return Response.ok(
-        jsonEncode({'url': imageUrl}),
-        headers: jsonContentHeaders,
-      );
+      return Response.ok(jsonEncode({'url': imageUrl}), headers: jsonContentHeaders);
     });
   }
 
@@ -852,20 +790,14 @@ class BlogController {
       // Проверяем Content-Type
       final contentType = request.headers['Content-Type'];
       if (contentType == null || !contentType.startsWith('multipart/form-data')) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}), headers: jsonContentHeaders);
       }
 
       // Парсим multipart запрос
       final mediaType = MediaType.parse(contentType);
       final boundary = mediaType.parameters['boundary'];
       if (boundary == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Missing boundary in Content-Type'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Missing boundary in Content-Type'}), headers: jsonContentHeaders);
       }
 
       // Читаем тело запроса
@@ -932,10 +864,7 @@ class BlogController {
 
         // Валидация размера (максимум 5MB)
         if (imageData.length > 5 * 1024 * 1024) {
-          return Response.badRequest(
-            body: jsonEncode({'error': 'File size exceeds 5MB limit'}),
-            headers: jsonContentHeaders,
-          );
+          return Response.badRequest(body: jsonEncode({'error': 'File size exceeds 5MB limit'}), headers: jsonContentHeaders);
         }
 
         // Определяем расширение
@@ -965,16 +894,10 @@ class BlogController {
       }
 
       if (imageUrl == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'No image provided'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'No image provided'}), headers: jsonContentHeaders);
       }
 
-      return Response.ok(
-        jsonEncode({'url': imageUrl}),
-        headers: jsonContentHeaders,
-      );
+      return Response.ok(jsonEncode({'url': imageUrl}), headers: jsonContentHeaders);
     });
   }
 
@@ -1033,10 +956,6 @@ class BlogController {
       bodyBytes.removeLast();
     }
 
-    return {
-      'content-disposition': headers['content-disposition'],
-      'content-type': headers['content-type'],
-      'data': bodyBytes,
-    };
+    return {'content-disposition': headers['content-disposition'], 'content-type': headers['content-type'], 'data': bodyBytes};
   }
 }

@@ -35,9 +35,8 @@ class TelegramBotService {
     try {
       final url = Uri.parse('https://api.telegram.org/bot$_botToken/sendMessage');
 
-      final response = await http
-          .post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode({'chat_id': _chatId, 'text': message, 'parse_mode': 'HTML'}))
-          .timeout(const Duration(seconds: 10));
+      final response =
+          await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode({'chat_id': _chatId, 'text': message, 'parse_mode': 'HTML'})).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         logger.info('✅ Telegram уведомление отправлено');
@@ -55,8 +54,7 @@ class TelegramBotService {
 
   /// Уведомление о регистрации нового пользователя
   Future<void> notifyUserRegistration({required int userId, required String phone, String? firstName, String? lastName, String? email}) async {
-    final message =
-        '''
+    final message = '''
 🔵 <b>Новая регистрация</b>
 
 👤 <b>Пользователь ID:</b> $userId
@@ -98,8 +96,7 @@ ${email != null && email.isNotEmpty ? '📧 <b>Email:</b> $email' : ''}
         break;
     }
 
-    final message =
-        '''
+    final message = '''
 💰 <b>Новая подписка</b>
 
 👤 <b>Пользователь ID:</b> $userId
@@ -195,16 +192,11 @@ ${comment != null && comment.isNotEmpty ? '💬 <b>Комментарий:</b> $
     String routeText = '$departureAirport → $arrivalAirport';
     if (waypoints != null && waypoints.length > 2) {
       // Сортируем waypoints по sequence_order
-      final sortedWaypoints = List<Map<String, dynamic>>.from(waypoints)
-        ..sort((a, b) => (a['sequence_order'] as int).compareTo(b['sequence_order'] as int));
-      
+      final sortedWaypoints = List<Map<String, dynamic>>.from(waypoints)..sort((a, b) => (a['sequence_order'] as int).compareTo(b['sequence_order'] as int));
+
       // Берем промежуточные точки (исключаем первую и последнюю)
-      final intermediatePoints = sortedWaypoints
-          .sublist(1, sortedWaypoints.length - 1)
-          .map((wp) => wp['airport_code'] as String? ?? '')
-          .where((code) => code.isNotEmpty)
-          .toList();
-      
+      final intermediatePoints = sortedWaypoints.sublist(1, sortedWaypoints.length - 1).map((wp) => wp['airport_code'] as String? ?? '').where((code) => code.isNotEmpty).toList();
+
       if (intermediatePoints.isNotEmpty) {
         routeText = '$departureAirport → ${intermediatePoints.join(' → ')} → $arrivalAirport';
       }
@@ -230,6 +222,39 @@ ${aircraftType != null && aircraftType.isNotEmpty ? '🛩️ <b>Тип само�
     await sendMessage(message);
   }
 
+  /// Отправка фото в Telegram
+  Future<bool> sendPhoto(String photoUrl, {String? caption}) async {
+    if (_botToken == null || _botToken!.isEmpty || _chatId == null || _chatId!.isEmpty) {
+      logger.info('Telegram bot не настроен, пропускаем отправку фото');
+      return false;
+    }
+
+    try {
+      final url = Uri.parse('https://api.telegram.org/bot$_botToken/sendPhoto');
+
+      final body = {
+        'chat_id': _chatId,
+        'photo': photoUrl,
+        if (caption != null && caption.isNotEmpty) 'caption': caption,
+        'parse_mode': 'HTML',
+      };
+
+      final response = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body)).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        logger.info('✅ Telegram фото отправлено');
+        return true;
+      } else {
+        logger.info('⚠️ Ошибка отправки Telegram фото: ${response.statusCode} - ${response.body}');
+        return false;
+      }
+    } catch (e, stackTrace) {
+      logger.severe('❌ Ошибка при отправке Telegram фото: $e');
+      logger.severe('Stack trace: $stackTrace');
+      return false;
+    }
+  }
+
   /// Уведомление о создании новой статьи блога
   Future<void> notifyBlogArticleCreated({
     required int articleId,
@@ -238,31 +263,44 @@ ${aircraftType != null && aircraftType.isNotEmpty ? '🛩️ <b>Тип само�
     required String authorPhone,
     required String title,
     String? excerpt,
+    String? content,
+    String? coverImageUrl,
     required String status,
     String? categoryName,
     String? aircraftModelName,
+    String? baseUrl,
   }) async {
-    // Определяем статус статьи
-    String statusText = status;
-    switch (status.toLowerCase()) {
-      case 'draft':
-        statusText = 'Черновик';
-        break;
-      case 'published':
-        statusText = 'Опубликовано';
-        break;
-      case 'archived':
-        statusText = 'Архив';
-        break;
-    }
+    try {
+      logger.info('📤 Начинаю отправку уведомления о создании статьи в Telegram. ID статьи: $articleId');
 
-    // Обрезаем excerpt, если он слишком длинный
-    String? excerptText = excerpt;
-    if (excerptText != null && excerptText.length > 200) {
-      excerptText = '${excerptText.substring(0, 200)}...';
-    }
+      // Определяем статус статьи
+      String statusText = status;
+      switch (status.toLowerCase()) {
+        case 'draft':
+          statusText = 'Черновик';
+          break;
+        case 'published':
+          statusText = 'Опубликовано';
+          break;
+        case 'archived':
+          statusText = 'Архив';
+          break;
+      }
 
-    final message = '''
+      // Обрезаем excerpt, если он слишком длинный
+      String? excerptText = excerpt;
+      if (excerptText != null && excerptText.length > 200) {
+        excerptText = '${excerptText.substring(0, 200)}...';
+      }
+
+      // Преобразуем JSON Delta content в читаемый текст
+      String? contentText = _extractTextFromContent(content);
+      if (contentText != null) {
+        logger.info('📝 Извлечено содержимое статьи, длина: ${contentText.length} символов');
+      }
+
+      // Формируем базовое сообщение
+      final message = '''
 📝 <b>Новая статья блога создана</b>
 
 🆔 <b>ID статьи:</b> $articleId
@@ -272,6 +310,7 @@ ${aircraftType != null && aircraftType.isNotEmpty ? '🛩️ <b>Тип само�
 
 📌 <b>Название:</b> $title
 ${excerptText != null && excerptText.isNotEmpty ? '📄 <b>Краткое описание:</b> $excerptText' : ''}
+${contentText != null && contentText.isNotEmpty ? '📝 <b>Содержимое:</b>\n${contentText.length > 1000 ? contentText.substring(0, 1000) + '...' : contentText}' : ''}
 📊 <b>Статус:</b> $statusText
 ${categoryName != null && categoryName.isNotEmpty ? '📂 <b>Категория:</b> $categoryName' : ''}
 ${aircraftModelName != null && aircraftModelName.isNotEmpty ? '🛩️ <b>Модель самолёта:</b> $aircraftModelName' : ''}
@@ -279,6 +318,90 @@ ${aircraftModelName != null && aircraftModelName.isNotEmpty ? '🛩️ <b>Мод
 🕐 <b>Время создания:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
 ''';
 
-    await sendMessage(message);
+      // Если есть обложка, отправляем фото с подписью, иначе только текст
+      if (coverImageUrl != null && coverImageUrl.isNotEmpty) {
+        logger.info('🖼️ Обложка найдена: $coverImageUrl');
+        // Формируем полный URL изображения
+        String fullImageUrl = _buildImageUrl(coverImageUrl, baseUrl);
+        logger.info('🔗 Полный URL обложки: $fullImageUrl');
+
+        // Отправляем фото с подписью (в Telegram максимальная длина подписи - 1024 символа)
+        final photoCaption = message.length > 1024 ? message.substring(0, 1021) + '...' : message;
+        final photoSent = await sendPhoto(fullImageUrl, caption: photoCaption);
+
+        if (photoSent) {
+          logger.info('✅ Фото с подписью отправлено успешно');
+          // Если сообщение было обрезано, отправляем остаток отдельным сообщением
+          if (message.length > 1024) {
+            await sendMessage(message.substring(1024));
+          }
+        } else {
+          logger.info('⚠️ Не удалось отправить фото, пробуем отправить только текст');
+          await sendMessage(message);
+        }
+      } else {
+        logger.info('📝 Обложка не найдена, отправляю только текстовое сообщение');
+        await sendMessage(message);
+      }
+
+      logger.info('✅ Уведомление о создании статьи отправлено успешно');
+    } catch (e, stackTrace) {
+      logger.severe('❌ Ошибка при отправке уведомления о создании статьи: $e');
+      logger.severe('Stack trace: $stackTrace');
+    }
+  }
+
+  /// Извлекает текст из JSON Delta контента
+  String? _extractTextFromContent(String? contentJson) {
+    if (contentJson == null || contentJson.isEmpty) {
+      return null;
+    }
+
+    try {
+      final List<dynamic> delta = jsonDecode(contentJson);
+      final buffer = StringBuffer();
+
+      for (final operation in delta) {
+        if (operation is Map<String, dynamic>) {
+          final insert = operation['insert'];
+          if (insert is String) {
+            buffer.write(insert);
+          } else if (insert is Map<String, dynamic>) {
+            // Если это вложение (например, изображение), пропускаем или добавляем метку
+            if (insert.containsKey('image')) {
+              buffer.write('[Изображение] ');
+            }
+          }
+        }
+      }
+
+      final text = buffer.toString().trim();
+      return text.isEmpty ? null : text;
+    } catch (e) {
+      logger.info('⚠️ Ошибка парсинга JSON Delta контента: $e');
+      return null;
+    }
+  }
+
+  /// Формирует полный URL изображения
+  String _buildImageUrl(String imagePath, String? baseUrl) {
+    // Если путь уже является полным URL, возвращаем как есть
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+
+    // Получаем базовый URL из переменной окружения или используем переданный
+    String serverBaseUrl = baseUrl ?? Platform.environment['BASE_URL'] ?? Platform.environment['SERVER_BASE_URL'] ?? 'https://avia-point.com';
+
+    // Убираем слеш в конце baseUrl, если есть
+    if (serverBaseUrl.endsWith('/')) {
+      serverBaseUrl = serverBaseUrl.substring(0, serverBaseUrl.length - 1);
+    }
+
+    // Убираем начальный слеш из imagePath, если есть
+    String cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+
+    // Формируем полный URL с префиксом /public/
+    return '$serverBaseUrl/public/$cleanPath';
   }
 }
