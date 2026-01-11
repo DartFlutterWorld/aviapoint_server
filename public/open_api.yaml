@@ -1169,6 +1169,74 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /api/blog/articles/<id>/comments:
+    get:
+      tags:
+        - BlogController
+      summary: Получить комментарии к статье
+      operationId: getCommentsByArticleId
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    post:
+      tags:
+        - BlogController
+      summary: Создать комментарий (требуется авторизация)
+      operationId: createComment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/blog/articles/<id>/comments/<commentId>:
+    put:
+      tags:
+        - BlogController
+      summary: "Обновить комментарий (требуется авторизация, только автор)"
+      operationId: updateComment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - BlogController
+      summary: "Удалить комментарий (требуется авторизация, только автор)"
+      operationId: deleteComment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
   /api/app-settings:
     get:
       tags:

@@ -53,5 +53,25 @@ Router _$BlogControllerRouter(BlogController service) {
     r'/api/blog/articles/content-images/upload',
     service.uploadContentImageTemporary,
   );
+  router.add(
+    'GET',
+    r'/api/blog/articles/<id>/comments',
+    service.getCommentsByArticleId,
+  );
+  router.add(
+    'POST',
+    r'/api/blog/articles/<id>/comments',
+    service.createComment,
+  );
+  router.add(
+    'PUT',
+    r'/api/blog/articles/<id>/comments/<commentId>',
+    service.updateComment,
+  );
+  router.add(
+    'DELETE',
+    r'/api/blog/articles/<id>/comments/<commentId>',
+    service.deleteComment,
+  );
   return router;
 }

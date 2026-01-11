@@ -122,6 +122,7 @@ ALL_MIGRATIONS=(
     "049:remove_blog_article_slug"
     "050:drop_aircraft_catalog_view"
     "051:simplify_aircraft_tables"
+    "052:add_index_to_blog_comments"
 )
 
 echo -e "${YELLOW}   Примененные миграции на продакшн сервере:${NC}"

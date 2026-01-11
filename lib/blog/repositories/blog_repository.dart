@@ -1,6 +1,7 @@
 import 'package:aviapoint_server/blog/data/model/blog_article_model.dart';
 import 'package:aviapoint_server/blog/data/model/blog_category_model.dart';
 import 'package:aviapoint_server/blog/data/model/blog_tag_model.dart';
+import 'package:aviapoint_server/blog/data/model/blog_comment_model.dart';
 import 'package:postgres/postgres.dart';
 
 class BlogRepository {
@@ -429,6 +430,215 @@ class BlogRepository {
       parameters: {'id': id},
     );
     
+    return result.affectedRows > 0;
+  }
+
+  // ====================================================================
+  // КОММЕНТАРИИ К СТАТЬЯМ
+  // ====================================================================
+
+  /// Получить комментарии к статье
+  Future<List<BlogCommentModel>> getCommentsByArticleId(int articleId) async {
+    final result = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          c.*,
+          p.first_name as author_first_name,
+          p.last_name as author_last_name,
+          p.avatar_url as author_avatar_url,
+          COALESCE((
+            SELECT AVG(rating)::numeric
+            FROM reviews
+            WHERE reviewed_id = p.id 
+              AND reply_to_review_id IS NULL 
+              AND rating IS NOT NULL
+          ), 0) AS author_rating
+        FROM blog_comments c
+        LEFT JOIN profiles p ON c.author_id = p.id
+        WHERE c.article_id = @article_id
+          AND c.is_approved = true
+        ORDER BY c.created_at ASC
+      '''),
+      parameters: {'article_id': articleId},
+    );
+
+    return result.map((row) {
+      final map = row.toColumnMap();
+      return BlogCommentModel.fromJson(map);
+    }).toList();
+  }
+
+  /// Создать комментарий
+  Future<BlogCommentModel> createComment({
+    required int articleId,
+    required int authorId,
+    String? parentCommentId,
+    required String content,
+  }) async {
+    // Проверяем существование статьи
+    final articleCheck = await _connection.execute(
+      Sql.named('SELECT id FROM blog_articles WHERE id = @article_id'),
+      parameters: {'article_id': articleId},
+    );
+
+    if (articleCheck.isEmpty) {
+      throw Exception('Article not found');
+    }
+
+    // Если указан parent_comment_id, проверяем что он существует и принадлежит той же статье
+    if (parentCommentId != null && parentCommentId.isNotEmpty) {
+      final parentId = int.tryParse(parentCommentId);
+      if (parentId != null) {
+        final parentCheck = await _connection.execute(
+          Sql.named('''
+            SELECT id FROM blog_comments 
+            WHERE id = @parent_id AND article_id = @article_id
+          '''),
+          parameters: {'parent_id': parentId, 'article_id': articleId},
+        );
+
+        if (parentCheck.isEmpty) {
+          throw Exception('Parent comment not found or does not belong to this article');
+        }
+      }
+    }
+
+    final parentIdInt = parentCommentId != null && parentCommentId.isNotEmpty ? int.tryParse(parentCommentId) : null;
+
+    final result = await _connection.execute(
+      Sql.named('''
+        INSERT INTO blog_comments (article_id, author_id, parent_comment_id, content)
+        VALUES (@article_id, @author_id, @parent_comment_id, @content)
+        RETURNING *
+      '''),
+      parameters: {
+        'article_id': articleId,
+        'author_id': authorId,
+        'parent_comment_id': parentIdInt,
+        'content': content,
+      },
+    );
+
+    if (result.isEmpty) {
+      throw Exception('Failed to create comment');
+    }
+
+    // Получаем данные автора через JOIN
+    final commentMap = result.first.toColumnMap();
+    final authorResult = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          first_name as author_first_name,
+          last_name as author_last_name,
+          avatar_url as author_avatar_url,
+          COALESCE((
+            SELECT AVG(rating)::numeric
+            FROM reviews
+            WHERE reviewed_id = @author_id 
+              AND reply_to_review_id IS NULL 
+              AND rating IS NOT NULL
+          ), 0) AS author_rating
+        FROM profiles
+        WHERE id = @author_id
+      '''),
+      parameters: {'author_id': authorId},
+    );
+
+    if (authorResult.isNotEmpty) {
+      final authorMap = authorResult.first.toColumnMap();
+      commentMap.addAll(authorMap);
+    }
+
+    return BlogCommentModel.fromJson(commentMap);
+  }
+
+  /// Обновить комментарий
+  Future<BlogCommentModel> updateComment({
+    required int commentId,
+    required int authorId,
+    required String content,
+  }) async {
+    // Проверяем что комментарий существует и принадлежит автору
+    final commentCheck = await _connection.execute(
+      Sql.named('SELECT author_id FROM blog_comments WHERE id = @comment_id'),
+      parameters: {'comment_id': commentId},
+    );
+
+    if (commentCheck.isEmpty) {
+      throw Exception('Comment not found');
+    }
+
+    if (commentCheck.first[0] as int != authorId) {
+      throw Exception('Unauthorized: You can only update your own comments');
+    }
+
+    final result = await _connection.execute(
+      Sql.named('''
+        UPDATE blog_comments
+        SET content = @content, updated_at = NOW()
+        WHERE id = @comment_id
+        RETURNING *
+      '''),
+      parameters: {
+        'comment_id': commentId,
+        'content': content,
+      },
+    );
+
+    if (result.isEmpty) {
+      throw Exception('Failed to update comment');
+    }
+
+    // Получаем данные автора через JOIN
+    final commentMap = result.first.toColumnMap();
+    final authorResult = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          first_name as author_first_name,
+          last_name as author_last_name,
+          avatar_url as author_avatar_url,
+          COALESCE((
+            SELECT AVG(rating)::numeric
+            FROM reviews
+            WHERE reviewed_id = @author_id 
+              AND reply_to_review_id IS NULL 
+              AND rating IS NOT NULL
+          ), 0) AS author_rating
+        FROM profiles
+        WHERE id = @author_id
+      '''),
+      parameters: {'author_id': authorId},
+    );
+
+    if (authorResult.isNotEmpty) {
+      final authorMap = authorResult.first.toColumnMap();
+      commentMap.addAll(authorMap);
+    }
+
+    return BlogCommentModel.fromJson(commentMap);
+  }
+
+  /// Удалить комментарий
+  Future<bool> deleteComment({required int commentId, required int authorId}) async {
+    // Проверяем что комментарий существует и принадлежит автору
+    final commentCheck = await _connection.execute(
+      Sql.named('SELECT author_id FROM blog_comments WHERE id = @comment_id'),
+      parameters: {'comment_id': commentId},
+    );
+
+    if (commentCheck.isEmpty) {
+      throw Exception('Comment not found');
+    }
+
+    if (commentCheck.first[0] as int != authorId) {
+      throw Exception('Unauthorized: You can only delete your own comments');
+    }
+
+    final result = await _connection.execute(
+      Sql.named('DELETE FROM blog_comments WHERE id = @comment_id'),
+      parameters: {'comment_id': commentId},
+    );
+
     return result.affectedRows > 0;
   }
 }

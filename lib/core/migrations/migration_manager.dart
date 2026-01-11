@@ -173,6 +173,7 @@ class MigrationManager {
       _MigrationInfo(version: '049', name: 'remove_blog_article_slug', file: 'migrations/remove_blog_article_slug.sql'),
       _MigrationInfo(version: '050', name: 'drop_aircraft_catalog_view', file: 'migrations/051_drop_aircraft_catalog_view.sql'),
       _MigrationInfo(version: '051', name: 'simplify_aircraft_tables', file: 'migrations/053_simplify_aircraft_tables.sql'),
+      _MigrationInfo(version: '052', name: 'add_index_to_blog_comments', file: 'migrations/add_index_to_blog_comments.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 

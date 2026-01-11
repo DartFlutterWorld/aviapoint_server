@@ -44,7 +44,6 @@ class BlogController {
       final authorId = params['author_id'] != null ? int.tryParse(params['author_id']!) : null;
       // Если status не передан, передаем null чтобы показать все статусы (для "моих статей")
       final status = params.containsKey('status') ? params['status'] : null;
-      final isFeatured = params['featured'] == 'true' ? true : (params['featured'] == 'false' ? false : null);
       final searchQuery = params['search'];
       final limit = params['limit'] != null ? int.tryParse(params['limit']!) ?? 20 : 20;
       final offset = params['offset'] != null ? int.tryParse(params['offset']!) ?? 0 : 0;
@@ -300,7 +299,7 @@ class BlogController {
         final author = article.author;
         if (author != null) {
           final authorName = '${author.firstName ?? ''} ${author.lastName ?? ''}'.trim();
-          final authorPhone = author.phone ?? '';
+          final authorPhone = author.phone;
 
           final categoryName = article.category?.name;
           String? aircraftModelName;
@@ -312,12 +311,10 @@ class BlogController {
           }
 
           // Получаем базовый URL сервера для формирования полного пути к изображению
-          final baseUrl = Platform.environment['BASE_URL'] ??
-              Platform.environment['SERVER_BASE_URL'] ??
-              'https://avia-point.com';
+          final baseUrl = Platform.environment['BASE_URL'] ?? Platform.environment['SERVER_BASE_URL'] ?? 'https://avia-point.com';
 
           print('📤 [BlogController] Вызываю notifyBlogArticleCreated с параметрами: title=$title, content.length=${content.length}, coverImageUrl=$coverImageUrl');
-          
+
           await TelegramBotService().notifyBlogArticleCreated(
             articleId: article.id,
             authorId: authorId,
@@ -332,7 +329,7 @@ class BlogController {
             aircraftModelName: aircraftModelName,
             baseUrl: baseUrl,
           );
-          
+
           print('✅ [BlogController] Уведомление в Telegram отправлено успешно');
         } else {
           print('⚠️ [BlogController] Автор статьи не найден, пропускаю отправку уведомления');
@@ -957,5 +954,179 @@ class BlogController {
     }
 
     return {'content-disposition': headers['content-disposition'], 'content-type': headers['content-type'], 'data': bodyBytes};
+  }
+
+  // ====================================================================
+  // КОММЕНТАРИИ К СТАТЬЯМ
+  // ====================================================================
+
+  /// Получить комментарии к статье
+  @Route.get('/api/blog/articles/<id>/comments')
+  @OpenApiRoute()
+  Future<Response> getCommentsByArticleId(Request request) async {
+    return wrapResponse(() async {
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Article ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid article ID'}), headers: jsonContentHeaders);
+      }
+
+      final comments = await _repository.getCommentsByArticleId(id);
+      return Response.ok(jsonEncode(comments.map((c) => c.toJson()).toList()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Создать комментарий (требуется авторизация)
+  @Route.post('/api/blog/articles/<id>/comments')
+  @OpenApiRoute()
+  Future<Response> createComment(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}), headers: jsonContentHeaders);
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}), headers: jsonContentHeaders);
+      }
+
+      final userId = tokenService.getUserIdFromToken(token);
+      if (userId == null || userId.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}), headers: jsonContentHeaders);
+      }
+
+      final authorId = int.parse(userId);
+
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Article ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final articleId = int.tryParse(idStr);
+      if (articleId == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid article ID'}), headers: jsonContentHeaders);
+      }
+
+      // Парсим тело запроса
+      final body = await request.readAsString();
+      final bodyJson = jsonDecode(body) as Map<String, dynamic>;
+
+      final content = bodyJson['content'] as String?;
+      if (content == null || content.isEmpty) {
+        return Response.badRequest(body: jsonEncode({'error': 'Content is required'}), headers: jsonContentHeaders);
+      }
+
+      final parentCommentId = bodyJson['parent_comment_id']?.toString();
+
+      final comment = await _repository.createComment(articleId: articleId, authorId: authorId, parentCommentId: parentCommentId, content: content);
+
+      return Response.ok(jsonEncode(comment.toJson()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Обновить комментарий (требуется авторизация, только автор)
+  @Route.put('/api/blog/articles/<id>/comments/<commentId>')
+  @OpenApiRoute()
+  Future<Response> updateComment(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}), headers: jsonContentHeaders);
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}), headers: jsonContentHeaders);
+      }
+
+      final userId = tokenService.getUserIdFromToken(token);
+      if (userId == null || userId.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}), headers: jsonContentHeaders);
+      }
+
+      final authorId = int.parse(userId);
+
+      final commentIdStr = request.params['commentId'];
+      if (commentIdStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Comment ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final commentId = int.tryParse(commentIdStr);
+      if (commentId == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid comment ID'}), headers: jsonContentHeaders);
+      }
+
+      // Парсим тело запроса
+      final body = await request.readAsString();
+      final bodyJson = jsonDecode(body) as Map<String, dynamic>;
+
+      final content = bodyJson['content'] as String?;
+      if (content == null || content.isEmpty) {
+        return Response.badRequest(body: jsonEncode({'error': 'Content is required'}), headers: jsonContentHeaders);
+      }
+
+      final comment = await _repository.updateComment(commentId: commentId, authorId: authorId, content: content);
+
+      return Response.ok(jsonEncode(comment.toJson()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Удалить комментарий (требуется авторизация, только автор)
+  @Route.delete('/api/blog/articles/<id>/comments/<commentId>')
+  @OpenApiRoute()
+  Future<Response> deleteComment(Request request) async {
+    return wrapResponse(() async {
+      // Проверка авторизации
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response.unauthorized(jsonEncode({'error': 'Unauthorized'}), headers: jsonContentHeaders);
+      }
+
+      final token = authHeader.substring(7);
+      final tokenService = getIt.get<TokenService>();
+
+      final isValid = tokenService.validateToken(token);
+      if (!isValid) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token'}), headers: jsonContentHeaders);
+      }
+
+      final userId = tokenService.getUserIdFromToken(token);
+      if (userId == null || userId.isEmpty) {
+        return Response.unauthorized(jsonEncode({'error': 'Invalid token: no user ID'}), headers: jsonContentHeaders);
+      }
+
+      final authorId = int.parse(userId);
+
+      final commentIdStr = request.params['commentId'];
+      if (commentIdStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Comment ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final commentId = int.tryParse(commentIdStr);
+      if (commentId == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid comment ID'}), headers: jsonContentHeaders);
+      }
+
+      final deleted = await _repository.deleteComment(commentId: commentId, authorId: authorId);
+
+      if (!deleted) {
+        return Response.notFound(jsonEncode({'error': 'Comment not found'}), headers: jsonContentHeaders);
+      }
+
+      return Response(204);
+    });
   }
 }
