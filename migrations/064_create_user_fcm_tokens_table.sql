@@ -27,11 +27,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Триггер для автоматического обновления updated_at
-CREATE TRIGGER trigger_update_user_fcm_tokens_updated_at
-    BEFORE UPDATE ON user_fcm_tokens
-    FOR EACH ROW
-    EXECUTE FUNCTION update_user_fcm_tokens_updated_at();
+-- Триггер для автоматического обновления updated_at (только если не существует)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger 
+    WHERE tgname = 'trigger_update_user_fcm_tokens_updated_at'
+    AND tgrelid = 'user_fcm_tokens'::regclass
+  ) THEN
+    CREATE TRIGGER trigger_update_user_fcm_tokens_updated_at
+      BEFORE UPDATE ON user_fcm_tokens
+      FOR EACH ROW
+      EXECUTE FUNCTION update_user_fcm_tokens_updated_at();
+  END IF;
+END $$;
 
 -- Миграция существующих данных из profiles.fcm_token в user_fcm_tokens
 -- Определяем платформу как 'mobile' (по умолчанию для существующих токенов)

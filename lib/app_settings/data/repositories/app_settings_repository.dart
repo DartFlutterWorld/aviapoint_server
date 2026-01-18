@@ -27,13 +27,25 @@ class AppSettingsRepository {
       return null;
     }
 
-    return AppSettingsModel.fromJson(result.first.toColumnMap());
+    final row = result.first;
+    final columnMap = row.toColumnMap();
+    
+    // Логируем для отладки
+    logger.info('🔵 [AppSettingsRepository] getSettingByKey: key=$key');
+    logger.info('🔵 [AppSettingsRepository] Raw value from DB: ${columnMap['value']}, type: ${columnMap['value'].runtimeType}');
+    
+    final model = AppSettingsModel.fromJson(columnMap);
+    logger.info('🔵 [AppSettingsRepository] Parsed value: ${model.value}');
+    
+    return model;
   }
 
   /// Получить значение настройки по ключу (возвращает false, если настройка не найдена)
   Future<bool> getSettingValue(String key) async {
     final setting = await getSettingByKey(key);
-    return setting?.value ?? false;
+    final value = setting?.value ?? false;
+    logger.info('🔵 [AppSettingsRepository] getSettingValue: key=$key, value=$value');
+    return value;
   }
 
   /// Обновить значение настройки

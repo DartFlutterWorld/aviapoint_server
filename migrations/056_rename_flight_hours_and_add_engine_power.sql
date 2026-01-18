@@ -3,9 +3,18 @@
 
 BEGIN;
 
--- Переименовываем колонку flight_hours в total_flight_hours
-ALTER TABLE aircraft_market 
-RENAME COLUMN flight_hours TO total_flight_hours;
+-- Переименовываем колонку flight_hours в total_flight_hours (только если существует flight_hours)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'aircraft_market' 
+    AND column_name = 'flight_hours'
+  ) THEN
+    ALTER TABLE aircraft_market 
+      RENAME COLUMN flight_hours TO total_flight_hours;
+  END IF;
+END $$;
 
 -- Добавляем новое поле engine_power (мощность двигателя в л.с.)
 ALTER TABLE aircraft_market 

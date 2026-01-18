@@ -10,7 +10,7 @@ AppSettingsModel _$AppSettingsModelFromJson(Map<String, dynamic> json) =>
     AppSettingsModel(
       id: (json['id'] as num).toInt(),
       key: json['key'] as String,
-      value: json['value'] as bool,
+      value: _boolFromJson(json['value']),
       description: json['description'] as String?,
       createdAt: _dateTimeFromJsonNullable(json['created_at']),
       updatedAt: _dateTimeFromJsonNullable(json['updated_at']),

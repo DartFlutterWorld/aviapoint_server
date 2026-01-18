@@ -253,15 +253,36 @@ for migration_file in "${MIGRATIONS_TO_APPLY[@]}"; do
     VERSION=$(echo "$migration_file" | grep -oE '^[0-9]{3}' | head -1)
     MIGRATION_NAME=$(echo "$migration_file" | sed 's/^[0-9]*_//;s/\.sql$//')
     
-    # Применяем миграцию через SSH
-    RESULT=$(ssh_with_password "cat $remote_file | docker exec -i $SERVER_DB_CONTAINER psql -U $SERVER_DB_USER -d $SERVER_DB_NAME 2>&1" 2>/dev/null | grep -v "^spawn\|^root@\|password:" | tail -20)
+    # Применяем миграцию через SSH и сохраняем результат во временный файл на сервере
+    TEMP_OUTPUT="/tmp/migration_output_$$.txt"
+    
+    # Выполняем миграцию и сохраняем вывод
+    ssh_with_password "cat $remote_file | docker exec -i $SERVER_DB_CONTAINER psql -U $SERVER_DB_USER -d $SERVER_DB_NAME > $TEMP_OUTPUT 2>&1; cat $TEMP_OUTPUT; rm -f $TEMP_OUTPUT" 2>/dev/null | grep -v "^spawn\|^root@\|password:" > /tmp/migration_result.txt
+    
+    RESULT=$(cat /tmp/migration_result.txt 2>/dev/null || echo "")
+    rm -f /tmp/migration_result.txt
     
     # Проверяем наличие ошибок
     if echo "$RESULT" | grep -qiE "ERROR|FATAL"; then
         echo -e "   ${RED}✗ Ошибка при применении${NC}"
-        echo "$RESULT" | grep -iE "ERROR|FATAL" | head -3
+        echo "$RESULT" | grep -iE "ERROR|FATAL" | head -5
         ((FAILED_COUNT++))
     else
+        # Проверяем, что миграция действительно применилась (для CREATE TABLE проверяем существование таблицы)
+        if echo "$migration_file" | grep -qiE "create.*table"; then
+            # Извлекаем имя таблицы из миграции
+            TABLE_NAME=$(grep -iE "CREATE TABLE.*IF NOT EXISTS|CREATE TABLE" "$LOCAL_MIGRATIONS_DIR/$migration_file" 2>/dev/null | head -1 | sed -E 's/.*CREATE TABLE.*IF NOT EXISTS[[:space:]]+([a-z_]+).*/\1/i' | sed -E 's/.*CREATE TABLE[[:space:]]+([a-z_]+).*/\1/i' | tr '[:upper:]' '[:lower:]' | awk '{print $1}')
+            if [ -n "$TABLE_NAME" ]; then
+                sleep 1
+                TABLE_EXISTS=$(ssh_with_password "docker exec $SERVER_DB_CONTAINER psql -U $SERVER_DB_USER -d $SERVER_DB_NAME -t -c \"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '$TABLE_NAME');\" 2>&1" 2>/dev/null | grep -v "^spawn\|^root@\|password:" | tr -d ' \n\r')
+                if [ "$TABLE_EXISTS" != "t" ]; then
+                    echo -e "   ${RED}✗ Таблица $TABLE_NAME не создана${NC}"
+                    ((FAILED_COUNT++))
+                    continue
+                fi
+            fi
+        fi
+        
         # Регистрируем миграцию в schema_migrations
         if [ -n "$VERSION" ] && [ -n "$MIGRATION_NAME" ]; then
             REGISTER_RESULT=$(ssh_with_password "docker exec $SERVER_DB_CONTAINER psql -U $SERVER_DB_USER -d $SERVER_DB_NAME -c \"INSERT INTO schema_migrations (version, name) VALUES ('$VERSION', '$MIGRATION_NAME') ON CONFLICT (version) DO NOTHING;\" 2>&1" 2>/dev/null | grep -v "^spawn\|^root@\|password:")

@@ -64,8 +64,11 @@ class AppSettingsController {
         );
       }
       final value = await _repository.getSettingValue(key);
+      print('🔵 [AppSettingsController] getSettingValue: key=$key, value=$value, type=${value.runtimeType}');
+      final response = {'key': key, 'value': value};
+      print('🔵 [AppSettingsController] Response JSON: ${jsonEncode(response)}');
       return Response.ok(
-        jsonEncode({'key': key, 'value': value}),
+        jsonEncode(response),
         headers: jsonContentHeaders,
       );
     });
