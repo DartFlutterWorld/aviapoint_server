@@ -114,10 +114,9 @@ class OnTheWayRepository {
         )''';
         parameters['arrival_airport'] = arrivalAirport;
       }
-      
+
       // Поиск по промежуточным точкам (если указаны оба аэропорта, ищем маршруты, проходящие через оба)
-      if (departureAirport != null && arrivalAirport != null && 
-          departureAirport.isNotEmpty && arrivalAirport.isNotEmpty) {
+      if (departureAirport != null && arrivalAirport != null && departureAirport.isNotEmpty && arrivalAirport.isNotEmpty) {
         // Ищем маршруты, где есть оба аэропорта в правильном порядке
         query += ''' AND EXISTS (
           SELECT 1 FROM flight_waypoints w1, flight_waypoints w2
@@ -173,48 +172,50 @@ class OnTheWayRepository {
     for (final map in flightsData) {
       final flightId = map['id'] as int;
       final waypoints = await fetchFlightWaypoints(flightId);
-      
+
       if (waypoints.isEmpty) {
         // Пропускаем полеты без waypoints (не должны быть после очистки БД)
         continue;
       }
-      
+
       // Получаем первую и последнюю точку для departure_airport и arrival_airport
       final firstWaypoint = waypoints.first;
       final lastWaypoint = waypoints.last;
-      
+
       // Все полеты должны иметь waypoints (после очистки БД)
-      flightsWithWaypoints.add(FlightModel(
-        id: flightId,
-        pilotId: map['pilot_id'] as int,
-        departureAirport: firstWaypoint.airportCode,
-        arrivalAirport: lastWaypoint.airportCode,
-        departureAirportName: firstWaypoint.airportName,
-        departureAirportCity: firstWaypoint.airportCity,
-        departureAirportRegion: firstWaypoint.airportRegion,
-        departureAirportType: firstWaypoint.airportType,
-        departureAirportIdentRu: firstWaypoint.airportIdentRu,
-        arrivalAirportName: lastWaypoint.airportName,
-        arrivalAirportCity: lastWaypoint.airportCity,
-        arrivalAirportRegion: lastWaypoint.airportRegion,
-        arrivalAirportType: lastWaypoint.airportType,
-        arrivalAirportIdentRu: lastWaypoint.airportIdentRu,
-        departureDate: map['departure_date'] as DateTime,
-        availableSeats: map['available_seats'] as int,
-        totalSeats: map['total_seats'] as int?,
-        pricePerSeat: _parseDouble(map['price_per_seat']) ?? 0.0,
-        aircraftType: map['aircraft_type'] as String?,
-        description: map['description'] as String?,
-        status: map['status'] as String? ?? 'active',
-        createdAt: map['created_at'] as DateTime?,
-        updatedAt: map['updated_at'] as DateTime?,
-        pilotFirstName: map['pilot_first_name'] as String?,
-        pilotLastName: map['pilot_last_name'] as String?,
-        pilotAvatarUrl: map['pilot_avatar_url'] as String?,
-        pilotAverageRating: _parseDouble(map['pilot_average_rating']),
-        photos: map['photos'] != null ? List<String>.from((map['photos'] as List).map((e) => e.toString())) : null,
-        waypoints: waypoints, // Все точки маршрута из flight_waypoints
-      ));
+      flightsWithWaypoints.add(
+        FlightModel(
+          id: flightId,
+          pilotId: map['pilot_id'] as int,
+          departureAirport: firstWaypoint.airportCode,
+          arrivalAirport: lastWaypoint.airportCode,
+          departureAirportName: firstWaypoint.airportName,
+          departureAirportCity: firstWaypoint.airportCity,
+          departureAirportRegion: firstWaypoint.airportRegion,
+          departureAirportType: firstWaypoint.airportType,
+          departureAirportIdentRu: firstWaypoint.airportIdentRu,
+          arrivalAirportName: lastWaypoint.airportName,
+          arrivalAirportCity: lastWaypoint.airportCity,
+          arrivalAirportRegion: lastWaypoint.airportRegion,
+          arrivalAirportType: lastWaypoint.airportType,
+          arrivalAirportIdentRu: lastWaypoint.airportIdentRu,
+          departureDate: map['departure_date'] as DateTime,
+          availableSeats: map['available_seats'] as int,
+          totalSeats: map['total_seats'] as int?,
+          pricePerSeat: _parseDouble(map['price_per_seat']) ?? 0.0,
+          aircraftType: map['aircraft_type'] as String?,
+          description: map['description'] as String?,
+          status: map['status'] as String? ?? 'active',
+          createdAt: map['created_at'] as DateTime?,
+          updatedAt: map['updated_at'] as DateTime?,
+          pilotFirstName: map['pilot_first_name'] as String?,
+          pilotLastName: map['pilot_last_name'] as String?,
+          pilotAvatarUrl: map['pilot_avatar_url'] as String?,
+          pilotAverageRating: _parseDouble(map['pilot_average_rating']),
+          photos: map['photos'] != null ? List<String>.from((map['photos'] as List).map((e) => e.toString())) : null,
+          waypoints: waypoints, // Все точки маршрута из flight_waypoints
+        ),
+      );
     }
 
     print('🔵 [OnTheWayRepository] fetchFlights returned ${flightsWithWaypoints.length} flights');
@@ -297,7 +298,7 @@ class OnTheWayRepository {
 
     final map = result.first.toColumnMap();
     final flight = FlightModel.fromJson(map);
-    
+
     // Загружаем waypoints для этого полета
     final waypoints = await fetchFlightWaypoints(id);
     if (waypoints.isNotEmpty) {
@@ -334,7 +335,7 @@ class OnTheWayRepository {
         waypoints: waypoints,
       );
     }
-    
+
     // Все полеты должны иметь waypoints (после очистки БД)
     // Если waypoints пустой - это ошибка
     return FlightModel(
@@ -466,17 +467,17 @@ class OnTheWayRepository {
       photos: null,
       waypoints: null,
     );
-    
+
     // Создаем waypoints - ВСЕ точки маршрута сохраняются в flight_waypoints
     if (waypoints == null || waypoints.isEmpty) {
       throw Exception('Waypoints are required. All route points (including departure and arrival) must be provided in waypoints.');
     }
-    
+
     // Валидация: минимум 2 точки
     if (waypoints.length < 2) {
       throw Exception('Route must have at least 2 waypoints (departure and arrival)');
     }
-    
+
     // Валидация: первая точка должна быть departure_airport, последняя - arrival_airport
     if (waypoints.first['airport_code'] != departureAirport) {
       throw Exception('First waypoint must match departure_airport');
@@ -484,9 +485,9 @@ class OnTheWayRepository {
     if (waypoints.last['airport_code'] != arrivalAirport) {
       throw Exception('Last waypoint must match arrival_airport');
     }
-    
+
     // Примечание: departure_time и arrival_time являются опциональными полями
-    
+
     // Создаем waypoints
     for (final waypoint in waypoints) {
       await _connection.execute(
@@ -510,22 +511,19 @@ class OnTheWayRepository {
         },
       );
     }
-    
+
     // Загружаем созданные waypoints с информацией об аэропортах
     final createdWaypoints = await fetchFlightWaypoints(flight.id);
-    
+
     // Получаем первую и последнюю точку для departure_airport и arrival_airport
     final firstWaypoint = createdWaypoints.first;
     final lastWaypoint = createdWaypoints.last;
-    
+
     // Загружаем информацию о пилоте
-    final pilotResult = await _connection.execute(
-      Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @pilot_id'),
-      parameters: {'pilot_id': pilotId},
-    );
-    
+    final pilotResult = await _connection.execute(Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @pilot_id'), parameters: {'pilot_id': pilotId});
+
     final pilotData = pilotResult.isNotEmpty ? pilotResult.first.toColumnMap() : null;
-    
+
     return FlightModel(
       id: flight.id,
       pilotId: flight.pilotId,
@@ -620,15 +618,12 @@ class OnTheWayRepository {
       if (waypoints.length < 2) {
         throw Exception('Route must have at least 2 waypoints (departure and arrival)');
       }
-      
+
       // Примечание: departure_time и arrival_time являются опциональными полями
-      
+
       // Удаляем старые waypoints
-      await _connection.execute(
-        Sql.named('DELETE FROM flight_waypoints WHERE flight_id = @flight_id'),
-        parameters: {'flight_id': id},
-      );
-      
+      await _connection.execute(Sql.named('DELETE FROM flight_waypoints WHERE flight_id = @flight_id'), parameters: {'flight_id': id});
+
       // Создаем новые waypoints
       for (final waypoint in waypoints) {
         await _connection.execute(
@@ -653,13 +648,13 @@ class OnTheWayRepository {
         );
       }
     }
-    
+
     // Обновляем данные полета, если есть изменения
     if (updates.isNotEmpty) {
       final query = 'UPDATE flights SET ${updates.join(', ')} WHERE id = @id';
       await _connection.execute(Sql.named(query), parameters: parameters);
     }
-    
+
     // Загружаем обновленный полет с waypoints
     final updatedFlight = await fetchFlightById(id);
     if (updatedFlight == null) {
@@ -680,14 +675,14 @@ class OnTheWayRepository {
     print('🔵 [OnTheWayRepository] deleteFlight: Отменено бронирований: ${bookingsUpdateResult.length}');
 
     // Затем меняем статус полета на 'cancelled'
-    final result = await _connection.execute(Sql.named('UPDATE flights SET status = @status WHERE id = @id RETURNING *'), parameters: {'id': id, 'status': 'cancelled'});
+    await _connection.execute(Sql.named('UPDATE flights SET status = @status WHERE id = @id'), parameters: {'id': id, 'status': 'cancelled'});
 
-    if (result.isEmpty) {
+    // Загружаем обновленный полет через fetchFlightById, чтобы получить все необходимые поля
+    final cancelledFlight = await fetchFlightById(id);
+    if (cancelledFlight == null) {
       throw Exception('Flight not found or could not be cancelled');
     }
 
-    final map = result.first.toColumnMap();
-    final cancelledFlight = FlightModel.fromJson(map);
     print('🔵 [OnTheWayRepository] deleteFlight: Статус полета изменен на: ${cancelledFlight.status}');
 
     return cancelledFlight;
@@ -800,8 +795,8 @@ class OnTheWayRepository {
         FROM flights 
         WHERE id = @flight_id 
         FOR UPDATE
-      '''), 
-      parameters: {'flight_id': flightId}
+      '''),
+      parameters: {'flight_id': flightId},
     );
 
     if (flightResult.isEmpty) {
@@ -848,11 +843,11 @@ class OnTheWayRepository {
 
     final map = result.first.toColumnMap();
     print('🔵 [OnTheWayRepository] createBooking raw map from DB: $map');
-    
+
     // При создании бронирования не загружаем данные пассажира через JOIN
     // Они будут загружены позже при получении списка бронирований
     // Это упрощает код и избегает проблем с NULL значениями
-    
+
     // Устанавливаем null для полей пассажира (они будут загружены позже)
     map['passenger_first_name'] = null;
     map['passenger_last_name'] = null;
@@ -1196,8 +1191,15 @@ class OnTheWayRepository {
     final reviewerId = reviewData['reviewer_id'] as int;
     final replyToReviewId = reviewData['reply_to_review_id'] as int?;
 
-    if (reviewerId != userId) {
-      throw Exception('You can only edit your own reviews');
+    // Проверяем права: владелец или администратор
+    final isOwner = reviewerId == userId;
+    if (!isOwner) {
+      final adminCheck = await _connection.execute(Sql.named('SELECT is_admin FROM profiles WHERE id = @id'), parameters: {'id': userId});
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+
+      if (!isAdmin) {
+        throw Exception('You can only edit your own reviews');
+      }
     }
 
     // Для основных отзывов (не ответов) rating обязателен
@@ -1244,8 +1246,16 @@ class OnTheWayRepository {
     }
 
     final reviewerId = reviewResult.first[0] as int;
-    if (reviewerId != userId) {
-      throw Exception('You can only delete your own reviews');
+
+    // Проверяем права: владелец или администратор
+    final isOwner = reviewerId == userId;
+    if (!isOwner) {
+      final adminCheck = await _connection.execute(Sql.named('SELECT is_admin FROM profiles WHERE id = @id'), parameters: {'id': userId});
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+
+      if (!isAdmin) {
+        throw Exception('You can only delete your own reviews');
+      }
     }
 
     // Удаляем отзыв и все ответы на него
@@ -1294,6 +1304,63 @@ class OnTheWayRepository {
     };
   }
 
+  /// Получение информации о полете для уведомления о подтверждении бронирования
+  /// Использует flight_id вместо booking_id
+  Future<Map<String, dynamic>> getFlightInfoForBookingNotificationByFlightId(int flightId) async {
+    // Получаем информацию о полете и waypoints
+    final flightResult = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          f.id,
+          f.pilot_id,
+          f.departure_date,
+          -- Получаем все waypoints отсортированные по sequence_order
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'airport_code', fw.airport_code,
+                'sequence_order', fw.sequence_order
+              ) ORDER BY fw.sequence_order
+            ) FILTER (WHERE fw.airport_code IS NOT NULL),
+            '[]'::json
+          ) AS waypoints
+        FROM flights f
+        LEFT JOIN flight_waypoints fw ON fw.flight_id = f.id
+        WHERE f.id = @flight_id
+        GROUP BY f.id, f.pilot_id, f.departure_date
+      '''),
+      parameters: {'flight_id': flightId},
+    );
+
+    if (flightResult.isEmpty) {
+      throw Exception('Flight not found');
+    }
+
+    final row = flightResult.first.toColumnMap();
+    final waypointsJson = row['waypoints'];
+
+    // Парсим waypoints из JSON
+    List<String> waypoints = [];
+    if (waypointsJson != null) {
+      try {
+        final waypointsList = waypointsJson as List;
+        waypoints = waypointsList.map((wp) => wp['airport_code'] as String).toList();
+      } catch (e) {
+        print('⚠️ Ошибка парсинга waypoints: $e');
+      }
+    }
+
+    // Форматируем дату для текста уведомления
+    final departureDate = row['departure_date'] as DateTime?;
+    String formattedDate = '';
+    if (departureDate != null) {
+      // Формат: "15.03.2024"
+      formattedDate = '${departureDate.day.toString().padLeft(2, '0')}.${departureDate.month.toString().padLeft(2, '0')}.${departureDate.year}';
+    }
+
+    return {'flight_id': row['id'], 'pilot_id': row['pilot_id'], 'departure_date': departureDate, 'formatted_date': formattedDate, 'waypoints': waypoints, 'waypoints_text': waypoints.join(' → ')};
+  }
+
   // Получение информации о пилоте для уведомления
   Future<Map<String, dynamic>> getPilotInfoForNotification(int pilotId) async {
     final result = await _connection.execute(
@@ -1303,8 +1370,7 @@ class OnTheWayRepository {
           first_name,
           last_name,
           phone,
-          email,
-          fcm_token
+          email
         FROM profiles
         WHERE id = @pilot_id
       '''),
@@ -1319,24 +1385,92 @@ class OnTheWayRepository {
     final firstName = row['first_name'] as String? ?? '';
     final lastName = row['last_name'] as String? ?? '';
     final fullName = '$firstName $lastName'.trim();
-    
-    return {
-      'id': row['id'],
-      'name': fullName.isNotEmpty ? fullName : 'Пилот',
-      'first_name': firstName,
-      'last_name': lastName,
-      'phone': row['phone'],
-      'email': row['email'],
-      'fcm_token': row['fcm_token'],
-    };
+
+    // Получаем все FCM токены пользователя (из новой таблицы)
+    final tokensResult = await _connection.execute(
+      Sql.named('''
+        SELECT fcm_token, platform
+        FROM user_fcm_tokens
+        WHERE user_id = @pilot_id
+        ORDER BY updated_at DESC
+      '''),
+      parameters: {'pilot_id': pilotId},
+    );
+
+    // Берем первый доступный токен (или null если токенов нет)
+    String? fcmToken;
+    if (tokensResult.isNotEmpty) {
+      fcmToken = tokensResult.first.toColumnMap()['fcm_token'] as String?;
+    } else {
+      // Fallback на старое поле для обратной совместимости
+      final oldTokenResult = await _connection.execute(Sql.named('SELECT fcm_token FROM profiles WHERE id = @pilot_id'), parameters: {'pilot_id': pilotId});
+      if (oldTokenResult.isNotEmpty) {
+        fcmToken = oldTokenResult.first.toColumnMap()['fcm_token'] as String?;
+      }
+    }
+
+    return {'id': row['id'], 'name': fullName.isNotEmpty ? fullName : 'Пилот', 'first_name': firstName, 'last_name': lastName, 'phone': row['phone'], 'email': row['email'], 'fcm_token': fcmToken};
+  }
+
+  /// Получение информации о полете для уведомления о бронировании
+  /// Возвращает данные полета, включая все точки маршрута (waypoints) и дату
+  Future<Map<String, dynamic>> getFlightInfoForBookingNotification(int flightId) async {
+    // Получаем информацию о полете и waypoints
+    final flightResult = await _connection.execute(
+      Sql.named('''
+        SELECT 
+          f.id,
+          f.pilot_id,
+          f.departure_date,
+          -- Получаем все waypoints отсортированные по sequence_order
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'airport_code', fw.airport_code,
+                'sequence_order', fw.sequence_order
+              ) ORDER BY fw.sequence_order
+            ) FILTER (WHERE fw.airport_code IS NOT NULL),
+            '[]'::json
+          ) AS waypoints
+        FROM flights f
+        LEFT JOIN flight_waypoints fw ON fw.flight_id = f.id
+        WHERE f.id = @flight_id
+        GROUP BY f.id, f.pilot_id, f.departure_date
+      '''),
+      parameters: {'flight_id': flightId},
+    );
+
+    if (flightResult.isEmpty) {
+      throw Exception('Flight not found');
+    }
+
+    final row = flightResult.first.toColumnMap();
+    final waypointsJson = row['waypoints'];
+
+    // Парсим waypoints из JSON
+    List<String> waypoints = [];
+    if (waypointsJson != null) {
+      try {
+        final waypointsList = waypointsJson as List;
+        waypoints = waypointsList.map((wp) => wp['airport_code'] as String).toList();
+      } catch (e) {
+        print('⚠️ Ошибка парсинга waypoints: $e');
+      }
+    }
+
+    // Форматируем дату для текста уведомления
+    final departureDate = row['departure_date'] as DateTime?;
+    String formattedDate = '';
+    if (departureDate != null) {
+      // Формат: "15.03.2024"
+      formattedDate = '${departureDate.day.toString().padLeft(2, '0')}.${departureDate.month.toString().padLeft(2, '0')}.${departureDate.year}';
+    }
+
+    return {'flight_id': row['id'], 'pilot_id': row['pilot_id'], 'departure_date': departureDate, 'formatted_date': formattedDate, 'waypoints': waypoints, 'waypoints_text': waypoints.join(' → ')};
   }
 
   // Загрузка фотографий к полету
-  Future<List<String>> uploadFlightPhotos({
-    required int flightId,
-    required int uploadedBy,
-    required List<String> photoUrls,
-  }) async {
+  Future<List<String>> uploadFlightPhotos({required int flightId, required int uploadedBy, required List<String> photoUrls}) async {
     // Вставляем все фотографии
     for (final photoUrl in photoUrls) {
       await _connection.execute(
@@ -1344,11 +1478,7 @@ class OnTheWayRepository {
           INSERT INTO flight_photos (flight_id, photo_url, uploaded_by)
           VALUES (@flight_id, @photo_url, @uploaded_by)
         '''),
-        parameters: {
-          'flight_id': flightId,
-          'photo_url': photoUrl,
-          'uploaded_by': uploadedBy,
-        },
+        parameters: {'flight_id': flightId, 'photo_url': photoUrl, 'uploaded_by': uploadedBy},
       );
     }
 
@@ -1367,11 +1497,7 @@ class OnTheWayRepository {
   }
 
   // Удаление фотографии полета
-  Future<List<String>> deleteFlightPhoto({
-    required int flightId,
-    required String photoUrl,
-    required int userId,
-  }) async {
+  Future<List<String>> deleteFlightPhoto({required int flightId, required String photoUrl, required int userId}) async {
     // Проверяем, что фотография существует и принадлежит пользователю
     final checkResult = await _connection.execute(
       Sql.named('''
@@ -1379,10 +1505,7 @@ class OnTheWayRepository {
         FROM flight_photos
         WHERE flight_id = @flight_id AND photo_url = @photo_url
       '''),
-      parameters: {
-        'flight_id': flightId,
-        'photo_url': photoUrl,
-      },
+      parameters: {'flight_id': flightId, 'photo_url': photoUrl},
     );
 
     if (checkResult.isEmpty) {
@@ -1402,7 +1525,12 @@ class OnTheWayRepository {
     final isPilot = flight.pilotId == userId;
 
     if (!isPhotoOwner && !isPilot) {
-      throw Exception('You can only delete your own photos or photos from your flights');
+      // Проверяем, является ли пользователь администратором
+      final adminCheck = await _connection.execute(Sql.named('SELECT is_admin FROM profiles WHERE id = @user_id'), parameters: {'user_id': userId});
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+      if (!isAdmin) {
+        throw Exception('You can only delete your own photos or photos from your flights');
+      }
     }
 
     // Удаляем запись из БД
@@ -1411,10 +1539,7 @@ class OnTheWayRepository {
         DELETE FROM flight_photos
         WHERE flight_id = @flight_id AND photo_url = @photo_url
       '''),
-      parameters: {
-        'flight_id': flightId,
-        'photo_url': photoUrl,
-      },
+      parameters: {'flight_id': flightId, 'photo_url': photoUrl},
     );
 
     // Удаляем файл с диска
@@ -1501,16 +1626,9 @@ class OnTheWayRepository {
   }
 
   // Создание вопроса
-  Future<FlightQuestionModel> createQuestion({
-    required int flightId,
-    int? authorId,
-    required String questionText,
-  }) async {
+  Future<FlightQuestionModel> createQuestion({required int flightId, int? authorId, required String questionText}) async {
     // Проверяем, что полёт существует
-    final flightResult = await _connection.execute(
-      Sql.named('SELECT id FROM flights WHERE id = @flight_id'),
-      parameters: {'flight_id': flightId},
-    );
+    final flightResult = await _connection.execute(Sql.named('SELECT id FROM flights WHERE id = @flight_id'), parameters: {'flight_id': flightId});
 
     if (flightResult.isEmpty) {
       throw Exception('Flight not found');
@@ -1522,22 +1640,15 @@ class OnTheWayRepository {
         VALUES (@flight_id, @author_id, @question_text)
         RETURNING *
       '''),
-      parameters: {
-        'flight_id': flightId,
-        'author_id': authorId,
-        'question_text': questionText,
-      },
+      parameters: {'flight_id': flightId, 'author_id': authorId, 'question_text': questionText},
     );
 
     final map = result.first.toColumnMap();
-    
+
     // Загружаем данные автора, если есть
     if (authorId != null) {
-      final authorResult = await _connection.execute(
-        Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @author_id'),
-        parameters: {'author_id': authorId},
-      );
-      
+      final authorResult = await _connection.execute(Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @author_id'), parameters: {'author_id': authorId});
+
       if (authorResult.isNotEmpty) {
         final authorMap = authorResult.first.toColumnMap();
         map['author_first_name'] = authorMap['first_name'];
@@ -1550,12 +1661,7 @@ class OnTheWayRepository {
   }
 
   // Обновление вопроса (автор может обновить вопрос, пилот может обновить ответ)
-  Future<FlightQuestionModel> updateQuestion({
-    required int questionId,
-    required int userId,
-    String? questionText,
-    String? answerText,
-  }) async {
+  Future<FlightQuestionModel> updateQuestion({required int questionId, required int userId, String? questionText, String? answerText}) async {
     // Получаем информацию о вопросе и полёте
     final questionResult = await _connection.execute(
       Sql.named('''
@@ -1575,12 +1681,16 @@ class OnTheWayRepository {
     final authorId = questionMap['author_id'] as int?;
     final pilotId = questionMap['pilot_id'] as int;
 
-    // Проверяем права: автор может обновить вопрос, пилот может обновить ответ
-    if (questionText != null && authorId != userId) {
+    // Проверяем, является ли пользователь администратором
+    final adminCheck = await _connection.execute(Sql.named('SELECT is_admin FROM profiles WHERE id = @id'), parameters: {'id': userId});
+    final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+
+    // Проверяем права: автор может обновить вопрос, пилот может обновить ответ, администратор может всё
+    if (questionText != null && authorId != userId && !isAdmin) {
       throw Exception('You can only edit your own questions');
     }
 
-    if (answerText != null && pilotId != userId) {
+    if (answerText != null && pilotId != userId && !isAdmin) {
       throw Exception('Only the pilot can answer questions');
     }
 
@@ -1625,11 +1735,8 @@ class OnTheWayRepository {
 
     // Загружаем данные автора и пилота
     if (authorId != null) {
-      final authorResult = await _connection.execute(
-        Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @author_id'),
-        parameters: {'author_id': authorId},
-      );
-      
+      final authorResult = await _connection.execute(Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @author_id'), parameters: {'author_id': authorId});
+
       if (authorResult.isNotEmpty) {
         final authorMap = authorResult.first.toColumnMap();
         map['author_first_name'] = authorMap['first_name'];
@@ -1643,7 +1750,7 @@ class OnTheWayRepository {
         Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @answered_by_id'),
         parameters: {'answered_by_id': map['answered_by_id']},
       );
-      
+
       if (answeredByResult.isNotEmpty) {
         final answeredByMap = answeredByResult.first.toColumnMap();
         map['answered_by_first_name'] = answeredByMap['first_name'];
@@ -1656,11 +1763,7 @@ class OnTheWayRepository {
   }
 
   // Ответ на вопрос (только создатель полёта)
-  Future<FlightQuestionModel> answerQuestion({
-    required int questionId,
-    required int userId,
-    required String answerText,
-  }) async {
+  Future<FlightQuestionModel> answerQuestion({required int questionId, required int userId, required String answerText}) async {
     // Получаем информацию о вопросе и полёте
     final questionResult = await _connection.execute(
       Sql.named('''
@@ -1695,11 +1798,7 @@ class OnTheWayRepository {
         WHERE id = @question_id
         RETURNING *
       '''),
-      parameters: {
-        'question_id': questionId,
-        'answer_text': answerText,
-        'answered_by_id': userId,
-      },
+      parameters: {'question_id': questionId, 'answer_text': answerText, 'answered_by_id': userId},
     );
 
     if (result.isEmpty) {
@@ -1711,11 +1810,8 @@ class OnTheWayRepository {
 
     // Загружаем данные автора и пилота
     if (authorId != null) {
-      final authorResult = await _connection.execute(
-        Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @author_id'),
-        parameters: {'author_id': authorId},
-      );
-      
+      final authorResult = await _connection.execute(Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @author_id'), parameters: {'author_id': authorId});
+
       if (authorResult.isNotEmpty) {
         final authorMap = authorResult.first.toColumnMap();
         map['author_first_name'] = authorMap['first_name'];
@@ -1725,11 +1821,8 @@ class OnTheWayRepository {
     }
 
     // Загружаем данные пилота, который ответил
-    final answeredByResult = await _connection.execute(
-      Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @answered_by_id'),
-      parameters: {'answered_by_id': userId},
-    );
-    
+    final answeredByResult = await _connection.execute(Sql.named('SELECT first_name, last_name, avatar_url FROM profiles WHERE id = @answered_by_id'), parameters: {'answered_by_id': userId});
+
     if (answeredByResult.isNotEmpty) {
       final answeredByMap = answeredByResult.first.toColumnMap();
       map['answered_by_first_name'] = answeredByMap['first_name'];
@@ -1761,16 +1854,22 @@ class OnTheWayRepository {
     final authorId = questionMap['author_id'] as int?;
     final pilotId = questionMap['pilot_id'] as int;
 
-    // Проверяем права: автор или пилот могут удалить
-    if (authorId != userId && pilotId != userId) {
-      throw Exception('You can only delete your own questions or questions on your flights');
+    // Проверяем права: автор, пилот или администратор могут удалить
+    final isAuthor = authorId != null && authorId == userId;
+    final isPilot = pilotId == userId;
+
+    if (!isAuthor && !isPilot) {
+      // Проверяем, является ли пользователь администратором
+      final adminCheck = await _connection.execute(Sql.named('SELECT is_admin FROM profiles WHERE id = @id'), parameters: {'id': userId});
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+
+      if (!isAdmin) {
+        throw Exception('You can only delete your own questions or questions on your flights');
+      }
     }
 
     // Удаляем вопрос
-    await _connection.execute(
-      Sql.named('DELETE FROM flight_questions WHERE id = @question_id'),
-      parameters: {'question_id': questionId},
-    );
+    await _connection.execute(Sql.named('DELETE FROM flight_questions WHERE id = @question_id'), parameters: {'question_id': questionId});
 
     return true;
   }

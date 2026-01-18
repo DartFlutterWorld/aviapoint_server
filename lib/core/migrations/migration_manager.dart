@@ -174,6 +174,19 @@ class MigrationManager {
       _MigrationInfo(version: '050', name: 'drop_aircraft_catalog_view', file: 'migrations/051_drop_aircraft_catalog_view.sql'),
       _MigrationInfo(version: '051', name: 'simplify_aircraft_tables', file: 'migrations/053_simplify_aircraft_tables.sql'),
       _MigrationInfo(version: '052', name: 'add_index_to_blog_comments', file: 'migrations/add_index_to_blog_comments.sql'),
+      _MigrationInfo(version: '053', name: 'create_market_products_table', file: 'migrations/create_market_products_table.sql'),
+      _MigrationInfo(version: '054', name: 'insert_test_market_products', file: 'migrations/insert_test_market_products.sql'),
+      _MigrationInfo(version: '055', name: 'rename_market_products_to_aircraft_market', file: 'migrations/055_rename_market_products_to_aircraft_market.sql'),
+      _MigrationInfo(version: '056', name: 'rename_flight_hours_and_add_engine_power', file: 'migrations/056_rename_flight_hours_and_add_engine_power.sql'),
+      _MigrationInfo(version: '057', name: 'add_engine_volume', file: 'migrations/057_add_engine_volume.sql'),
+      _MigrationInfo(version: '058', name: 'change_price_engine_fields_to_int', file: 'migrations/058_change_price_engine_fields_to_int.sql'),
+      _MigrationInfo(version: '059', name: 'change_total_flight_hours_to_int', file: 'migrations/059_change_total_flight_hours_to_int.sql'),
+      _MigrationInfo(version: '060', name: 'add_share_sale_fields', file: 'migrations/060_add_share_sale_fields.sql'),
+      _MigrationInfo(version: '061', name: 'add_price_history_table', file: 'migrations/061_add_price_history_table.sql'),
+      _MigrationInfo(version: '062', name: 'add_aircraft_market_publish_until', file: 'migrations/062_add_aircraft_market_publish_until.sql'),
+      _MigrationInfo(version: '063', name: 'create_publication_settings_table', file: 'migrations/063_create_publication_settings_table.sql'),
+      _MigrationInfo(version: '064', name: 'create_user_fcm_tokens_table', file: 'migrations/064_create_user_fcm_tokens_table.sql'),
+      _MigrationInfo(version: '065', name: 'add_is_admin_to_profiles', file: 'migrations/065_add_is_admin_to_profiles.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 

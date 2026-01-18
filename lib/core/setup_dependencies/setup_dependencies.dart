@@ -31,6 +31,8 @@ import 'package:aviapoint_server/on_the_way/repositories/airport_ownership_repos
 import 'package:aviapoint_server/on_the_way/repositories/aircraft_catalog_repository.dart';
 import 'package:aviapoint_server/blog/controller/blog_controller.dart';
 import 'package:aviapoint_server/blog/repositories/blog_repository.dart';
+import 'package:aviapoint_server/market/controller/market_controller.dart';
+import 'package:aviapoint_server/market/repositories/market_repository.dart';
 import 'package:aviapoint_server/app_settings/controller/app_settings_controller.dart';
 import 'package:aviapoint_server/app_settings/data/repositories/app_settings_repository.dart';
 import 'package:postgres/postgres.dart';
@@ -237,6 +239,19 @@ Future<void> setupDependencies() async {
   getIt.registerSingletonAsync<AppSettingsController>(() async {
     final repository = await getIt.getAsync<AppSettingsRepository>();
     return AppSettingsController(repository: repository);
+  });
+
+  // Market Repository
+  getIt.registerSingletonAsync<MarketRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return MarketRepository(connection: connection);
+  });
+
+  // Market Controller
+  getIt.registerSingletonAsync<MarketController>(() async {
+    final repository = await getIt.getAsync<MarketRepository>();
+    final tokenService = await getIt.getAsync<TokenService>();
+    return MarketController(repository: repository, tokenService: tokenService);
   });
 
   // Инициализируем Telegram бота

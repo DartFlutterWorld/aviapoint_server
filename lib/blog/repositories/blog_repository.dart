@@ -329,8 +329,20 @@ class BlogRepository {
       throw Exception('Article not found');
     }
     
-    if (articleCheck.first[0] as int != authorId) {
-      throw Exception('Unauthorized: You can only update your own articles');
+    final articleAuthorId = articleCheck.first[0] as int;
+    final isOwner = articleAuthorId == authorId;
+    
+    // Проверяем права: владелец или администратор
+    if (!isOwner) {
+      final adminCheck = await _connection.execute(
+        Sql.named('SELECT is_admin FROM profiles WHERE id = @id'),
+        parameters: {'id': authorId},
+      );
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+      
+      if (!isAdmin) {
+        throw Exception('Unauthorized: You can only update your own articles');
+      }
     }
 
     final updates = <String>[];
@@ -421,8 +433,20 @@ class BlogRepository {
       return false;
     }
     
-    if (articleCheck.first[0] as int != authorId) {
-      throw Exception('Unauthorized: You can only delete your own articles');
+    final articleAuthorId = articleCheck.first[0] as int;
+    final isOwner = articleAuthorId == authorId;
+    
+    // Проверяем права: владелец или администратор
+    if (!isOwner) {
+      final adminCheck = await _connection.execute(
+        Sql.named('SELECT is_admin FROM profiles WHERE id = @id'),
+        parameters: {'id': authorId},
+      );
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+      
+      if (!isAdmin) {
+        throw Exception('Unauthorized: You can only delete your own articles');
+      }
     }
 
     final result = await _connection.execute(
@@ -568,8 +592,20 @@ class BlogRepository {
       throw Exception('Comment not found');
     }
 
-    if (commentCheck.first[0] as int != authorId) {
-      throw Exception('Unauthorized: You can only update your own comments');
+    final commentAuthorId = commentCheck.first[0] as int;
+    final isOwner = commentAuthorId == authorId;
+    
+    // Проверяем права: владелец или администратор
+    if (!isOwner) {
+      final adminCheck = await _connection.execute(
+        Sql.named('SELECT is_admin FROM profiles WHERE id = @id'),
+        parameters: {'id': authorId},
+      );
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+      
+      if (!isAdmin) {
+        throw Exception('Unauthorized: You can only update your own comments');
+      }
     }
 
     final result = await _connection.execute(
@@ -630,8 +666,20 @@ class BlogRepository {
       throw Exception('Comment not found');
     }
 
-    if (commentCheck.first[0] as int != authorId) {
-      throw Exception('Unauthorized: You can only delete your own comments');
+    final commentAuthorId = commentCheck.first[0] as int;
+    final isOwner = commentAuthorId == authorId;
+    
+    // Проверяем права: владелец или администратор
+    if (!isOwner) {
+      final adminCheck = await _connection.execute(
+        Sql.named('SELECT is_admin FROM profiles WHERE id = @id'),
+        parameters: {'id': authorId},
+      );
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+      
+      if (!isAdmin) {
+        throw Exception('Unauthorized: You can only delete your own comments');
+      }
     }
 
     final result = await _connection.execute(

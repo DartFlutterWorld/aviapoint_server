@@ -1276,6 +1276,212 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+  /api/market/categories/main:
+    get:
+      tags:
+        - MarketController
+      summary: Получить основные категории по типу продукта
+      operationId: getMainCategories
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/market/categories:
+    get:
+      tags:
+        - MarketController
+      summary: Получить все категории по типу продукта
+      operationId: getAllCategories
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/market/categories/<id>:
+    get:
+      tags:
+        - MarketController
+      summary: Получить категорию по ID
+      operationId: getCategoryById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/market/aircraft:
+    get:
+      tags:
+        - MarketController
+      summary: Получить список продуктов с фильтрами
+      operationId: getProducts
+      responses:
+        200:
+          description: "Operation completed!"
+    post:
+      tags:
+        - MarketController
+      summary: Создать объявление о самолёте (требуется авторизация)
+      operationId: createAircraft
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/market/aircraft/<id>:
+    get:
+      tags:
+        - MarketController
+      summary: Получить продукт по ID
+      operationId: getProductById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    put:
+      tags:
+        - MarketController
+      summary: Обновить товар (только владелец)
+      operationId: updateProduct
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - MarketController
+      summary: Удалить товар (только владелец)
+      operationId: deleteProduct
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/market/aircraft/<id>/price-history:
+    get:
+      tags:
+        - MarketController
+      summary: Получить историю цен для объявления
+      operationId: getPriceHistory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/market/aircraft/<id>/favorite:
+    post:
+      tags:
+        - MarketController
+      summary: Добавить продукт в избранное (требуется авторизация)
+      operationId: addToFavorites
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    delete:
+      tags:
+        - MarketController
+      summary: Удалить продукт из избранного (требуется авторизация)
+      operationId: removeFromFavorites
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/market/favorites:
+    get:
+      tags:
+        - MarketController
+      summary: Получить избранные продукты пользователя (требуется авторизация)
+      operationId: getFavorites
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/market/aircraft/<id>/publish:
+    post:
+      tags:
+        - MarketController
+      summary: Опубликовать объявление заново (только владелец)
+      operationId: publishProduct
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/market/aircraft/<id>/unpublish:
+    post:
+      tags:
+        - MarketController
+      summary: Снять объявление с публикации (только владелец)
+      operationId: unpublishProduct
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/market/products/<id>/main-image:
+    post:
+      tags:
+        - MarketController
+      summary: Загрузить основную фотографию товара (только владелец)
+      operationId: uploadMainImage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/market/products/<id>/additional-images:
+    post:
+      tags:
+        - MarketController
+      summary: Загрузить дополнительные фотографии товара (только владелец)
+      operationId: uploadAdditionalImages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
 components: { }
 tags:
   - name: PaymentController
@@ -1293,3 +1499,4 @@ tags:
   - name: AircraftCatalogController
   - name: BlogController
   - name: AppSettingsController
+  - name: MarketController

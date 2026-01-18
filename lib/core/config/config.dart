@@ -14,6 +14,10 @@ class Config {
   static late final String yookassaShopId;
   static late final String yookassaSecretKey;
 
+  // Период публикации объявлений (в месяцах)
+  // Можно настроить через переменную окружения PUBLICATION_DURATION_MONTHS (по умолчанию 1 месяц)
+  static int get publicationDurationMonths => int.tryParse(Platform.environment['PUBLICATION_DURATION_MONTHS'] ?? '1') ?? 1;
+
   static void init() {
     if (environment == 'local') {
       dbHost = Platform.environment['POSTGRESQL_HOST'] ?? '127.0.0.1';

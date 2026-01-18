@@ -123,6 +123,8 @@ ALL_MIGRATIONS=(
     "050:drop_aircraft_catalog_view"
     "051:simplify_aircraft_tables"
     "052:add_index_to_blog_comments"
+    "053:create_market_products_table"
+    "054:insert_test_market_products"
 )
 
 echo -e "${YELLOW}   Примененные миграции на продакшн сервере:${NC}"

@@ -14,6 +14,8 @@ import 'package:aviapoint_server/on_the_way/api/update_flight_question_request.d
 import 'package:aviapoint_server/on_the_way/api/answer_flight_question_request.dart';
 import 'package:aviapoint_server/on_the_way/data/model/review_model.dart';
 import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
+import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
+import 'package:aviapoint_server/push_notifications/fcm_service.dart';
 import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_open_api/shelf_open_api.dart';
@@ -147,13 +149,7 @@ class OnTheWayController {
       List<Map<String, dynamic>>? waypoints;
       if (createRequest.waypoints != null && createRequest.waypoints!.isNotEmpty) {
         waypoints = createRequest.waypoints!
-            .map((wp) => {
-                  'airport_code': wp.airportCode,
-                  'sequence_order': wp.sequenceOrder,
-                  'arrival_time': wp.arrivalTime,
-                  'departure_time': wp.departureTime,
-                  'comment': wp.comment,
-                })
+            .map((wp) => {'airport_code': wp.airportCode, 'sequence_order': wp.sequenceOrder, 'arrival_time': wp.arrivalTime, 'departure_time': wp.departureTime, 'comment': wp.comment})
             .toList();
       }
 
@@ -179,10 +175,7 @@ class OnTheWayController {
         // Преобразуем waypoints в формат для уведомления
         List<Map<String, dynamic>>? waypointsForNotification;
         if (flight.waypoints != null && flight.waypoints!.isNotEmpty) {
-          waypointsForNotification = flight.waypoints!.map((wp) => {
-            'airport_code': wp.airportCode,
-            'sequence_order': wp.sequenceOrder,
-          }).toList();
+          waypointsForNotification = flight.waypoints!.map((wp) => {'airport_code': wp.airportCode, 'sequence_order': wp.sequenceOrder}).toList();
         }
 
         final telegramBotService = TelegramBotService();
@@ -244,9 +237,15 @@ class OnTheWayController {
         return Response.notFound(jsonEncode({'error': 'Flight not found'}), headers: jsonContentHeaders);
       }
 
-      // Проверка прав доступа (только владелец может редактировать)
-      if (flight.pilotId != int.parse(userId)) {
-        return Response.forbidden(jsonEncode({'error': 'Forbidden: You can only edit your own flights'}), headers: jsonContentHeaders);
+      // Проверка прав доступа (владелец или администратор может редактировать)
+      final isOwner = flight.pilotId == int.parse(userId);
+      if (!isOwner) {
+        // Проверяем, является ли пользователь администратором
+        final profileRepository = await getIt.getAsync<ProfileRepository>();
+        final isAdmin = await profileRepository.isAdmin(int.parse(userId));
+        if (!isAdmin) {
+          return Response.forbidden(jsonEncode({'error': 'Forbidden: You can only edit your own flights'}), headers: jsonContentHeaders);
+        }
       }
 
       final body = await request.readAsString();
@@ -331,9 +330,15 @@ class OnTheWayController {
         return Response.notFound(jsonEncode({'error': 'Flight not found'}), headers: jsonContentHeaders);
       }
 
-      // Проверка прав доступа (только владелец может отменять)
-      if (flight.pilotId != int.parse(userId)) {
-        return Response.forbidden(jsonEncode({'error': 'Forbidden: You can only cancel your own flights'}), headers: jsonContentHeaders);
+      // Проверка прав доступа (владелец или администратор может отменять)
+      final isOwner = flight.pilotId == int.parse(userId);
+      if (!isOwner) {
+        // Проверяем, является ли пользователь администратором
+        final profileRepository = await getIt.getAsync<ProfileRepository>();
+        final isAdmin = await profileRepository.isAdmin(int.parse(userId));
+        if (!isAdmin) {
+          return Response.forbidden(jsonEncode({'error': 'Forbidden: You can only cancel your own flights'}), headers: jsonContentHeaders);
+        }
       }
 
       // Отменяем полет (меняем статус на 'cancelled' и отменяем все бронирования)
@@ -472,6 +477,38 @@ class OnTheWayController {
         final booking = await _onTheWayRepository.createBooking(flightId: createRequest.flightId, passengerId: passengerId, seatsCount: createRequest.seatsCount);
         print('✅ [OnTheWayController] createBooking repository returned booking: id=${booking.id}');
 
+        // Отправляем push-уведомление владельцу полета о новом бронировании
+        try {
+          // Получаем информацию о полете для уведомления
+          final flightInfo = await _onTheWayRepository.getFlightInfoForBookingNotification(createRequest.flightId);
+          final pilotId = flightInfo['pilot_id'] as int;
+
+          // Получаем FCM токен владельца полета
+          final pilotInfo = await _onTheWayRepository.getPilotInfoForNotification(pilotId);
+          final fcmToken = pilotInfo['fcm_token'] as String?;
+
+          // Отправляем push-уведомление, если есть FCM токен
+          if (fcmToken != null && fcmToken.isNotEmpty) {
+            final fcmService = FcmService();
+            final waypointsText = flightInfo['waypoints_text'] as String? ?? '';
+            final formattedDate = flightInfo['formatted_date'] as String? ?? '';
+            final flightId = flightInfo['flight_id'] as int;
+
+            final notificationSent = await fcmService.notifyPilotAboutNewBooking(fcmToken: fcmToken, waypointsText: waypointsText, formattedDate: formattedDate, flightId: flightId);
+
+            if (notificationSent) {
+              print('✅ [OnTheWayController] Push-уведомление о новом бронировании отправлено пилоту полёта #$flightId');
+            } else {
+              print('⚠️ [OnTheWayController] Не удалось отправить push-уведомление о новом бронировании (нет FCM токена или ошибка отправки)');
+            }
+          } else {
+            print('⚠️ [OnTheWayController] FCM токен пилота не найден, уведомление не отправлено');
+          }
+        } catch (e) {
+          // Не прерываем выполнение, если не удалось отправить уведомление
+          print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления о новом бронировании: $e');
+        }
+
         print('🔵 [OnTheWayController] createBooking calling booking.toJson()...');
         final bookingJson = booking.toJson();
         print('✅ [OnTheWayController] createBooking booking.toJson() completed');
@@ -541,6 +578,38 @@ class OnTheWayController {
 
       final confirmedBooking = await _onTheWayRepository.confirmBooking(bookingId);
 
+      // Отправляем push-уведомление пассажиру о подтверждении бронирования
+      try {
+        final passengerId = confirmedBooking.passengerId;
+
+        // Получаем FCM токен пассажира
+        final passengerInfo = await _onTheWayRepository.getPilotInfoForNotification(passengerId);
+        final fcmToken = passengerInfo['fcm_token'] as String?;
+
+        // Получаем информацию о полете для уведомления (используем flight_id)
+        final flightInfo = await _onTheWayRepository.getFlightInfoForBookingNotificationByFlightId(confirmedBooking.flightId);
+        final waypointsText = flightInfo['waypoints_text'] as String? ?? '';
+        final formattedDate = flightInfo['formatted_date'] as String? ?? '';
+        final flightId = flightInfo['flight_id'] as int;
+
+        // Отправляем push-уведомление, если есть FCM токен
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          final fcmService = FcmService();
+          final notificationSent = await fcmService.notifyPassengerAboutConfirmedBooking(fcmToken: fcmToken, waypointsText: waypointsText, formattedDate: formattedDate, flightId: flightId);
+
+          if (notificationSent) {
+            print('✅ [OnTheWayController] Push-уведомление о подтверждении бронирования отправлено пассажиру полёта #$flightId');
+          } else {
+            print('⚠️ [OnTheWayController] Не удалось отправить push-уведомление о подтверждении бронирования (нет FCM токена или ошибка отправки)');
+          }
+        } else {
+          print('⚠️ [OnTheWayController] FCM токен пассажира не найден, уведомление не отправлено');
+        }
+      } catch (e) {
+        // Не прерываем выполнение, если не удалось отправить уведомление
+        print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления о подтверждении бронирования: $e');
+      }
+
       return Response.ok(jsonEncode(confirmedBooking), headers: jsonContentHeaders);
     });
   }
@@ -577,6 +646,38 @@ class OnTheWayController {
       // TODO: Проверить, что пользователь является владельцем бронирования или пилотом
 
       final booking = await _onTheWayRepository.cancelBooking(bookingId);
+
+      // Отправляем push-уведомление пассажиру об отмене бронирования
+      try {
+        final passengerId = booking.passengerId;
+
+        // Получаем FCM токен пассажира
+        final passengerInfo = await _onTheWayRepository.getPilotInfoForNotification(passengerId);
+        final fcmToken = passengerInfo['fcm_token'] as String?;
+
+        // Получаем информацию о полете для уведомления (используем flight_id)
+        final flightInfo = await _onTheWayRepository.getFlightInfoForBookingNotificationByFlightId(booking.flightId);
+        final waypointsText = flightInfo['waypoints_text'] as String? ?? '';
+        final formattedDate = flightInfo['formatted_date'] as String? ?? '';
+        final flightId = flightInfo['flight_id'] as int;
+
+        // Отправляем push-уведомление, если есть FCM токен
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          final fcmService = FcmService();
+          final notificationSent = await fcmService.notifyPassengerAboutCancelledBooking(fcmToken: fcmToken, waypointsText: waypointsText, formattedDate: formattedDate, flightId: flightId);
+
+          if (notificationSent) {
+            print('✅ [OnTheWayController] Push-уведомление об отмене бронирования отправлено пассажиру полёта #$flightId');
+          } else {
+            print('⚠️ [OnTheWayController] Не удалось отправить push-уведомление об отмене бронирования (нет FCM токена или ошибка отправки)');
+          }
+        } else {
+          print('⚠️ [OnTheWayController] FCM токен пассажира не найден, уведомление не отправлено');
+        }
+      } catch (e) {
+        // Не прерываем выполнение, если не удалось отправить уведомление
+        print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления об отмене бронирования: $e');
+      }
 
       return Response.ok(jsonEncode(booking.toJson()), headers: jsonContentHeaders);
     });
@@ -825,37 +926,31 @@ class OnTheWayController {
       // Проверяем, является ли пользователь пилотом
       final isPilot = flight.pilotId == userId;
 
-      // Если не пилот, проверяем, есть ли подтвержденное бронирование
+      // Если не пилот, проверяем, есть ли подтвержденное бронирование или является ли пользователь администратором
       if (!isPilot) {
-        final bookings = await _onTheWayRepository.fetchBookingsByFlightId(flightId);
-        final hasConfirmedBooking = bookings.any(
-          (b) => b.passengerId == userId && b.status == 'confirmed',
-        );
-        if (!hasConfirmedBooking) {
-          return Response.forbidden(
-            jsonEncode({'error': 'Only flight participants can upload photos'}),
-            headers: jsonContentHeaders,
-          );
+        final profileRepository = await getIt.getAsync<ProfileRepository>();
+        final isAdmin = await profileRepository.isAdmin(userId);
+
+        if (!isAdmin) {
+          final bookings = await _onTheWayRepository.fetchBookingsByFlightId(flightId);
+          final hasConfirmedBooking = bookings.any((b) => b.passengerId == userId && b.status == 'confirmed');
+          if (!hasConfirmedBooking) {
+            return Response.forbidden(jsonEncode({'error': 'Only flight participants can upload photos'}), headers: jsonContentHeaders);
+          }
         }
       }
 
       // Проверяем Content-Type
       final contentType = request.headers['Content-Type'];
       if (contentType == null || !contentType.startsWith('multipart/form-data')) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}), headers: jsonContentHeaders);
       }
 
       // Парсим multipart запрос (используем ту же логику, что и для профиля)
       final mediaType = MediaType.parse(contentType);
       final boundary = mediaType.parameters['boundary'];
       if (boundary == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Missing boundary in Content-Type'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Missing boundary in Content-Type'}), headers: jsonContentHeaders);
       }
 
       // Читаем тело запроса
@@ -919,10 +1014,7 @@ class OnTheWayController {
 
         // Валидация размера (максимум 5MB)
         if (photoData.length > 5 * 1024 * 1024) {
-          return Response.badRequest(
-            body: jsonEncode({'error': 'File size exceeds 5MB limit'}),
-            headers: jsonContentHeaders,
-          );
+          return Response.badRequest(body: jsonEncode({'error': 'File size exceeds 5MB limit'}), headers: jsonContentHeaders);
         }
 
         // Определяем расширение
@@ -950,26 +1042,16 @@ class OnTheWayController {
       }
 
       if (photoUrls.isEmpty) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'No photos provided'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'No photos provided'}), headers: jsonContentHeaders);
       }
 
       // Сохраняем фотографии в БД
-      await _onTheWayRepository.uploadFlightPhotos(
-        flightId: flightId,
-        uploadedBy: userId,
-        photoUrls: photoUrls,
-      );
+      await _onTheWayRepository.uploadFlightPhotos(flightId: flightId, uploadedBy: userId, photoUrls: photoUrls);
 
       // Получаем обновленный полет
       final updatedFlight = await _onTheWayRepository.fetchFlightById(flightId);
       if (updatedFlight == null) {
-        return Response.internalServerError(
-          body: jsonEncode({'error': 'Failed to fetch updated flight'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.internalServerError(body: jsonEncode({'error': 'Failed to fetch updated flight'}), headers: jsonContentHeaders);
       }
 
       return Response.ok(jsonEncode(updatedFlight), headers: jsonContentHeaders);
@@ -1005,45 +1087,29 @@ class OnTheWayController {
       // Получаем ID полета
       final id = request.params['id'];
       if (id == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Flight ID is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Flight ID is required'}), headers: jsonContentHeaders);
       }
       final flightId = int.parse(id);
 
       // Получаем photoUrl из query параметров или body
       final photoUrl = request.url.queryParameters['photo_url'];
       if (photoUrl == null || photoUrl.isEmpty) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Photo URL is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Photo URL is required'}), headers: jsonContentHeaders);
       }
 
       try {
         // Удаляем фотографию
-        await _onTheWayRepository.deleteFlightPhoto(
-          flightId: flightId,
-          photoUrl: photoUrl,
-          userId: userId,
-        );
+        await _onTheWayRepository.deleteFlightPhoto(flightId: flightId, photoUrl: photoUrl, userId: userId);
 
         // Получаем обновленный полет
         final updatedFlight = await _onTheWayRepository.fetchFlightById(flightId);
         if (updatedFlight == null) {
-          return Response.internalServerError(
-            body: jsonEncode({'error': 'Failed to fetch updated flight'}),
-            headers: jsonContentHeaders,
-          );
+          return Response.internalServerError(body: jsonEncode({'error': 'Failed to fetch updated flight'}), headers: jsonContentHeaders);
         }
 
         return Response.ok(jsonEncode(updatedFlight), headers: jsonContentHeaders);
       } catch (e) {
-        return Response.badRequest(
-          body: jsonEncode({'error': e.toString()}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': e.toString()}), headers: jsonContentHeaders);
       }
     });
   }
@@ -1100,16 +1166,10 @@ class OnTheWayController {
     final bodyBytes = partBytes.sublist(headerEnd);
     // Удаляем trailing CRLF если есть
     if (bodyBytes.length >= 2 && bodyBytes[bodyBytes.length - 2] == 13 && bodyBytes[bodyBytes.length - 1] == 10) {
-      return {
-        ...headers,
-        'data': bodyBytes.sublist(0, bodyBytes.length - 2),
-      };
+      return {...headers, 'data': bodyBytes.sublist(0, bodyBytes.length - 2)};
     }
 
-    return {
-      ...headers,
-      'data': bodyBytes,
-    };
+    return {...headers, 'data': bodyBytes};
   }
 
   // ========== FLIGHT QUESTIONS ==========
@@ -1159,11 +1219,7 @@ class OnTheWayController {
       final body = await request.readAsString();
       final createRequest = CreateFlightQuestionRequest.fromJson(jsonDecode(body));
 
-      final question = await _onTheWayRepository.createQuestion(
-        flightId: int.parse(flightId),
-        authorId: authorId,
-        questionText: createRequest.questionText,
-      );
+      final question = await _onTheWayRepository.createQuestion(flightId: int.parse(flightId), authorId: authorId, questionText: createRequest.questionText);
 
       return Response.ok(jsonEncode(question), headers: jsonContentHeaders);
     });
@@ -1201,12 +1257,7 @@ class OnTheWayController {
       final body = await request.readAsString();
       final updateRequest = UpdateFlightQuestionRequest.fromJson(jsonDecode(body));
 
-      final question = await _onTheWayRepository.updateQuestion(
-        questionId: int.parse(id),
-        userId: int.parse(userId),
-        questionText: updateRequest.questionText,
-        answerText: updateRequest.answerText,
-      );
+      final question = await _onTheWayRepository.updateQuestion(questionId: int.parse(id), userId: int.parse(userId), questionText: updateRequest.questionText, answerText: updateRequest.answerText);
 
       return Response.ok(jsonEncode(question), headers: jsonContentHeaders);
     });
@@ -1273,42 +1324,26 @@ class OnTheWayController {
 
       final id = request.params['id'];
       if (id == null) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Question ID is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Question ID is required'}), headers: jsonContentHeaders);
       }
 
       final body = await request.readAsString();
       final answerRequest = AnswerFlightQuestionRequest.fromJson(jsonDecode(body));
 
       if (answerRequest.answerText.trim().isEmpty) {
-        return Response.badRequest(
-          body: jsonEncode({'error': 'Answer text is required'}),
-          headers: jsonContentHeaders,
-        );
+        return Response.badRequest(body: jsonEncode({'error': 'Answer text is required'}), headers: jsonContentHeaders);
       }
 
       try {
-        final question = await _onTheWayRepository.answerQuestion(
-          questionId: int.parse(id),
-          userId: int.parse(userId),
-          answerText: answerRequest.answerText.trim(),
-        );
+        final question = await _onTheWayRepository.answerQuestion(questionId: int.parse(id), userId: int.parse(userId), answerText: answerRequest.answerText.trim());
 
         return Response.ok(jsonEncode(question), headers: jsonContentHeaders);
       } catch (e) {
         if (e.toString().contains('Only the flight creator')) {
-          return Response.forbidden(
-            jsonEncode({'error': 'Only the flight creator can answer questions'}),
-            headers: jsonContentHeaders,
-          );
+          return Response.forbidden(jsonEncode({'error': 'Only the flight creator can answer questions'}), headers: jsonContentHeaders);
         }
         if (e.toString().contains('Question not found')) {
-          return Response.notFound(
-            jsonEncode({'error': 'Question not found'}),
-            headers: jsonContentHeaders,
-          );
+          return Response.notFound(jsonEncode({'error': 'Question not found'}), headers: jsonContentHeaders);
         }
         rethrow;
       }

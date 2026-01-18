@@ -77,25 +77,26 @@ class ProfileRepository {
     final updates = <String>[];
     final parameters = <String, dynamic>{'id': id};
 
+    // Обрабатываем все поля, конвертируя пустые строки в NULL для очистки
     if (email != null) {
       updates.add('email = @email');
-      parameters['email'] = email;
+      parameters['email'] = email.isEmpty ? null : email;
     }
     if (firstName != null) {
       updates.add('first_name = @firstName');
-      parameters['firstName'] = firstName;
+      parameters['firstName'] = firstName.isEmpty ? null : firstName;
     }
     if (lastName != null) {
       updates.add('last_name = @lastName');
-      parameters['lastName'] = lastName;
+      parameters['lastName'] = lastName.isEmpty ? null : lastName;
     }
     if (telegram != null) {
       updates.add('telegram = @telegram');
-      parameters['telegram'] = telegram;
+      parameters['telegram'] = telegram.isEmpty ? null : telegram;
     }
     if (max != null) {
       updates.add('max = @max');
-      parameters['max'] = max;
+      parameters['max'] = max.isEmpty ? null : max;
     }
 
     if (updates.isEmpty) {
@@ -121,26 +122,166 @@ class ProfileRepository {
   }
 
   /// Обновить FCM токен пользователя
-  Future<void> updateFcmToken({required int id, required String? fcmToken}) async {
+  /// Обновить или добавить FCM токен для пользователя (новая система с поддержкой платформ)
+  /// Если токен уже существует для этой платформы, обновляет его
+  /// Если нет - создает новую запись
+  Future<void> updateFcmToken({required int id, required String? fcmToken, String? platform}) async {
+    if (fcmToken == null || fcmToken.isEmpty) {
+      // Если токен пустой, удаляем все токены пользователя
+      await _connection.execute(
+        Sql.named('DELETE FROM user_fcm_tokens WHERE user_id = @id'),
+        parameters: {'id': id},
+      );
+      // Также обновляем старое поле для обратной совместимости
+      await _connection.execute(
+        Sql.named('UPDATE profiles SET fcm_token = NULL WHERE id = @id'),
+        parameters: {'id': id},
+      );
+      return;
+    }
+
+    final platformValue = platform ?? 'mobile';
+
+    // Обновляем или вставляем токен в новую таблицу
     await _connection.execute(
-      Sql.named('UPDATE profiles SET fcm_token = @fcmToken WHERE id = @id'),
-      parameters: {'id': id, 'fcmToken': fcmToken},
+      Sql.named('''
+        INSERT INTO user_fcm_tokens (user_id, fcm_token, platform, created_at, updated_at)
+        VALUES (@id, @fcmToken, @platform, NOW(), NOW())
+        ON CONFLICT (user_id, fcm_token) 
+        DO UPDATE SET 
+          platform = EXCLUDED.platform,
+          updated_at = NOW()
+      '''),
+      parameters: {'id': id, 'fcmToken': fcmToken, 'platform': platformValue},
+    );
+
+    // Для обратной совместимости также обновляем поле в profiles (берем последний токен)
+    await _connection.execute(
+      Sql.named('''
+        UPDATE profiles 
+        SET fcm_token = (
+          SELECT fcm_token 
+          FROM user_fcm_tokens 
+          WHERE user_id = @id 
+          ORDER BY updated_at DESC 
+          LIMIT 1
+        )
+        WHERE id = @id
+      '''),
+      parameters: {'id': id},
     );
   }
 
-  /// Получить FCM токен пользователя
+  /// Получить FCM токен пользователя (для обратной совместимости)
+  /// Возвращает первый доступный токен
   Future<String?> getFcmToken(int userId) async {
+    // Сначала пробуем получить из новой таблицы
     final result = await _connection.execute(
+      Sql.named('''
+        SELECT fcm_token 
+        FROM user_fcm_tokens 
+        WHERE user_id = @id 
+        ORDER BY updated_at DESC 
+        LIMIT 1
+      '''),
+      parameters: {'id': userId},
+    );
+
+    if (result.isNotEmpty) {
+      return result.first[0] as String?;
+    }
+
+    // Если не найден, пробуем получить из старого поля (для обратной совместимости)
+    final oldResult = await _connection.execute(
       Sql.named('SELECT fcm_token FROM profiles WHERE id = @id'),
       parameters: {'id': userId},
     );
 
-    if (result.isEmpty) {
+    if (oldResult.isEmpty) {
       return null;
     }
 
-    final row = result.first.toColumnMap();
+    final row = oldResult.first.toColumnMap();
     return row['fcm_token'] as String?;
+  }
+
+  /// Получить все FCM токены пользователя по платформе
+  Future<List<String>> getFcmTokensByPlatform(int userId, String? platform) async {
+    String query = '''
+      SELECT fcm_token 
+      FROM user_fcm_tokens 
+      WHERE user_id = @id
+    ''';
+    
+    final parameters = <String, dynamic>{'id': userId};
+    
+    if (platform != null) {
+      query += ' AND platform = @platform';
+      parameters['platform'] = platform;
+    }
+    
+    query += ' ORDER BY updated_at DESC';
+
+    final result = await _connection.execute(
+      Sql.named(query),
+      parameters: parameters,
+    );
+
+    return result.map((row) => row[0] as String).toList();
+  }
+
+  /// Получить все FCM токены пользователя (для всех платформ)
+  Future<List<Map<String, dynamic>>> getAllFcmTokens(int userId) async {
+    final result = await _connection.execute(
+      Sql.named('''
+        SELECT fcm_token, platform, updated_at
+        FROM user_fcm_tokens 
+        WHERE user_id = @id
+        ORDER BY updated_at DESC
+      '''),
+      parameters: {'id': userId},
+    );
+
+    return result.map((row) {
+      final map = row.toColumnMap();
+      return {
+        'fcm_token': map['fcm_token'] as String,
+        'platform': map['platform'] as String,
+        'updated_at': map['updated_at'] as DateTime,
+      };
+    }).toList();
+  }
+
+  /// Проверить, является ли пользователь администратором
+  Future<bool> isAdmin(int userId) async {
+    final result = await _connection.execute(
+      Sql.named('SELECT is_admin FROM profiles WHERE id = @id'),
+      parameters: {'id': userId},
+    );
+
+    if (result.isEmpty) {
+      return false;
+    }
+
+    final row = result.first.toColumnMap();
+    return row['is_admin'] as bool? ?? false;
+  }
+
+  /// Получить все FCM токены администраторов
+  Future<List<String>> getAdminFcmTokens() async {
+    final result = await _connection.execute(
+      Sql.named('''
+        SELECT DISTINCT uft.fcm_token
+        FROM user_fcm_tokens uft
+        INNER JOIN profiles p ON uft.user_id = p.id
+        WHERE p.is_admin = true
+          AND uft.fcm_token IS NOT NULL
+          AND uft.fcm_token != ''
+        ORDER BY uft.updated_at DESC
+      '''),
+    );
+
+    return result.map((row) => row[0] as String).toList();
   }
 
   /// Удалить аккаунт пользователя
@@ -158,7 +299,13 @@ class ProfileRepository {
     await _connection.execute(Sql('BEGIN'));
 
     try {
-      // Удаляем FCM токен из профиля (очищаем перед удалением)
+      // Удаляем FCM токены из новой таблицы (CASCADE автоматически удалит при удалении профиля)
+      await _connection.execute(
+        Sql.named('DELETE FROM user_fcm_tokens WHERE user_id = @id'),
+        parameters: {'id': id},
+      );
+      
+      // Также очищаем старое поле в профиле (для обратной совместимости)
       await _connection.execute(
         Sql.named('UPDATE profiles SET fcm_token = NULL WHERE id = @id'),
         parameters: {'id': id},

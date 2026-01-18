@@ -7,6 +7,7 @@ import 'package:aviapoint_server/logger/logger.dart';
 import 'package:aviapoint_server/payments/api/create_payment_request.dart';
 import 'package:aviapoint_server/payments/repositories/payment_repository.dart';
 import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
+import 'package:aviapoint_server/push_notifications/fcm_service.dart';
 import 'package:aviapoint_server/subscriptions/repositories/subscription_repository.dart';
 import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
 import 'package:shelf/shelf.dart';
@@ -408,6 +409,36 @@ class PaymentController {
               );
             } catch (e) {
               logger.info('Failed to send Telegram notification for subscription: $e');
+              // Не прерываем обработку, если уведомление не отправилось
+            }
+
+            // Отправляем push-уведомление администраторам о покупке подписки
+            try {
+              final profileRepository = await getIt.getAsync<ProfileRepository>();
+              final profile = await profileRepository.fetchProfileById(userId);
+              final adminFcmTokens = await profileRepository.getAdminFcmTokens();
+
+              if (adminFcmTokens.isNotEmpty) {
+                final fcmService = FcmService();
+                final userName = profile.firstName != null && profile.lastName != null
+                    ? '${profile.firstName} ${profile.lastName}'.trim()
+                    : profile.firstName ?? profile.lastName;
+                
+                final sentCount = await fcmService.notifyAdminsAboutSubscriptionPurchase(
+                  adminFcmTokens: adminFcmTokens,
+                  userPhone: profile.phone,
+                  userName: userName,
+                  subscriptionType: subscriptionTypeCode,
+                  amount: subscriptionAmount,
+                );
+                
+                logger.info('✅ Отправлено push-уведомлений администраторам о покупке подписки: $sentCount из ${adminFcmTokens.length}');
+              } else {
+                logger.info('⚠️ Не найдено FCM токенов администраторов для отправки уведомления о покупке подписки');
+              }
+            } catch (e, stackTrace) {
+              logger.severe('❌ Ошибка отправки push-уведомления администраторам о покупке подписки: $e');
+              logger.severe('Stack trace: $stackTrace');
               // Не прерываем обработку, если уведомление не отправилось
             }
           } catch (e, stackTrace) {

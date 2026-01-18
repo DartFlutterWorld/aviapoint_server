@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:aviapoint_server/logger/logger.dart';
+import 'package:aviapoint_server/push_notifications/push_notification_texts.dart';
 import 'package:http/http.dart' as http;
 
 /// Сервис для отправки push-уведомлений через Firebase Cloud Messaging
@@ -20,7 +21,7 @@ class FcmService {
     }
   }
 
-  /// Отправка push-уведомления одному пользователю
+  /// Отправка push-уведомления одному пользователю (по токену)
   Future<bool> sendNotification({
     required String fcmToken,
     required String title,
@@ -101,8 +102,8 @@ class FcmService {
     required int flightId,
     required int hoursSinceDeparture,
   }) async {
-    final title = '⏰ Напоминание о завершении полёта';
-    final body = 'Полёт $departureAirport → $arrivalAirport\nПрошло $hoursSinceDeparture часов. Не забудьте завершить полёт!';
+    final title = PushNotificationTexts.flightReminderTitle;
+    final body = PushNotificationTexts.flightReminderBody(departureAirport, arrivalAirport, hoursSinceDeparture);
 
     final data = {
       'type': 'flight_reminder',
@@ -113,6 +114,159 @@ class FcmService {
 
     return await sendNotification(
       fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
+
+  /// Отправка уведомления владельцу полёта о новом бронировании
+  Future<bool> notifyPilotAboutNewBooking({
+    required String fcmToken,
+    required String waypointsText,
+    required String formattedDate,
+    required int flightId,
+  }) async {
+    final title = PushNotificationTexts.newBookingTitle;
+    final body = PushNotificationTexts.newBookingBody(waypointsText, formattedDate);
+
+    final data = {
+      'type': 'new_booking',
+      'flight_id': flightId.toString(),
+      'screen': 'flight_detail', // Экран для перехода
+    };
+
+    return await sendNotification(
+      fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
+
+  /// Отправка уведомления пассажиру о подтверждении бронирования
+  Future<bool> notifyPassengerAboutConfirmedBooking({
+    required String fcmToken,
+    required String waypointsText,
+    required String formattedDate,
+    required int flightId,
+  }) async {
+    final title = PushNotificationTexts.bookingConfirmedTitle;
+    final body = PushNotificationTexts.bookingConfirmedBody(waypointsText, formattedDate);
+
+    final data = {
+      'type': 'booking_confirmed',
+      'flight_id': flightId.toString(),
+      'screen': 'flight_detail', // Экран для перехода
+    };
+
+    return await sendNotification(
+      fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
+
+  /// Отправка уведомления пассажиру об отмене бронирования
+  Future<bool> notifyPassengerAboutCancelledBooking({
+    required String fcmToken,
+    required String waypointsText,
+    required String formattedDate,
+    required int flightId,
+  }) async {
+    final title = PushNotificationTexts.bookingCancelledTitle;
+    final body = PushNotificationTexts.bookingCancelledBody(waypointsText, formattedDate);
+
+    final data = {
+      'type': 'booking_cancelled',
+      'flight_id': flightId.toString(),
+      'screen': 'flight_detail', // Экран для перехода
+    };
+
+    return await sendNotification(
+      fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
+
+  /// Отправка уведомления владельцу объявления о снятии с публикации
+  Future<bool> notifyOwnerAboutUnpublishedListing({
+    required String fcmToken,
+    required String listingTitle,
+    required int listingId,
+  }) async {
+    final title = PushNotificationTexts.listingUnpublishedTitle;
+    final body = PushNotificationTexts.listingUnpublishedBody(listingTitle);
+
+    final data = {
+      'type': 'listing_unpublished',
+      'listing_id': listingId.toString(),
+      'screen': 'listing_detail', // Экран для перехода
+    };
+
+    return await sendNotification(
+      fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
+
+  /// Отправка push-уведомления на все токены пользователя
+  /// Отправляет уведомление на все активные устройства пользователя (веб и мобильные)
+  Future<int> sendNotificationToAllUserTokens({
+    required List<String> fcmTokens,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    if (fcmTokens.isEmpty) {
+      logger.info('Список FCM токенов пуст, нечего отправлять');
+      return 0;
+    }
+
+    int successCount = 0;
+    for (final token in fcmTokens) {
+      if (token.isNotEmpty) {
+        final success = await sendNotification(
+          fcmToken: token,
+          title: title,
+          body: body,
+          data: data,
+        );
+        if (success) {
+          successCount++;
+        }
+      }
+    }
+
+    logger.info('✅ Отправлено уведомлений: $successCount из ${fcmTokens.length}');
+    return successCount;
+  }
+
+  /// Отправка уведомления администраторам о покупке подписки
+  Future<int> notifyAdminsAboutSubscriptionPurchase({
+    required List<String> adminFcmTokens,
+    required String userPhone,
+    String? userName,
+    required String subscriptionType,
+    required int amount,
+  }) async {
+    final title = PushNotificationTexts.subscriptionPurchaseTitle;
+    final body = PushNotificationTexts.subscriptionPurchaseBody(userPhone, userName, subscriptionType, amount);
+
+    final data = {
+      'type': 'subscription_purchase',
+      'user_phone': userPhone,
+      'subscription_type': subscriptionType,
+      'amount': amount.toString(),
+    };
+
+    return await sendNotificationToAllUserTokens(
+      fcmTokens: adminFcmTokens,
       title: title,
       body: body,
       data: data,

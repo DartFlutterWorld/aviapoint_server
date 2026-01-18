@@ -16,6 +16,7 @@ class ProfileModel {
     this.averageRating,
     this.reviewsCount,
     this.ownedAirports,
+    this.isAdmin = false,
   });
 
   final int id;
@@ -31,6 +32,8 @@ class ProfileModel {
   @JsonKey(fromJson: _intFromJsonNullable)
   final int? reviewsCount;
   final dynamic ownedAirports; // JSONB массив ID аэропортов
+  @JsonKey(defaultValue: false)
+  final bool isAdmin;
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) => _$ProfileModelFromJson(json);
 

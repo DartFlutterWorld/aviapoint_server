@@ -6,6 +6,7 @@ import 'package:aviapoint_server/blog/api/update_blog_article_request.dart';
 import 'package:aviapoint_server/blog/repositories/blog_repository.dart';
 import 'package:aviapoint_server/core/setup_dependencies/setup_dependencies.dart';
 import 'package:aviapoint_server/core/wrap_response.dart';
+import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
 import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_open_api/shelf_open_api.dart';
@@ -629,14 +630,20 @@ class BlogController {
         return Response.badRequest(body: jsonEncode({'error': 'Invalid article ID'}), headers: jsonContentHeaders);
       }
 
-      // Проверяем, что статья существует и пользователь является автором
+      // Проверяем, что статья существует и пользователь является автором или администратором
       final article = await _repository.getArticle(id: articleId);
       if (article == null) {
         return Response.notFound(jsonEncode({'error': 'Article not found'}), headers: jsonContentHeaders);
       }
 
-      if (article.authorId != userId) {
-        return Response.forbidden(jsonEncode({'error': 'You can only upload images to your own articles'}), headers: jsonContentHeaders);
+      final isOwner = article.authorId == userId;
+      if (!isOwner) {
+        // Проверяем, является ли пользователь администратором
+        final profileRepository = await getIt.getAsync<ProfileRepository>();
+        final isAdmin = await profileRepository.isAdmin(userId);
+        if (!isAdmin) {
+          return Response.forbidden(jsonEncode({'error': 'You can only upload images to your own articles'}), headers: jsonContentHeaders);
+        }
       }
 
       // Проверяем Content-Type

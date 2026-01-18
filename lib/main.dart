@@ -18,6 +18,7 @@ import 'package:aviapoint_server/on_the_way/controller/on_the_way_controller.dar
 import 'package:aviapoint_server/on_the_way/controller/feedback_controller.dart';
 import 'package:aviapoint_server/on_the_way/controller/aircraft_catalog_controller.dart';
 import 'package:aviapoint_server/blog/controller/blog_controller.dart';
+import 'package:aviapoint_server/market/controller/market_controller.dart';
 import 'package:aviapoint_server/app_settings/controller/app_settings_controller.dart';
 import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
 import 'package:aviapoint_server/on_the_way/services/flight_status_service.dart';
@@ -73,6 +74,7 @@ Future<void> main() async {
   await getIt.getAsync<FeedbackController>();
   await getIt.getAsync<AircraftCatalogController>();
   await getIt.getAsync<BlogController>();
+  await getIt.getAsync<MarketController>();
   await getIt.getAsync<AppSettingsController>();
 
   // Проверяем что соединение с БД установлено
@@ -94,12 +96,17 @@ Future<void> main() async {
   Handler logStaticRequests(Handler handler) {
     return (Request request) async {
       final path = request.url.path;
-      // Логируем только запросы к статическим файлам (не API)
-      if (!path.startsWith('/api/') && (path.startsWith('/profiles/') || path.startsWith('/stories/') || path.startsWith('/news/'))) {
+      final normalizedPath = path.startsWith('/') ? path : '/$path';
+      // Пропускаем API запросы - они не должны логироваться как статические файлы
+      if (normalizedPath.startsWith('/api/')) {
+        return await handler(request);
+      }
+      // Логируем только запросы к статическим файлам
+      if (normalizedPath.startsWith('/profiles/') || normalizedPath.startsWith('/stories/') || normalizedPath.startsWith('/news/')) {
         logger.info('📁 Static file request: ${request.method} ${request.url}');
       }
       final response = await handler(request);
-      if (response.statusCode == 404 && !path.startsWith('/api/')) {
+      if (response.statusCode == 404) {
         logger.info('⚠️ Static file not found: ${request.url}');
       }
       return response;
@@ -123,6 +130,7 @@ Future<void> main() async {
       .add(getIt<FeedbackController>().router)
       .add(getIt<AircraftCatalogController>().router)
       .add(getIt<BlogController>().router)
+      .add(getIt<MarketController>().router)
       .add(getIt<AppSettingsController>().router)
       .add(logStaticRequests(staticHandler))
       .add(Router()..mount('/api/openapi', SwaggerUI('public/open_api.yaml', docExpansion: DocExpansion.list, syntaxHighlightTheme: SyntaxHighlightTheme.tomorrowNight, title: 'Swagger AviaPoint')))

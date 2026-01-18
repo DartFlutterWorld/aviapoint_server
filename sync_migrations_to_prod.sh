@@ -42,43 +42,20 @@ fi
 
 echo -e "\n${YELLOW}2. Синхронизация файлов миграций...${NC}"
 
-# Список файлов миграций, которые должны быть на сервере
-# Получаем список из MigrationManager
-REQUIRED_MIGRATIONS=(
-    "create_payments_table.sql"
-    "create_subscriptions_table.sql"
-    "create_on_the_way_tables.sql"
-    "create_airports_table.sql"
-    "add_avatar_url_to_profiles.sql"
-    "add_reply_to_reviews.sql"
-    "make_rating_nullable_for_replies.sql"
-    "add_flight_photos_table.sql"
-    "recreate_airports_table_aopa.sql"
-    "create_feedback_table.sql"
-    "create_airport_ownership_requests_table.sql"
-    "add_owned_airports_to_profiles.sql"
-    "add_user_id_to_payments.sql"
-    "add_subscription_fields_to_profiles.sql"
-    "add_subscription_fields_to_payments.sql"
-    "add_description_to_subscription_types.sql"
-    "make_payment_id_nullable_in_subscriptions.sql"
-    "add_missing_fields_to_airport_ownership_requests.sql"
-    "add_owner_id_to_airports.sql"
-    "add_photos_to_airports.sql"
-    "create_airport_feedback_table.sql"
-    "create_airport_visitor_photos_table.sql"
-    "add_visitor_photos_to_airports.sql"
-    "create_flight_waypoints_table.sql"
-    "clear_all_flights_data.sql"
-    "create_flight_questions_table.sql"
-    "remove_subscription_fields_from_profiles.sql"
-    "remove_unique_active_subscription_index.sql"
-    "add_telegram_and_max_to_profiles.sql"
-)
+# Автоматически получаем список всех .sql файлов из папки migrations
+REQUIRED_MIGRATIONS=($(find "$LOCAL_MIGRATIONS_DIR" -name "*.sql" -type f -exec basename {} \; | sort))
+
+if [ ${#REQUIRED_MIGRATIONS[@]} -eq 0 ]; then
+    echo -e "${RED}❌ Не найдено файлов миграций в папке $LOCAL_MIGRATIONS_DIR${NC}"
+    exit 1
+fi
+
+echo -e "${BLUE}Найдено файлов миграций: ${#REQUIRED_MIGRATIONS[@]}${NC}\n"
 
 COPIED_COUNT=0
 MISSING_COUNT=0
 EXISTING_COUNT=0
+SKIPPED_COUNT=0
 
 for migration_file in "${REQUIRED_MIGRATIONS[@]}"; do
     local_file="$LOCAL_MIGRATIONS_DIR/$migration_file"
@@ -94,7 +71,10 @@ for migration_file in "${REQUIRED_MIGRATIONS[@]}"; do
     if [ "$IS_ON_SERVER" = false ]; then
         # Локально - через SSH
         if ssh $SERVER_USER@$SERVER_IP "[ -f \"$remote_file\" ]" 2>/dev/null; then
+            # Проверяем, отличается ли файл (опционально - можно пропустить для ускорения)
+            # Для простоты просто пропускаем существующие файлы
             ((EXISTING_COUNT++))
+            echo -e "   ${YELLOW}⊘${NC} $migration_file (уже существует)"
         else
             # Копируем файл
             scp "$local_file" $SERVER_USER@$SERVER_IP:"$remote_file" > /dev/null 2>&1
@@ -110,6 +90,7 @@ for migration_file in "${REQUIRED_MIGRATIONS[@]}"; do
         # На сервере - напрямую
         if [ -f "$remote_file" ]; then
             ((EXISTING_COUNT++))
+            echo -e "   ${YELLOW}⊘${NC} $migration_file (уже существует)"
         else
             # Копируем из локальной папки (если запущено на сервере, но файл в другом месте)
             if [ -f "$local_file" ]; then
@@ -137,7 +118,7 @@ echo -e "\n${YELLOW}Статистика:${NC}"
 echo -e "   Скопировано файлов: ${GREEN}$COPIED_COUNT${NC}"
 echo -e "   Уже существовало: ${YELLOW}$EXISTING_COUNT${NC}"
 echo -e "   Не найдено/ошибок: ${RED}$MISSING_COUNT${NC}"
-echo -e "   Всего обработано: ${#REQUIRED_MIGRATIONS[@]}"
+echo -e "   Всего обработано: ${BLUE}${#REQUIRED_MIGRATIONS[@]}${NC}"
 
 if [ $MISSING_COUNT -gt 0 ]; then
     echo -e "\n${RED}⚠️  Внимание: некоторые файлы не были скопированы!${NC}"

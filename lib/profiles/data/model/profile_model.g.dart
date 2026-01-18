@@ -18,6 +18,7 @@ ProfileModel _$ProfileModelFromJson(Map<String, dynamic> json) => ProfileModel(
       averageRating: _doubleFromJsonNullable(json['average_rating']),
       reviewsCount: _intFromJsonNullable(json['reviews_count']),
       ownedAirports: json['owned_airports'],
+      isAdmin: json['is_admin'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$ProfileModelToJson(ProfileModel instance) {
@@ -41,5 +42,6 @@ Map<String, dynamic> _$ProfileModelToJson(ProfileModel instance) {
   writeNotNull('average_rating', instance.averageRating);
   writeNotNull('reviews_count', instance.reviewsCount);
   writeNotNull('owned_airports', instance.ownedAirports);
+  val['is_admin'] = instance.isAdmin;
   return val;
 }

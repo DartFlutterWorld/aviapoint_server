@@ -450,10 +450,12 @@ class ProfileController {
       final body = await request.readAsString();
       final json = jsonDecode(body) as Map<String, dynamic>;
       final fcmToken = json['fcm_token'] as String?;
+      final platform = json['platform'] as String?; // 'web', 'mobile', 'ios', 'android'
 
       await _profileRepository.updateFcmToken(
         id: int.parse(id),
         fcmToken: fcmToken,
+        platform: platform,
       );
 
       return Response.ok(jsonEncode({'success': true}), headers: jsonContentHeaders);
