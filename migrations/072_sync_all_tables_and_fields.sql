@@ -589,6 +589,7 @@ BEGIN
         
         -- Если есть дубликаты, исправляем их
         IF duplicate_count > 0 THEN
+            -- Исправляем дубликаты, перенумеровывая их
             UPDATE news n1
             SET id = subquery.new_id
             FROM (
@@ -606,8 +607,9 @@ BEGIN
             
             -- Обновляем sequence, если он существует
             IF EXISTS (SELECT 1 FROM pg_sequences WHERE sequencename = 'news_id_seq') THEN
+                -- Получаем новый максимальный id после обновления
                 SELECT COALESCE(MAX(id), 0) INTO max_id_val FROM news;
-                PERFORM setval('news_id_seq', max_id_val + 1, false);
+                PERFORM setval('news_id_seq', GREATEST(max_id_val, 1), false);
             END IF;
         END IF;
         
@@ -654,15 +656,16 @@ DECLARE
     max_id_val INTEGER;
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'news') THEN
+        -- Получаем максимальный id из таблицы news
         SELECT COALESCE(MAX(id), 0) INTO max_id_val FROM news;
         
         IF NOT EXISTS (SELECT 1 FROM pg_sequences WHERE sequencename = 'news_id_seq') THEN
             CREATE SEQUENCE news_id_seq;
-            PERFORM setval('news_id_seq', max_id_val + 1, false);
+            PERFORM setval('news_id_seq', GREATEST(max_id_val, 1), false);
             ALTER TABLE news ALTER COLUMN id SET DEFAULT nextval('news_id_seq');
             ALTER SEQUENCE news_id_seq OWNED BY news.id;
         ELSE
-            PERFORM setval('news_id_seq', max_id_val + 1, false);
+            PERFORM setval('news_id_seq', GREATEST(max_id_val, 1), false);
         END IF;
     END IF;
 END $$;

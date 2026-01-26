@@ -16,6 +16,7 @@ END $$;
 DO $$ 
 DECLARE
     duplicate_count INTEGER;
+    max_id_val INTEGER;
 BEGIN
     -- Сначала убеждаемся, что колонка id имеет NOT NULL
     IF EXISTS (
@@ -57,7 +58,8 @@ BEGIN
         
         -- Обновляем sequence, если он существует
         IF EXISTS (SELECT 1 FROM pg_sequences WHERE sequencename = 'news_id_seq') THEN
-            PERFORM setval('news_id_seq', (SELECT COALESCE(MAX(id), 0) FROM news) + 1, false);
+            SELECT COALESCE(MAX(id), 0) INTO max_id_val FROM news;
+            PERFORM setval('news_id_seq', GREATEST(max_id_val, 1), false);
         END IF;
     END IF;
     
