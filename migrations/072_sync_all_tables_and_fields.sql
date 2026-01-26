@@ -564,6 +564,7 @@ CREATE INDEX IF NOT EXISTS idx_blog_comments_parent ON blog_comments(parent_comm
 DO $$ 
 DECLARE
     duplicate_count INTEGER;
+    max_id_val INTEGER;
 BEGIN
     -- Проверяем, существует ли таблица news
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'news') THEN
@@ -605,7 +606,8 @@ BEGIN
             
             -- Обновляем sequence, если он существует
             IF EXISTS (SELECT 1 FROM pg_sequences WHERE sequencename = 'news_id_seq') THEN
-                PERFORM setval('news_id_seq', (SELECT COALESCE(MAX(id), 0) FROM news) + 1, false);
+                SELECT COALESCE(MAX(id), 0) INTO max_id_val FROM news;
+                PERFORM setval('news_id_seq', max_id_val + 1, false);
             END IF;
         END IF;
         
@@ -648,15 +650,19 @@ END $$;
 
 -- Создаем sequence для news.id, если его еще нет (только если таблица существует)
 DO $$ 
+DECLARE
+    max_id_val INTEGER;
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'news') THEN
+        SELECT COALESCE(MAX(id), 0) INTO max_id_val FROM news;
+        
         IF NOT EXISTS (SELECT 1 FROM pg_sequences WHERE sequencename = 'news_id_seq') THEN
             CREATE SEQUENCE news_id_seq;
-            PERFORM setval('news_id_seq', COALESCE((SELECT MAX(id) FROM news), 0) + 1, false);
+            PERFORM setval('news_id_seq', max_id_val + 1, false);
             ALTER TABLE news ALTER COLUMN id SET DEFAULT nextval('news_id_seq');
             ALTER SEQUENCE news_id_seq OWNED BY news.id;
         ELSE
-            PERFORM setval('news_id_seq', COALESCE((SELECT MAX(id) FROM news), 0) + 1, false);
+            PERFORM setval('news_id_seq', max_id_val + 1, false);
         END IF;
     END IF;
 END $$;
