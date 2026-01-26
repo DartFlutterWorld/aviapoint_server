@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:aviapoint_server/on_the_way/data/model/airport_model.dart';
-import 'package:aviapoint_server/on_the_way/data/model/airport_review_model.dart';
 import 'package:postgres/postgres.dart';
 
 class AirportRepository {

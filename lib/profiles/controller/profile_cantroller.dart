@@ -417,7 +417,7 @@ class ProfileController {
   }
 
   ///
-  /// Сохранение FCM токена
+  /// Сохранение FCM токена (для авторизованных пользователей)
   ///
   /// Сохранение Firebase Cloud Messaging токена для отправки push-уведомлений
   ///
@@ -459,6 +459,49 @@ class ProfileController {
       );
 
       return Response.ok(jsonEncode({'success': true}), headers: jsonContentHeaders);
+    });
+  }
+
+  ///
+  /// Сохранение анонимного FCM токена (без авторизации)
+  ///
+  /// Сохранение Firebase Cloud Messaging токена для массовых рассылок неавторизованным пользователям
+  ///
+  @Route.post('/api/fcm-token')
+  @OpenApiRoute()
+  Future<Response> saveAnonymousFcmToken(Request request) async {
+    return wrapResponse(() async {
+      try {
+        // Парсим тело запроса
+        final body = await request.readAsString();
+        logger.info('📥 Получен запрос на сохранение анонимного FCM токена: $body');
+
+        final json = jsonDecode(body) as Map<String, dynamic>;
+        final fcmToken = json['fcm_token'] as String?;
+        final platform = json['platform'] as String?; // 'web', 'mobile', 'ios', 'android'
+
+        if (fcmToken == null || fcmToken.isEmpty) {
+          logger.info('⚠️ Пустой fcm_token в запросе');
+          return Response.badRequest(
+            body: jsonEncode({'error': 'fcm_token is required'}),
+            headers: jsonContentHeaders,
+          );
+        }
+
+        logger.info('💾 Сохранение анонимного FCM токена: token=${fcmToken.substring(0, 20)}..., platform=$platform');
+
+        await _profileRepository.saveAnonymousFcmToken(
+          fcmToken: fcmToken,
+          platform: platform,
+        );
+
+        logger.info('✅ Анонимный FCM токен успешно сохранен');
+        return Response.ok(jsonEncode({'success': true}), headers: jsonContentHeaders);
+      } catch (e, stackTrace) {
+        logger.severe('❌ Ошибка при сохранении анонимного FCM токена: $e');
+        logger.severe('Stack trace: $stackTrace');
+        rethrow;
+      }
     });
   }
 

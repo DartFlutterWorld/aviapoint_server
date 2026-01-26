@@ -362,6 +362,14 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+    post:
+      tags:
+        - NewsController
+      summary: Создать новость (требуется авторизация)
+      operationId: createNews
+      responses:
+        200:
+          description: "Operation completed!"
   /api/news/<id>:
     get:
       tags:
@@ -369,6 +377,20 @@ paths:
       summary: Получение конкретной новости
       description: Получение конкретной новости
       operationId: getNewsById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
+    put:
+      tags:
+        - NewsController
+      summary: "Обновить новость (требуется авторизация, только автор или админ)"
+      operationId: updateNews
       parameters:
         - name: id
           in: path
@@ -391,6 +413,15 @@ paths:
           required: true
           schema:
             type: string
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/news/images/upload:
+    post:
+      tags:
+        - NewsController
+      summary: Загрузить изображение для новости
+      operationId: uploadNewsImage
       responses:
         200:
           description: "Operation completed!"
@@ -772,9 +803,19 @@ paths:
     post:
       tags:
         - ProfileController
-      summary: Сохранение FCM токена
+      summary: Сохранение FCM токена (для авторизованных пользователей)
       description: "Сохранение Firebase Cloud Messaging токена для отправки push-уведомлений"
       operationId: saveFcmToken
+      responses:
+        200:
+          description: "Operation completed!"
+  /api/fcm-token:
+    post:
+      tags:
+        - ProfileController
+      summary: Сохранение анонимного FCM токена (без авторизации)
+      description: Сохранение Firebase Cloud Messaging токена для массовых рассылок неавторизованным пользователям
+      operationId: saveAnonymousFcmToken
       responses:
         200:
           description: "Operation completed!"

@@ -28,5 +28,20 @@ Router _$NewsControllerRouter(NewsController service) {
     r'/api/news/category/<id>',
     service.getNewsByCategory,
   );
+  router.add(
+    'POST',
+    r'/api/news',
+    service.createNews,
+  );
+  router.add(
+    'POST',
+    r'/api/news/images/upload',
+    service.uploadNewsImage,
+  );
+  router.add(
+    'PUT',
+    r'/api/news/<id>',
+    service.updateNews,
+  );
   return router;
 }

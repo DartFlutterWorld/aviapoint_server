@@ -51,6 +51,12 @@ class AircraftMarketModel {
   @JsonKey(name: 'share_denominator')
   final int? shareDenominator;
 
+  // Лизинг
+  @JsonKey(name: 'is_leasing')
+  final bool? isLeasing;
+  @JsonKey(name: 'leasing_conditions')
+  final String? leasingConditions;
+
   // Контактная информация продавца (из JOIN с profiles)
   @JsonKey(name: 'seller_first_name')
   final String? sellerFirstName;
@@ -89,6 +95,8 @@ class AircraftMarketModel {
     this.isShareSale,
     this.shareNumerator,
     this.shareDenominator,
+    this.isLeasing,
+    this.leasingConditions,
     this.sellerFirstName,
     this.sellerLastName,
     this.sellerPhone,
@@ -123,6 +131,8 @@ class AircraftMarketModel {
       isShareSale: _boolFromJson(json['is_share_sale']),
       shareNumerator: _intFromJsonNullable(json['share_numerator']),
       shareDenominator: _intFromJsonNullable(json['share_denominator']),
+      isLeasing: _boolFromJson(json['is_leasing']),
+      leasingConditions: json['leasing_conditions'] as String?,
       sellerFirstName: json['seller_first_name'] as String?,
       sellerLastName: json['seller_last_name'] as String?,
       sellerPhone: json['seller_phone'] as String?,

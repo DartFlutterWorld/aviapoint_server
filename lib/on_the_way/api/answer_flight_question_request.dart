@@ -12,5 +12,3 @@ class AnswerFlightQuestionRequest {
   factory AnswerFlightQuestionRequest.fromJson(Map<String, dynamic> json) => _$AnswerFlightQuestionRequestFromJson(json);
   Map<String, dynamic> toJson() => _$AnswerFlightQuestionRequestToJson(this);
 }
-
-

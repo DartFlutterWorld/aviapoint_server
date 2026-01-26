@@ -394,6 +394,8 @@ class MarketController {
         shareNumerator: body['share_numerator'] != null ? (body['share_numerator'] is String ? int.tryParse(body['share_numerator'] as String) : (body['share_numerator'] as num).toInt()) : null,
         shareDenominator:
             body['share_denominator'] != null ? (body['share_denominator'] is String ? int.tryParse(body['share_denominator'] as String) : (body['share_denominator'] as num).toInt()) : null,
+        isLeasing: body['is_leasing'] != null ? (body['is_leasing'] is String ? body['is_leasing'] == 'true' : body['is_leasing'] as bool) : null,
+        leasingConditions: body['leasing_conditions'] as String?,
       );
 
       final productId = product.id;
@@ -851,6 +853,8 @@ class MarketController {
           shareNumerator: body['share_numerator'] != null ? (body['share_numerator'] is String ? int.tryParse(body['share_numerator'] as String) : (body['share_numerator'] as num).toInt()) : null,
           shareDenominator:
               body['share_denominator'] != null ? (body['share_denominator'] is String ? int.tryParse(body['share_denominator'] as String) : (body['share_denominator'] as num).toInt()) : null,
+          isLeasing: body['is_leasing'] != null ? (body['is_leasing'] is String ? body['is_leasing'] == 'true' : body['is_leasing'] as bool) : null,
+          leasingConditions: body['leasing_conditions'] as String?,
         );
 
         if (updatedProduct == null) {

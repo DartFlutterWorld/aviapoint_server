@@ -17,17 +17,33 @@ NewsModel _$NewsModelFromJson(Map<String, dynamic> json) => NewsModel(
       picture_big: json['picture_big'] as String,
       is_big_news: json['is_big_news'] as bool,
       category_id: (json['category_id'] as num).toInt(),
+      author_id: (json['author_id'] as num?)?.toInt(),
+      published: json['published'] as bool? ?? true,
+      content: json['content'] as String?,
     );
 
-Map<String, dynamic> _$NewsModelToJson(NewsModel instance) => <String, dynamic>{
-      'id': instance.id,
-      'title': instance.title,
-      'sub_title': instance.sub_title,
-      'source': instance.source,
-      'date': instance.date,
-      'body': instance.body,
-      'picture_mini': instance.picture_mini,
-      'picture_big': instance.picture_big,
-      'is_big_news': instance.is_big_news,
-      'category_id': instance.category_id,
-    };
+Map<String, dynamic> _$NewsModelToJson(NewsModel instance) {
+  final val = <String, dynamic>{
+    'id': instance.id,
+    'title': instance.title,
+    'sub_title': instance.sub_title,
+    'source': instance.source,
+    'date': instance.date,
+    'body': instance.body,
+  };
+
+  void writeNotNull(String key, dynamic value) {
+    if (value != null) {
+      val[key] = value;
+    }
+  }
+
+  writeNotNull('content', instance.content);
+  val['picture_mini'] = instance.picture_mini;
+  val['picture_big'] = instance.picture_big;
+  val['is_big_news'] = instance.is_big_news;
+  val['category_id'] = instance.category_id;
+  writeNotNull('author_id', instance.author_id);
+  val['published'] = instance.published;
+  return val;
+}

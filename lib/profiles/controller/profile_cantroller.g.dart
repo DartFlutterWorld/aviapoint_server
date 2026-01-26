@@ -39,6 +39,11 @@ Router _$ProfileControllerRouter(ProfileController service) {
     service.saveFcmToken,
   );
   router.add(
+    'POST',
+    r'/api/fcm-token',
+    service.saveAnonymousFcmToken,
+  );
+  router.add(
     'DELETE',
     r'/api/profile',
     service.deleteAccount,

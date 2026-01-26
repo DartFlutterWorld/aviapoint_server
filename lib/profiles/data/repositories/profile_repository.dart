@@ -129,12 +129,7 @@ class ProfileRepository {
     if (fcmToken == null || fcmToken.isEmpty) {
       // Если токен пустой, удаляем все токены пользователя
       await _connection.execute(
-        Sql.named('DELETE FROM user_fcm_tokens WHERE user_id = @id'),
-        parameters: {'id': id},
-      );
-      // Также обновляем старое поле для обратной совместимости
-      await _connection.execute(
-        Sql.named('UPDATE profiles SET fcm_token = NULL WHERE id = @id'),
+        Sql.named('DELETE FROM fcm_tokens WHERE user_id = @id'),
         parameters: {'id': id},
       );
       return;
@@ -142,44 +137,102 @@ class ProfileRepository {
 
     final platformValue = platform ?? 'mobile';
 
-    // Обновляем или вставляем токен в новую таблицу
+    // Обновляем или вставляем токен в таблицу fcm_tokens
+    // Используем ON CONFLICT по fcm_token (уникальный индекс)
     await _connection.execute(
       Sql.named('''
-        INSERT INTO user_fcm_tokens (user_id, fcm_token, platform, created_at, updated_at)
+        INSERT INTO fcm_tokens (user_id, fcm_token, platform, created_at, updated_at)
         VALUES (@id, @fcmToken, @platform, NOW(), NOW())
-        ON CONFLICT (user_id, fcm_token) 
+        ON CONFLICT (fcm_token) 
         DO UPDATE SET 
+          user_id = EXCLUDED.user_id,
           platform = EXCLUDED.platform,
           updated_at = NOW()
       '''),
       parameters: {'id': id, 'fcmToken': fcmToken, 'platform': platformValue},
     );
-
-    // Для обратной совместимости также обновляем поле в profiles (берем последний токен)
-    await _connection.execute(
-      Sql.named('''
-        UPDATE profiles 
-        SET fcm_token = (
-          SELECT fcm_token 
-          FROM user_fcm_tokens 
-          WHERE user_id = @id 
-          ORDER BY updated_at DESC 
-          LIMIT 1
-        )
-        WHERE id = @id
-      '''),
-      parameters: {'id': id},
-    );
   }
 
-  /// Получить FCM токен пользователя (для обратной совместимости)
-  /// Возвращает первый доступный токен
+  /// Сохранить анонимный FCM токен (без user_id)
+  /// Используется для массовых рассылок неавторизованным пользователям
+  Future<void> saveAnonymousFcmToken({required String? fcmToken, String? platform}) async {
+    if (fcmToken == null || fcmToken.isEmpty) {
+      logger.info('⚠️ Попытка сохранить пустой анонимный FCM токен');
+      return;
+    }
+
+    final platformValue = platform ?? 'mobile';
+    logger.info('💾 Сохранение анонимного FCM токена в БД: token=${fcmToken.substring(0, 20)}..., platform=$platformValue');
+
+    try {
+      // Проверяем, существует ли уже такой токен
+      final existingToken = await _connection.execute(
+        Sql.named('''
+          SELECT id, user_id, platform, created_at, updated_at
+          FROM fcm_tokens 
+          WHERE fcm_token = @fcmToken
+          LIMIT 1
+        '''),
+        parameters: {'fcmToken': fcmToken},
+      );
+
+      if (existingToken.isNotEmpty) {
+        final existingUserId = existingToken.first[1]; // user_id
+        final existingPlatform = existingToken.first[2] as String?;
+        logger.info('🔍 Токен уже существует в БД: id=${existingToken.first[0]}, user_id=$existingUserId, platform=$existingPlatform');
+      } else {
+        logger.info('🆕 Токен не найден в БД, будет создана новая запись');
+      }
+
+      // Сохраняем анонимный токен (user_id = NULL)
+      // Используем ON CONFLICT по уникальному индексу idx_fcm_tokens_token_unique
+      final result = await _connection.execute(
+        Sql.named('''
+          INSERT INTO fcm_tokens (user_id, fcm_token, platform, created_at, updated_at)
+          VALUES (NULL, @fcmToken, @platform, NOW(), NOW())
+          ON CONFLICT (fcm_token) 
+          DO UPDATE SET 
+            user_id = COALESCE(EXCLUDED.user_id, fcm_tokens.user_id),
+            platform = EXCLUDED.platform,
+            updated_at = NOW()
+        '''),
+        parameters: {'fcmToken': fcmToken, 'platform': platformValue},
+      );
+
+      logger.info('✅ Анонимный FCM токен сохранен/обновлен в БД. Затронуто строк: ${result.affectedRows}');
+
+      // Проверяем результат после операции
+      final verifyToken = await _connection.execute(
+        Sql.named('''
+          SELECT id, user_id, platform, created_at, updated_at
+          FROM fcm_tokens 
+          WHERE fcm_token = @fcmToken
+          LIMIT 1
+        '''),
+        parameters: {'fcmToken': fcmToken},
+      );
+
+      if (verifyToken.isNotEmpty) {
+        final verifyUserId = verifyToken.first[1]; // user_id
+        final verifyPlatform = verifyToken.first[2] as String?;
+        logger.info('✅ Проверка после сохранения: id=${verifyToken.first[0]}, user_id=$verifyUserId, platform=$verifyPlatform');
+      } else {
+        logger.info('⚠️ Токен не найден в БД после операции сохранения!');
+      }
+    } catch (e, stackTrace) {
+      logger.severe('❌ Ошибка при сохранении анонимного FCM токена в БД: $e');
+      logger.severe('Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  /// Получить FCM токен пользователя
+  /// Возвращает первый доступный токен из таблицы fcm_tokens
   Future<String?> getFcmToken(int userId) async {
-    // Сначала пробуем получить из новой таблицы
     final result = await _connection.execute(
       Sql.named('''
         SELECT fcm_token 
-        FROM user_fcm_tokens 
+        FROM fcm_tokens 
         WHERE user_id = @id 
         ORDER BY updated_at DESC 
         LIMIT 1
@@ -190,36 +243,24 @@ class ProfileRepository {
     if (result.isNotEmpty) {
       return result.first[0] as String?;
     }
-
-    // Если не найден, пробуем получить из старого поля (для обратной совместимости)
-    final oldResult = await _connection.execute(
-      Sql.named('SELECT fcm_token FROM profiles WHERE id = @id'),
-      parameters: {'id': userId},
-    );
-
-    if (oldResult.isEmpty) {
-      return null;
-    }
-
-    final row = oldResult.first.toColumnMap();
-    return row['fcm_token'] as String?;
+    return null;
   }
 
   /// Получить все FCM токены пользователя по платформе
   Future<List<String>> getFcmTokensByPlatform(int userId, String? platform) async {
     String query = '''
       SELECT fcm_token 
-      FROM user_fcm_tokens 
+      FROM fcm_tokens 
       WHERE user_id = @id
     ''';
-    
+
     final parameters = <String, dynamic>{'id': userId};
-    
+
     if (platform != null) {
       query += ' AND platform = @platform';
       parameters['platform'] = platform;
     }
-    
+
     query += ' ORDER BY updated_at DESC';
 
     final result = await _connection.execute(
@@ -235,7 +276,7 @@ class ProfileRepository {
     final result = await _connection.execute(
       Sql.named('''
         SELECT fcm_token, platform, updated_at
-        FROM user_fcm_tokens 
+        FROM fcm_tokens 
         WHERE user_id = @id
         ORDER BY updated_at DESC
       '''),
@@ -271,13 +312,13 @@ class ProfileRepository {
   Future<List<String>> getAdminFcmTokens() async {
     final result = await _connection.execute(
       Sql.named('''
-        SELECT DISTINCT uft.fcm_token
-        FROM user_fcm_tokens uft
-        INNER JOIN profiles p ON uft.user_id = p.id
+        SELECT DISTINCT ft.fcm_token
+        FROM fcm_tokens ft
+        INNER JOIN profiles p ON ft.user_id = p.id
         WHERE p.is_admin = true
-          AND uft.fcm_token IS NOT NULL
-          AND uft.fcm_token != ''
-        ORDER BY uft.updated_at DESC
+          AND ft.fcm_token IS NOT NULL
+          AND ft.fcm_token != ''
+        ORDER BY ft.updated_at DESC
       '''),
     );
 
@@ -299,15 +340,10 @@ class ProfileRepository {
     await _connection.execute(Sql('BEGIN'));
 
     try {
-      // Удаляем FCM токены из новой таблицы (CASCADE автоматически удалит при удалении профиля)
+      // Удаляем FCM токены из таблицы (CASCADE автоматически удалит при удалении профиля,
+      // но также удаляем явно для явности и логирования)
       await _connection.execute(
-        Sql.named('DELETE FROM user_fcm_tokens WHERE user_id = @id'),
-        parameters: {'id': id},
-      );
-      
-      // Также очищаем старое поле в профиле (для обратной совместимости)
-      await _connection.execute(
-        Sql.named('UPDATE profiles SET fcm_token = NULL WHERE id = @id'),
+        Sql.named('DELETE FROM fcm_tokens WHERE user_id = @id'),
         parameters: {'id': id},
       );
 

@@ -404,4 +404,84 @@ ${aircraftModelName != null && aircraftModelName.isNotEmpty ? '🛩️ <b>Мод
     // Формируем полный URL с префиксом /public/
     return '$serverBaseUrl/public/$cleanPath';
   }
+
+  /// Уведомление о создании новой новости
+  Future<void> notifyNewsCreated({
+    required int newsId,
+    required int authorId,
+    required String authorName,
+    required String authorPhone,
+    required String title,
+    required String subTitle,
+    required String source,
+    required String body,
+    required String pictureMiniUrl,
+    required String pictureBigUrl,
+    required int categoryId,
+    String? categoryName,
+    String? baseUrl,
+  }) async {
+    try {
+      logger.info('📤 Начинаю отправку уведомления о создании новости в Telegram. ID новости: $newsId');
+
+      // Обрезаем текст, если он слишком длинный
+      String bodyText = body;
+      if (bodyText.length > 500) {
+        bodyText = '${bodyText.substring(0, 500)}...';
+      }
+
+      // Формируем базовое сообщение
+      final message = '''
+📰 <b>Новая предложенная новость</b>
+
+🆔 <b>ID новости:</b> $newsId
+👤 <b>Автор ID:</b> $authorId
+👤 <b>Автор:</b> $authorName
+📱 <b>Телефон:</b> $authorPhone
+
+📌 <b>Заголовок:</b> $title
+📝 <b>Подзаголовок:</b> $subTitle
+🔗 <b>Источник:</b> $source
+📂 <b>Категория:</b> ${categoryName ?? 'ID: $categoryId'}
+
+📄 <b>Текст:</b>
+$bodyText
+
+🖼️ <b>Изображения:</b>
+Миниатюра: $pictureMiniUrl
+Большое: $pictureBigUrl
+
+🕐 <b>Время создания:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+''';
+
+      // Если есть изображение, отправляем фото с подписью
+      if (pictureBigUrl.isNotEmpty) {
+        final fullImageUrl = _buildImageUrl(pictureBigUrl, baseUrl);
+        logger.info('🔗 Полный URL изображения: $fullImageUrl');
+
+        // Отправляем фото с подписью (в Telegram максимальная длина подписи - 1024 символа)
+        final photoCaption = message.length > 1024 ? message.substring(0, 1021) + '...' : message;
+        final photoSent = await sendPhoto(fullImageUrl, caption: photoCaption);
+
+        if (photoSent) {
+          logger.info('✅ Фото с подписью отправлено успешно');
+          // Если сообщение было обрезано, отправляем остаток отдельным сообщением
+          if (message.length > 1024) {
+            await sendMessage(message.substring(1024));
+          }
+        } else {
+          logger.info('⚠️ Не удалось отправить фото, пробуем отправить только текст');
+          await sendMessage(message);
+        }
+      } else {
+        logger.info('📝 Изображение не найдено, отправляю только текстовое сообщение');
+        await sendMessage(message);
+      }
+
+      logger.info('✅ Уведомление о создании новости отправлено успешно');
+    } catch (e, stackTrace) {
+      logger.severe('❌ Ошибка при отправке уведомления о создании новости: $e');
+      logger.severe('Stack trace: $stackTrace');
+    }
+  }
 }

@@ -114,10 +114,7 @@ class MarketRepository {
           am.id,
           am.title,
           am.seller_id,
-          COALESCE(
-            (SELECT fcm_token FROM user_fcm_tokens WHERE user_id = am.seller_id ORDER BY updated_at DESC LIMIT 1),
-            p.fcm_token
-          ) as fcm_token
+          (SELECT fcm_token FROM fcm_tokens WHERE user_id = am.seller_id ORDER BY updated_at DESC LIMIT 1) as fcm_token
         FROM aircraft_market am
         LEFT JOIN profiles p ON am.seller_id = p.id
         WHERE am.is_active = true
@@ -380,6 +377,8 @@ class MarketRepository {
     bool? isShareSale,
     int? shareNumerator,
     int? shareDenominator,
+    bool? isLeasing,
+    String? leasingConditions,
   }) async {
     // Получаем период публикации из БД
     final durationMonths = await _getPublicationDurationMonths('aircraft_market');
@@ -391,6 +390,7 @@ class MarketRepository {
           main_image_url, additional_image_urls, brand, location,
           year, total_flight_hours, engine_power, engine_volume, seats, condition, 
           is_share_sale, share_numerator, share_denominator,
+          is_leasing, leasing_conditions,
           published_until, is_active, views_count
         )
         VALUES (
@@ -398,6 +398,7 @@ class MarketRepository {
           @main_image_url, @additional_image_urls::jsonb, @brand, @location,
           @year, @total_flight_hours, @engine_power, @engine_volume, @seats, @condition,
           @is_share_sale, @share_numerator, @share_denominator,
+          @is_leasing, @leasing_conditions,
           NOW() + MAKE_INTERVAL(months => @duration), true, 0
         )
         RETURNING *
@@ -421,6 +422,8 @@ class MarketRepository {
         'is_share_sale': isShareSale ?? false,
         'share_numerator': shareNumerator,
         'share_denominator': shareDenominator,
+        'is_leasing': isLeasing ?? false,
+        'leasing_conditions': leasingConditions,
         'duration': durationMonths,
       },
     );
@@ -487,6 +490,8 @@ class MarketRepository {
     bool? isShareSale,
     int? shareNumerator,
     int? shareDenominator,
+    bool? isLeasing,
+    String? leasingConditions,
   }) async {
     // Сначала проверяем права доступа и получаем старые данные товара
     final existingProduct = await _connection.execute(Sql.named('SELECT seller_id, price, main_image_url, additional_image_urls FROM aircraft_market WHERE id = @id'), parameters: {'id': productId});
@@ -619,6 +624,14 @@ class MarketRepository {
     if (shareDenominator != null) {
       updates.add('share_denominator = @share_denominator');
       parameters['share_denominator'] = shareDenominator;
+    }
+    if (isLeasing != null) {
+      updates.add('is_leasing = @is_leasing');
+      parameters['is_leasing'] = isLeasing;
+    }
+    if (leasingConditions != null) {
+      updates.add('leasing_conditions = @leasing_conditions');
+      parameters['leasing_conditions'] = leasingConditions;
     }
 
     if (updates.isEmpty) {

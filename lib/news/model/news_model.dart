@@ -19,6 +19,9 @@ class NewsModel {
     required this.picture_big,
     required this.is_big_news,
     required this.category_id,
+    this.author_id,
+    required this.published,
+    this.content,
   });
 
   final int id;
@@ -27,10 +30,15 @@ class NewsModel {
   final String source;
   final String date;
   final String body;
+  final String? content; // Quill Delta JSON
   final String picture_mini;
   final String picture_big;
   final bool is_big_news;
   final int category_id;
+  @JsonKey(name: 'author_id')
+  final int? author_id;
+  @JsonKey(defaultValue: true)
+  final bool published;
 
   factory NewsModel.fromJson(Map<String, dynamic> json) => _$NewsModelFromJson(json);
 

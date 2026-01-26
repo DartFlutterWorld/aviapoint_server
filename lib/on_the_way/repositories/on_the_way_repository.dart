@@ -1386,11 +1386,11 @@ class OnTheWayRepository {
     final lastName = row['last_name'] as String? ?? '';
     final fullName = '$firstName $lastName'.trim();
 
-    // Получаем все FCM токены пользователя (из новой таблицы)
+    // Получаем все FCM токены пользователя из таблицы fcm_tokens
     final tokensResult = await _connection.execute(
       Sql.named('''
         SELECT fcm_token, platform
-        FROM user_fcm_tokens
+        FROM fcm_tokens
         WHERE user_id = @pilot_id
         ORDER BY updated_at DESC
       '''),
@@ -1401,12 +1401,6 @@ class OnTheWayRepository {
     String? fcmToken;
     if (tokensResult.isNotEmpty) {
       fcmToken = tokensResult.first.toColumnMap()['fcm_token'] as String?;
-    } else {
-      // Fallback на старое поле для обратной совместимости
-      final oldTokenResult = await _connection.execute(Sql.named('SELECT fcm_token FROM profiles WHERE id = @pilot_id'), parameters: {'pilot_id': pilotId});
-      if (oldTokenResult.isNotEmpty) {
-        fcmToken = oldTokenResult.first.toColumnMap()['fcm_token'] as String?;
-      }
     }
 
     return {'id': row['id'], 'name': fullName.isNotEmpty ? fullName : 'Пилот', 'first_name': firstName, 'last_name': lastName, 'phone': row['phone'], 'email': row['email'], 'fcm_token': fcmToken};

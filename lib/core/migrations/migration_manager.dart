@@ -153,7 +153,6 @@ class MigrationManager {
       _MigrationInfo(version: '029', name: 'add_telegram_and_max_to_profiles', file: 'migrations/add_telegram_and_max_to_profiles.sql'),
       _MigrationInfo(version: '030', name: 'insert_airports_data', file: 'migrations/030_insert_airports_data.sql'),
       _MigrationInfo(version: '031', name: 'create_airport_reviews_table', file: 'migrations/create_airport_reviews_table.sql'),
-      _MigrationInfo(version: '032', name: 'add_fcm_token_to_profiles', file: 'migrations/add_fcm_token_to_profiles.sql'),
       _MigrationInfo(version: '033', name: 'create_aircraft_types_table', file: 'migrations/create_aircraft_types_table.sql'),
       _MigrationInfo(version: '034', name: 'insert_aircraft_types_from_planecheck_full', file: 'migrations/insert_aircraft_types_from_planecheck_full.sql'),
       _MigrationInfo(version: '035', name: 'drop_aircraft_types_table', file: 'migrations/drop_aircraft_types_table.sql'),
@@ -185,8 +184,16 @@ class MigrationManager {
       _MigrationInfo(version: '061', name: 'add_price_history_table', file: 'migrations/061_add_price_history_table.sql'),
       _MigrationInfo(version: '062', name: 'add_aircraft_market_publish_until', file: 'migrations/062_add_aircraft_market_publish_until.sql'),
       _MigrationInfo(version: '063', name: 'create_publication_settings_table', file: 'migrations/063_create_publication_settings_table.sql'),
+      _MigrationInfo(version: '032', name: 'add_fcm_token_to_profiles', file: 'migrations/add_fcm_token_to_profiles.sql'),
       _MigrationInfo(version: '064', name: 'create_user_fcm_tokens_table', file: 'migrations/064_create_user_fcm_tokens_table.sql'),
       _MigrationInfo(version: '065', name: 'add_is_admin_to_profiles', file: 'migrations/065_add_is_admin_to_profiles.sql'),
+      _MigrationInfo(version: '066', name: 'add_anonymous_fcm_tokens_support', file: 'migrations/066_add_anonymous_fcm_tokens_support.sql'),
+      _MigrationInfo(version: '067', name: 'drop_profiles_fcm_token', file: 'migrations/067_drop_profiles_fcm_token.sql'),
+      _MigrationInfo(version: '068', name: 'add_leasing_to_aircraft_market', file: 'migrations/068_add_leasing_to_aircraft_market.sql'),
+      _MigrationInfo(version: '069', name: 'add_published_to_news', file: 'migrations/069_add_published_to_news.sql'),
+      _MigrationInfo(version: '070', name: 'add_sequence_to_news_id', file: 'migrations/070_add_sequence_to_news_id.sql'),
+      _MigrationInfo(version: '071', name: 'add_content_and_images_to_news', file: 'migrations/071_add_content_and_images_to_news.sql'),
+      _MigrationInfo(version: '072', name: 'sync_all_tables_and_fields', file: 'migrations/072_sync_all_tables_and_fields.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 
