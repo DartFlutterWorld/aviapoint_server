@@ -305,53 +305,79 @@ ON CONFLICT (table_name) DO NOTHING;
 -- Таблица airports
 CREATE TABLE IF NOT EXISTS airports (
     id SERIAL PRIMARY KEY,
-    ident VARCHAR(10) UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
     type VARCHAR(50) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    latitude_deg DECIMAL(10, 7) NOT NULL,
+    name_eng VARCHAR(255),
+    city VARCHAR(255),
+    ident VARCHAR(10) UNIQUE NOT NULL,
+    ident_ru VARCHAR(10), -- Код аэродрома из АОПА (например, НЕЕ1)
+    country_code VARCHAR(20),
+    country VARCHAR(100),
+    country_eng VARCHAR(100),
+    region VARCHAR(255),
+    region_eng VARCHAR(255),
+    coordinates_text VARCHAR(100),
     longitude_deg DECIMAL(10, 7) NOT NULL,
+    latitude_deg DECIMAL(10, 7) NOT NULL,
     elevation_ft INTEGER,
-    continent VARCHAR(2),
-    iso_country VARCHAR(2), -- Изменено на nullable, так как поле может отсутствовать
-    iso_region VARCHAR(10),
-    municipality VARCHAR(255),
-    scheduled_service VARCHAR(3),
-    gps_code VARCHAR(10),
-    iata_code VARCHAR(3),
-    local_code VARCHAR(10),
+    ownership VARCHAR(100),
+    is_international BOOLEAN DEFAULT FALSE,
+    email VARCHAR(255),
+    website VARCHAR(255),
+    notes TEXT,
+    runway_name VARCHAR(255),
+    runway_length INTEGER,
+    runway_width INTEGER,
+    runway_surface VARCHAR(100),
+    runway_magnetic_course VARCHAR(50),
+    runway_lighting VARCHAR(50),
     services JSONB DEFAULT '{}',
     owner_id INTEGER REFERENCES profiles(id) ON DELETE SET NULL,
     is_verified BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT TRUE,
-    source VARCHAR(50) DEFAULT 'ourairports',
+    source VARCHAR(50) DEFAULT 'aopa', -- Источник данных (aopa, manual, etc.)
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
+    visitor_photos JSONB DEFAULT '[]', -- Массив URL фотографий, добавленных посетителями аэропорта
+    photos JSONB DEFAULT '[]', -- Массив URL фотографий аэродрома
     CHECK (latitude_deg >= -90 AND latitude_deg <= 90),
     CHECK (longitude_deg >= -180 AND longitude_deg <= 180)
 );
 
 CREATE INDEX IF NOT EXISTS idx_airports_ident ON airports(ident);
--- CREATE INDEX IF NOT EXISTS idx_airports_iso_country ON airports(iso_country); -- Отключено: поле iso_country может отсутствовать
 CREATE INDEX IF NOT EXISTS idx_airports_type ON airports(type);
+CREATE INDEX IF NOT EXISTS idx_airports_name ON airports(name);
+CREATE INDEX IF NOT EXISTS idx_airports_is_active ON airports(is_active);
+-- Индексы с условиями (только для не-NULL значений)
+-- CREATE INDEX IF NOT EXISTS idx_airports_country_code ON airports(country_code) WHERE country_code IS NOT NULL;
+-- CREATE INDEX IF NOT EXISTS idx_airports_city ON airports(city) WHERE city IS NOT NULL;
+-- CREATE INDEX IF NOT EXISTS idx_airports_region ON airports(region) WHERE region IS NOT NULL;
+-- CREATE INDEX IF NOT EXISTS idx_airports_ident_ru ON airports(ident_ru) WHERE ident_ru IS NOT NULL;
+-- GIN индекс для photos (только если есть данные)
+-- CREATE INDEX IF NOT EXISTS idx_airports_photos ON airports USING gin(photos) WHERE photos IS NOT NULL AND jsonb_array_length(photos) > 0;
 
 -- Таблица airport_reviews
 CREATE TABLE IF NOT EXISTS airport_reviews (
     id SERIAL PRIMARY KEY,
-    airport_id INTEGER NOT NULL REFERENCES airports(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    airport_code VARCHAR(10) NOT NULL REFERENCES airports(ident) ON DELETE CASCADE,
+    reviewer_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment TEXT,
+    photo_urls JSONB,
+    reply_to_review_id INTEGER REFERENCES airport_reviews(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_airport_reviews_airport_id ON airport_reviews(airport_id);
-CREATE INDEX IF NOT EXISTS idx_airport_reviews_user_id ON airport_reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_airport_reviews_airport_code ON airport_reviews(airport_code);
+CREATE INDEX IF NOT EXISTS idx_airport_reviews_reviewer_id ON airport_reviews(reviewer_id);
+CREATE INDEX IF NOT EXISTS idx_airport_reviews_reply_to_review_id ON airport_reviews(reply_to_review_id);
+CREATE INDEX IF NOT EXISTS idx_airport_reviews_created_at ON airport_reviews(created_at DESC);
 
 -- Таблица airport_feedback
 CREATE TABLE IF NOT EXISTS airport_feedback (
     id SERIAL PRIMARY KEY,
-    airport_id INTEGER NOT NULL REFERENCES airports(id) ON DELETE CASCADE,
+    airport_code VARCHAR(10) NOT NULL REFERENCES airports(ident) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     feedback_type VARCHAR(50) NOT NULL,
     message TEXT NOT NULL,
@@ -359,15 +385,14 @@ CREATE TABLE IF NOT EXISTS airport_feedback (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_airport_feedback_airport_id ON airport_feedback(airport_id);
+CREATE INDEX IF NOT EXISTS idx_airport_feedback_airport_code ON airport_feedback(airport_code);
 CREATE INDEX IF NOT EXISTS idx_airport_feedback_user_id ON airport_feedback(user_id);
 
 -- Таблица airport_ownership_requests
 CREATE TABLE IF NOT EXISTS airport_ownership_requests (
     id SERIAL PRIMARY KEY,
-    airport_id INTEGER NOT NULL REFERENCES airports(id) ON DELETE CASCADE,
+    airport_code VARCHAR(10) NOT NULL REFERENCES airports(ident) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    airport_code VARCHAR(10),
     phone VARCHAR(20),
     full_name VARCHAR(255),
     status VARCHAR(50) DEFAULT 'pending',
@@ -375,19 +400,19 @@ CREATE TABLE IF NOT EXISTS airport_ownership_requests (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_airport_ownership_requests_airport_id ON airport_ownership_requests(airport_id);
+CREATE INDEX IF NOT EXISTS idx_airport_ownership_requests_airport_code ON airport_ownership_requests(airport_code);
 CREATE INDEX IF NOT EXISTS idx_airport_ownership_requests_user_id ON airport_ownership_requests(user_id);
 
 -- Таблица airport_visitor_photos
 CREATE TABLE IF NOT EXISTS airport_visitor_photos (
     id SERIAL PRIMARY KEY,
-    airport_id INTEGER NOT NULL REFERENCES airports(id) ON DELETE CASCADE,
+    airport_code VARCHAR(10) NOT NULL REFERENCES airports(ident) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     photo_url VARCHAR(512) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_airport_visitor_photos_airport_id ON airport_visitor_photos(airport_id);
+CREATE INDEX IF NOT EXISTS idx_airport_visitor_photos_airport_code ON airport_visitor_photos(airport_code);
 CREATE INDEX IF NOT EXISTS idx_airport_visitor_photos_user_id ON airport_visitor_photos(user_id);
 
 -- ============================================
