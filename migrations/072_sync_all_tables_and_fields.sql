@@ -312,7 +312,7 @@ CREATE TABLE IF NOT EXISTS airports (
     longitude_deg DECIMAL(10, 7) NOT NULL,
     elevation_ft INTEGER,
     continent VARCHAR(2),
-    iso_country VARCHAR(2) NOT NULL,
+    iso_country VARCHAR(2), -- Изменено на nullable, так как поле может отсутствовать
     iso_region VARCHAR(10),
     municipality VARCHAR(255),
     scheduled_service VARCHAR(3),
@@ -331,7 +331,7 @@ CREATE TABLE IF NOT EXISTS airports (
 );
 
 CREATE INDEX IF NOT EXISTS idx_airports_ident ON airports(ident);
-CREATE INDEX IF NOT EXISTS idx_airports_iso_country ON airports(iso_country);
+-- CREATE INDEX IF NOT EXISTS idx_airports_iso_country ON airports(iso_country); -- Отключено: поле iso_country может отсутствовать
 CREATE INDEX IF NOT EXISTS idx_airports_type ON airports(type);
 
 -- Таблица airport_reviews
