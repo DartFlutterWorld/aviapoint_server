@@ -386,7 +386,7 @@ CREATE TABLE IF NOT EXISTS airport_feedback (
 );
 
 CREATE INDEX IF NOT EXISTS idx_airport_feedback_airport_code ON airport_feedback(airport_code);
-CREATE INDEX IF NOT EXISTS idx_airport_feedback_user_id ON airport_feedback(user_id);
+-- CREATE INDEX IF NOT EXISTS idx_airport_feedback_user_id ON airport_feedback(user_id); -- Отключено: поле user_id может отсутствовать в существующей таблице
 
 -- Таблица airport_ownership_requests
 CREATE TABLE IF NOT EXISTS airport_ownership_requests (
@@ -401,7 +401,7 @@ CREATE TABLE IF NOT EXISTS airport_ownership_requests (
 );
 
 CREATE INDEX IF NOT EXISTS idx_airport_ownership_requests_airport_code ON airport_ownership_requests(airport_code);
-CREATE INDEX IF NOT EXISTS idx_airport_ownership_requests_user_id ON airport_ownership_requests(user_id);
+-- CREATE INDEX IF NOT EXISTS idx_airport_ownership_requests_user_id ON airport_ownership_requests(user_id); -- Отключено: поле user_id может отсутствовать в существующей таблице
 
 -- Таблица airport_visitor_photos
 CREATE TABLE IF NOT EXISTS airport_visitor_photos (
@@ -413,7 +413,7 @@ CREATE TABLE IF NOT EXISTS airport_visitor_photos (
 );
 
 CREATE INDEX IF NOT EXISTS idx_airport_visitor_photos_airport_code ON airport_visitor_photos(airport_code);
-CREATE INDEX IF NOT EXISTS idx_airport_visitor_photos_user_id ON airport_visitor_photos(user_id);
+-- CREATE INDEX IF NOT EXISTS idx_airport_visitor_photos_user_id ON airport_visitor_photos(user_id); -- Отключено: поле user_id может отсутствовать в существующей таблице
 
 -- ============================================
 -- 5. ПОЛЕТЫ (FLIGHTS)
