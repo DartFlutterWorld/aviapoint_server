@@ -420,11 +420,13 @@ CREATE INDEX IF NOT EXISTS idx_airport_visitor_photos_airport_code ON airport_vi
 -- ============================================
 
 -- Таблица flights
+-- ВАЖНО: Таблица уже существует, возможно без полей departure_airport и arrival_airport
+-- Используется flight_waypoints для хранения точек маршрута
 CREATE TABLE IF NOT EXISTS flights (
     id SERIAL PRIMARY KEY,
     pilot_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    departure_airport VARCHAR(255) NOT NULL,
-    arrival_airport VARCHAR(255) NOT NULL,
+    -- departure_airport VARCHAR(255) NOT NULL, -- Отключено: может отсутствовать, используется flight_waypoints
+    -- arrival_airport VARCHAR(255) NOT NULL, -- Отключено: может отсутствовать, используется flight_waypoints
     departure_date TIMESTAMP NOT NULL,
     available_seats INTEGER NOT NULL CHECK (available_seats > 0),
     price_per_seat DECIMAL(10, 2) NOT NULL CHECK (price_per_seat >= 0),
@@ -436,8 +438,8 @@ CREATE TABLE IF NOT EXISTS flights (
 );
 
 CREATE INDEX IF NOT EXISTS idx_flights_departure_date ON flights(departure_date);
-CREATE INDEX IF NOT EXISTS idx_flights_departure_airport ON flights(departure_airport);
-CREATE INDEX IF NOT EXISTS idx_flights_arrival_airport ON flights(arrival_airport);
+-- CREATE INDEX IF NOT EXISTS idx_flights_departure_airport ON flights(departure_airport); -- Отключено: поле departure_airport может отсутствовать в существующей таблице
+-- CREATE INDEX IF NOT EXISTS idx_flights_arrival_airport ON flights(arrival_airport); -- Отключено: поле arrival_airport может отсутствовать в существующей таблице
 CREATE INDEX IF NOT EXISTS idx_flights_pilot_id ON flights(pilot_id);
 CREATE INDEX IF NOT EXISTS idx_flights_status ON flights(status);
 
