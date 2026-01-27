@@ -1,3 +1,73 @@
+#!/bin/bash
+
+# Скрипт для очистки всех миграций и оставления только базовой миграции
+# Использование: выполните в проекте aviapoint_server локально
+
+set -e
+
+PROJECT_DIR="/Users/admin/Projects/aviapoint_server"
+MIGRATIONS_DIR="$PROJECT_DIR/migrations"
+BACKUP_DIR="$PROJECT_DIR/migrations_backup_$(date +%Y%m%d_%H%M%S)"
+BASE_MIGRATION="072_sync_all_tables_and_fields.sql"
+
+echo "🧹 Очистка миграций - оставить только базовую миграцию..."
+echo ""
+echo "⚠️  ВНИМАНИЕ: Это удалит все миграции кроме базовой!"
+echo "   Создастся резервная копия в: $BACKUP_DIR"
+echo ""
+read -p "Продолжить? (yes/no): " confirm
+
+if [ "$confirm" != "yes" ]; then
+    echo "❌ Отменено"
+    exit 1
+fi
+
+cd "$PROJECT_DIR"
+
+# 1. Создать резервную копию всех миграций
+echo ""
+echo "📦 Создание резервной копии..."
+mkdir -p "$BACKUP_DIR"
+cp -r "$MIGRATIONS_DIR"/* "$BACKUP_DIR/" 2>/dev/null || true
+echo "✅ Резервная копия создана: $BACKUP_DIR"
+
+# 2. Проверить, что базовая миграция существует
+if [ ! -f "$MIGRATIONS_DIR/$BASE_MIGRATION" ]; then
+    echo "❌ Базовая миграция не найдена: $BASE_MIGRATION"
+    exit 1
+fi
+
+# 3. Удалить все миграции кроме базовой
+echo ""
+echo "🗑️  Удаление миграций (кроме базовой)..."
+cd "$MIGRATIONS_DIR"
+
+# Сохранить базовую миграцию
+cp "$BASE_MIGRATION" "../${BASE_MIGRATION}.tmp"
+
+# Удалить все SQL файлы
+rm -f *.sql
+
+# Восстановить базовую миграцию
+mv "../${BASE_MIGRATION}.tmp" "$BASE_MIGRATION"
+
+# Удалить другие файлы (кроме .md и .txt)
+find . -type f ! -name "*.sql" ! -name "*.md" ! -name "*.txt" -delete 2>/dev/null || true
+
+echo "✅ Миграции удалены, базовая миграция сохранена"
+
+# 4. Обновить migration_manager.dart
+echo ""
+echo "📝 Обновление migration_manager.dart..."
+MIGRATION_MANAGER="$PROJECT_DIR/lib/core/migrations/migration_manager.dart"
+
+if [ ! -f "$MIGRATION_MANAGER" ]; then
+    echo "❌ Файл migration_manager.dart не найден: $MIGRATION_MANAGER"
+    exit 1
+fi
+
+# Создать новый список миграций с только базовой
+cat > "$MIGRATION_MANAGER.new" << 'EOF'
 import 'dart:io';
 import 'package:postgres/postgres.dart';
 import 'package:aviapoint_server/logger/logger.dart';
@@ -250,3 +320,31 @@ class _MigrationInfo {
 
   _MigrationInfo({required this.version, required this.name, required this.file});
 }
+EOF
+
+# Создать резервную копию старого файла
+cp "$MIGRATION_MANAGER" "${MIGRATION_MANAGER}.backup"
+
+# Заменить файл
+mv "$MIGRATION_MANAGER.new" "$MIGRATION_MANAGER"
+
+echo "✅ migration_manager.dart обновлен"
+
+# 5. Инструкции по очистке schema_migrations
+echo ""
+echo "📋 Следующие шаги:"
+echo ""
+echo "1. На сервере очистить таблицу schema_migrations:"
+echo "   ssh ваш_сервер"
+echo "   docker exec aviapoint-postgres psql -U postgres -d aviapoint -c \"TRUNCATE TABLE schema_migrations;\""
+echo ""
+echo "2. Или удалить все записи кроме базовой миграции:"
+echo "   docker exec aviapoint-postgres psql -U postgres -d aviapoint -c \"DELETE FROM schema_migrations WHERE version != '072';\""
+echo ""
+echo "3. Перезапустить бэкенд, чтобы применить базовую миграцию:"
+echo "   docker-compose -f docker-compose.prod.yaml restart aviapoint-server"
+echo ""
+echo "✅ Готово!"
+echo ""
+echo "📦 Резервная копия: $BACKUP_DIR"
+echo "💾 Backup migration_manager.dart: ${MIGRATION_MANAGER}.backup"
