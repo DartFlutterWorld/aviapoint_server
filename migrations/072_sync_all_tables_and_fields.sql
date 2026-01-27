@@ -150,17 +150,17 @@ CREATE TABLE IF NOT EXISTS aircraft_models (
     manufacturer_id INTEGER NOT NULL REFERENCES aircraft_manufacturers(id) ON DELETE CASCADE,
     model_code VARCHAR(100) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
-    category VARCHAR(50),
-    engine_type VARCHAR(50),
-    engine_count INTEGER DEFAULT 1,
-    is_active BOOLEAN DEFAULT true,
+    -- category VARCHAR(50), -- Отключено: поле не используется
+    -- engine_type VARCHAR(50), -- Отключено: поле не используется
+    -- engine_count INTEGER DEFAULT 1, -- Отключено: поле не используется
+    -- is_active BOOLEAN DEFAULT true, -- Отключено: поле не используется
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(manufacturer_id, model_code)
 );
 
 CREATE INDEX IF NOT EXISTS idx_aircraft_models_manufacturer ON aircraft_models(manufacturer_id);
-CREATE INDEX IF NOT EXISTS idx_aircraft_models_category ON aircraft_models(category);
+-- CREATE INDEX IF NOT EXISTS idx_aircraft_models_category ON aircraft_models(category); -- Отключено: поле category не используется
 
 -- Таблица aircraft_model_specs
 CREATE TABLE IF NOT EXISTS aircraft_model_specs (
