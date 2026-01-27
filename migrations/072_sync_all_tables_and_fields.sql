@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS payments (
 
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
 CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
-CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+-- CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id); -- Отключено: поле user_id может отсутствовать в существующей таблице
 
 -- Таблица subscription_types
 CREATE TABLE IF NOT EXISTS subscription_types (
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+-- CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id); -- Отключено: поле user_id может отсутствовать в существующей таблице
 CREATE INDEX IF NOT EXISTS idx_subscriptions_payment_id ON subscriptions(payment_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_end_date ON subscriptions(end_date);
 -- CREATE INDEX IF NOT EXISTS idx_subscriptions_is_active ON subscriptions(is_active); -- Отключено: поле is_active не используется
@@ -280,7 +280,7 @@ CREATE TABLE IF NOT EXISTS user_favorite_aircraft_market (
     PRIMARY KEY (user_id, product_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_favorite_aircraft_market_user_id ON user_favorite_aircraft_market(user_id);
+-- CREATE INDEX IF NOT EXISTS idx_user_favorite_aircraft_market_user_id ON user_favorite_aircraft_market(user_id); -- Отключено: поле user_id может отсутствовать в существующей таблице
 CREATE INDEX IF NOT EXISTS idx_user_favorite_aircraft_market_product_id ON user_favorite_aircraft_market(product_id);
 
 -- Таблица publication_settings
@@ -509,7 +509,7 @@ CREATE TABLE IF NOT EXISTS flight_questions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_flight_questions_flight_id ON flight_questions(flight_id);
-CREATE INDEX IF NOT EXISTS idx_flight_questions_user_id ON flight_questions(user_id);
+-- CREATE INDEX IF NOT EXISTS idx_flight_questions_user_id ON flight_questions(user_id); -- Отключено: поле user_id может отсутствовать в существующей таблице
 
 -- ============================================
 -- 6. БЛОГ (BLOG)
@@ -762,7 +762,7 @@ CREATE TABLE IF NOT EXISTS user_fcm_tokens (
     UNIQUE(user_id, fcm_token)
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_fcm_tokens_user_id ON user_fcm_tokens(user_id);
+-- CREATE INDEX IF NOT EXISTS idx_user_fcm_tokens_user_id ON user_fcm_tokens(user_id); -- Отключено: поле user_id может отсутствовать в существующей таблице
 CREATE INDEX IF NOT EXISTS idx_user_fcm_tokens_platform ON user_fcm_tokens(platform);
 CREATE INDEX IF NOT EXISTS idx_user_fcm_tokens_token ON user_fcm_tokens(fcm_token) WHERE fcm_token IS NOT NULL;
 
@@ -776,7 +776,7 @@ CREATE TABLE IF NOT EXISTS feedback (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id);
+-- CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id); -- Отключено: поле user_id может отсутствовать в существующей таблице
 
 -- Таблица stories
 CREATE TABLE IF NOT EXISTS stories (
@@ -786,7 +786,7 @@ CREATE TABLE IF NOT EXISTS stories (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_stories_user_id ON stories(user_id);
+-- CREATE INDEX IF NOT EXISTS idx_stories_user_id ON stories(user_id); -- Отключено: поле user_id может отсутствовать в существующей таблице
 
 -- Таблица video
 CREATE TABLE IF NOT EXISTS video (
