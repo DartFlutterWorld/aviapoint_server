@@ -60,5 +60,11 @@ backups/
 # User uploaded files (avatars, etc.)
 public/profiles/
 
-# Public folder - не отправляем в git
+# Public folder - не отправляем в git, кроме статических ресурсов
+# Сначала исключаем нужные папки (они будут в git):
+!public/preflight/
+!public/normal/
+!public/aircraft_categories_icons/
+!public/stories/
+# Потом игнорируем всю папку public (остальное не пойдет в git):
 public/
