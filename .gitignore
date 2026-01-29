@@ -59,3 +59,6 @@ backups/
 
 # User uploaded files (avatars, etc.)
 public/profiles/
+
+# Public folder - не отправляем в git
+public/
