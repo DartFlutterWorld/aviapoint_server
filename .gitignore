@@ -66,5 +66,6 @@ public/profiles/
 !public/normal/
 !public/aircraft_categories_icons/
 !public/stories/
+!public/news/
 # Потом игнорируем всю папку public (остальное не пойдет в git):
 public/
