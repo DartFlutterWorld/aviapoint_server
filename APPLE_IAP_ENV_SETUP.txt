@@ -1,0 +1,7 @@
+# Настройки Apple In-App Purchase для .env файла
+# Скопируйте эти строки в ваш .env файл на сервере
+
+APPLE_IAP_KEY_ID=R6LQF5HNM8
+APPLE_IAP_ISSUER_ID=367b4fc3-8a84-4c57-bce7-215dfb51aa8f
+APPLE_IAP_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQg28NvEkE2heKyEN4B\nPBKrAaY3PzXoAWH8fVBx5oTxD+SgCgYIKoZIzj0DAQehRANCAATJRRzFZxKPiuE4\nAkuZ89rzHKz9ZsDLVckQX7ywYJM7SplMEabC4lA4W3+4662+6B0ees5AQHb7jA9j\n/O7sGPmr\n-----END PRIVATE KEY-----"
+APPLE_BUNDLE_ID=ru.dartflutter.aviapoint

@@ -99,6 +99,7 @@ class MigrationManager {
 
     // Список всех миграций в порядке выполнения
     final migrations = [
+      _MigrationInfo(version: '073', name: 'add_iap_support_to_payments', file: 'migrations/073_add_iap_support_to_payments.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 

@@ -306,4 +306,73 @@ class PaymentRepository {
       rethrow;
     }
   }
+
+  /// Создание платежа из Apple IAP
+  Future<void> createIAPPayment({
+    required String paymentId,
+    required int userId,
+    required String transactionId,
+    required String originalTransactionId,
+    required String subscriptionType,
+    required int periodDays,
+    required double amount,
+    required DateTime purchaseDate,
+  }) async {
+    try {
+      await _connection.execute(
+        Sql.named('''
+          INSERT INTO payments (
+            id, status, amount, currency, description,
+            payment_url, created_at, paid, subscription_type, period_days, user_id,
+            payment_source, apple_transaction_id, apple_original_transaction_id
+          ) VALUES (
+            @id, @status, @amount, @currency, @description,
+            @payment_url, @created_at, @paid, @subscription_type, @period_days, @user_id,
+            @payment_source, @apple_transaction_id, @apple_original_transaction_id
+          )
+        '''),
+        parameters: {
+          'id': paymentId,
+          'status': 'succeeded',
+          'amount': amount,
+          'currency': 'USD', // Apple IAP всегда в USD (или валюта App Store)
+          'description': 'Apple In-App Purchase: $subscriptionType',
+          'payment_url': '',
+          'created_at': purchaseDate,
+          'paid': true,
+          'subscription_type': subscriptionType,
+          'period_days': periodDays,
+          'user_id': userId,
+          'payment_source': 'apple_iap',
+          'apple_transaction_id': transactionId,
+          'apple_original_transaction_id': originalTransactionId,
+        },
+      );
+      logger.info('IAP payment created: $paymentId, transaction: $transactionId');
+    } catch (e, stackTrace) {
+      logger.severe('Failed to create IAP payment: $e');
+      logger.severe('Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  /// Получение платежа по Apple transaction_id
+  Future<PaymentModel?> getPaymentByAppleTransactionId(String transactionId) async {
+    try {
+      final result = await _connection.execute(
+        Sql.named('SELECT * FROM payments WHERE apple_transaction_id = @transaction_id'),
+        parameters: {'transaction_id': transactionId},
+      );
+
+      if (result.isEmpty) {
+        return null;
+      }
+
+      return PaymentModel.fromJson(result.first.toColumnMap());
+    } catch (e, stackTrace) {
+      logger.severe('Failed to get payment by Apple transaction ID: $e');
+      logger.severe('Stack trace: $stackTrace');
+      return null;
+    }
+  }
 }

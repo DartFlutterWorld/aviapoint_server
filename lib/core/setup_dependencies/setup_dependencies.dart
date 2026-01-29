@@ -17,6 +17,7 @@ import 'package:aviapoint_server/stories/repositories/stories_repository.dart';
 import 'package:aviapoint_server/payments/controllers/payment_controller.dart';
 import 'package:aviapoint_server/payments/repositories/payment_repository.dart';
 import 'package:aviapoint_server/payments/services/yookassa_service.dart';
+import 'package:aviapoint_server/payments/services/apple_iap_service.dart';
 import 'package:aviapoint_server/subscriptions/controllers/subscription_controller.dart';
 import 'package:aviapoint_server/subscriptions/repositories/subscription_repository.dart';
 import 'package:aviapoint_server/telegram/telegram_bot_service.dart';

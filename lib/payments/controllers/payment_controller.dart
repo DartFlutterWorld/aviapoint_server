@@ -5,6 +5,8 @@ import 'package:aviapoint_server/core/setup_dependencies/setup_dependencies.dart
 import 'package:aviapoint_server/core/wrap_response.dart';
 import 'package:aviapoint_server/logger/logger.dart';
 import 'package:aviapoint_server/payments/api/create_payment_request.dart';
+import 'package:aviapoint_server/payments/api/verify_iap_request.dart';
+import 'package:aviapoint_server/payments/services/apple_iap_service.dart';
 import 'package:aviapoint_server/payments/repositories/payment_repository.dart';
 import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
 import 'package:aviapoint_server/push_notifications/fcm_service.dart';
@@ -466,6 +468,161 @@ class PaymentController {
 
       // Всегда возвращаем 200 OK, чтобы ЮKassa не повторял запрос
       return Response.ok(jsonEncode({'status': 'ok'}), headers: jsonContentHeaders);
+    });
+  }
+
+  ///
+  /// Верификация Apple In-App Purchase
+  ///
+  /// Принимает receipt data от iOS приложения и верифицирует через Apple App Store Server API
+  ///
+  @Route.post('/api/payments/verify-iap')
+  @OpenApiRoute()
+  Future<Response> verifyIAP(Request request) async {
+    return wrapResponse(() async {
+      final body = await request.readAsString();
+      logger.info('Received IAP verification request: $body');
+
+      Map<String, dynamic> jsonData;
+      try {
+        jsonData = jsonDecode(body) as Map<String, dynamic>;
+      } catch (e) {
+        logger.severe('Failed to parse JSON: $e');
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Invalid JSON format', 'message': 'Request body must be valid JSON', 'details': e.toString()}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      VerifyIAPRequest verifyRequest;
+      try {
+        verifyRequest = VerifyIAPRequest.fromJson(jsonData);
+      } catch (e) {
+        logger.severe('Failed to create VerifyIAPRequest: $e');
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Invalid request data', 'message': 'Failed to parse IAP verification request', 'details': e.toString()}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      logger.info('Verifying IAP: transactionId=${verifyRequest.transactionId}, userId=${verifyRequest.userId}');
+
+      // Верифицируем через Apple
+      final iapService = AppleIAPService();
+      final verificationResult = await iapService.verifyReceipt(
+        receiptData: verifyRequest.receiptData,
+        transactionId: verifyRequest.transactionId,
+        originalTransactionId: verifyRequest.originalTransactionId,
+        isSandbox: verifyRequest.isSandbox,
+      );
+
+      if (!verificationResult.isValid) {
+        logger.severe('IAP verification failed: ${verificationResult.error}');
+        return Response.badRequest(
+          body: jsonEncode({
+            'error': 'Verification failed',
+            'message': 'Failed to verify IAP receipt',
+            'details': verificationResult.error ?? 'Unknown error',
+          }),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Проверяем, не был ли уже обработан этот transaction_id
+      final existingPayment = await _paymentRepository.getPaymentByAppleTransactionId(verificationResult.transactionId);
+      if (existingPayment != null) {
+        logger.info('IAP transaction already processed: ${verificationResult.transactionId}');
+        return Response.ok(
+          jsonEncode({
+            'status': 'already_processed',
+            'message': 'This transaction has already been processed',
+            'payment_id': existingPayment.id,
+          }),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      // Определяем тип подписки из productId
+      // Предполагаем, что productId имеет формат: com.aviapoint.subscription.monthly
+      final productId = verificationResult.productId ?? '';
+      String subscriptionTypeCode = 'rosaviatest_365'; // Дефолтный
+      
+      if (productId.contains('monthly')) {
+        subscriptionTypeCode = 'monthly';
+      } else if (productId.contains('yearly') || productId.contains('year')) {
+        subscriptionTypeCode = 'yearly';
+      } else if (productId.contains('quarterly')) {
+        subscriptionTypeCode = 'quarterly';
+      }
+
+      // Получаем информацию о типе подписки для определения period_days и amount
+      final subscriptionTypes = await _subscriptionRepository.getAllSubscriptionTypes();
+      final subscriptionType = subscriptionTypes.firstWhere(
+        (type) => type.code == subscriptionTypeCode,
+        orElse: () => subscriptionTypes.isNotEmpty ? subscriptionTypes.first : throw StateError('No subscription types found'),
+      );
+
+      // Создаем платеж в БД
+      final paymentId = 'iap_${verificationResult.transactionId}';
+      final purchaseDate = verificationResult.purchaseDate ?? DateTime.now();
+      final expiresDate = verificationResult.expiresDate;
+      
+      // Вычисляем amount (цена подписки)
+      final amount = subscriptionType.price.toDouble();
+
+      await _paymentRepository.createIAPPayment(
+        paymentId: paymentId,
+        userId: verifyRequest.userId,
+        transactionId: verificationResult.transactionId,
+        originalTransactionId: verificationResult.originalTransactionId ?? verificationResult.transactionId,
+        subscriptionType: subscriptionTypeCode,
+        periodDays: subscriptionType.periodDays,
+        amount: amount,
+        purchaseDate: purchaseDate,
+      );
+
+      logger.info('IAP payment created: $paymentId for user ${verifyRequest.userId}');
+
+      // Активируем подписку
+      await _subscriptionRepository.createSubscription(
+        userId: verifyRequest.userId,
+        paymentId: paymentId,
+        subscriptionTypeCode: subscriptionTypeCode,
+        startDate: purchaseDate,
+        amount: amount.toInt(),
+      );
+
+      logger.info('Subscription activated for user ${verifyRequest.userId}, payment: $paymentId, type: $subscriptionTypeCode');
+
+      // Отправляем уведомления (аналогично YooKassa)
+      try {
+        final profileRepository = await getIt.getAsync<ProfileRepository>();
+        final profile = await profileRepository.fetchProfileById(verifyRequest.userId);
+
+        TelegramBotService().notifySubscriptionPurchase(
+          userId: verifyRequest.userId,
+          phone: profile.phone,
+          subscriptionType: subscriptionTypeCode,
+          periodDays: subscriptionType.periodDays,
+          amount: amount,
+          paymentId: paymentId,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+        );
+      } catch (e) {
+        logger.info('Failed to send Telegram notification for IAP subscription: $e');
+      }
+
+      return Response.ok(
+        jsonEncode({
+          'status': 'success',
+          'payment_id': paymentId,
+          'transaction_id': verificationResult.transactionId,
+          'subscription_type': subscriptionTypeCode,
+          'expires_date': expiresDate?.toIso8601String(),
+        }),
+        headers: jsonContentHeaders,
+      );
     });
   }
 }

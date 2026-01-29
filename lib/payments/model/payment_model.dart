@@ -16,6 +16,9 @@ class PaymentModel {
     required this.userId,
     required this.subscriptionType,
     required this.periodDays,
+    this.paymentSource = 'yookassa',
+    this.appleTransactionId,
+    this.appleOriginalTransactionId,
   });
 
   final String id;
@@ -35,6 +38,12 @@ class PaymentModel {
   final String subscriptionType;
   @JsonKey(name: 'period_days', fromJson: _intFromJson)
   final int periodDays;
+  @JsonKey(name: 'payment_source')
+  final String paymentSource;
+  @JsonKey(name: 'apple_transaction_id')
+  final String? appleTransactionId;
+  @JsonKey(name: 'apple_original_transaction_id')
+  final String? appleOriginalTransactionId;
 
   factory PaymentModel.fromJson(Map<String, dynamic> json) => _$PaymentModelFromJson(json);
 
