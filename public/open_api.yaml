@@ -400,6 +400,20 @@ paths:
       responses:
         200:
           description: "Operation completed!"
+    delete:
+      tags:
+        - NewsController
+      summary: "Удалить новость (требуется авторизация, только автор или админ)"
+      operationId: deleteNews
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Operation completed!"
   /api/news/category/<id>:
     get:
       tags:

@@ -272,5 +272,125 @@ class FcmService {
       data: data,
     );
   }
+
+  /// Отправка уведомления пилоту о новом вопросе
+  Future<bool> notifyPilotAboutNewQuestion({
+    required String fcmToken,
+    required String waypointsText,
+    required String formattedDate,
+    required int flightId,
+  }) async {
+    final title = PushNotificationTexts.newQuestionTitle;
+    final body = PushNotificationTexts.newQuestionBody(waypointsText, formattedDate);
+
+    final data = {
+      'type': 'new_question',
+      'flight_id': flightId.toString(),
+      'screen': 'flight_detail',
+    };
+
+    return await sendNotification(
+      fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
+
+  /// Отправка уведомления пассажиру об ответе на вопрос
+  Future<bool> notifyPassengerAboutQuestionAnswered({
+    required String fcmToken,
+    required String waypointsText,
+    required String formattedDate,
+    required int flightId,
+  }) async {
+    final title = PushNotificationTexts.questionAnsweredTitle;
+    final body = PushNotificationTexts.questionAnsweredBody(waypointsText, formattedDate);
+
+    final data = {
+      'type': 'question_answered',
+      'flight_id': flightId.toString(),
+      'screen': 'flight_detail',
+    };
+
+    return await sendNotification(
+      fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
+
+  /// Отправка уведомления пилоту о новом отзыве
+  Future<bool> notifyPilotAboutNewReview({
+    required String fcmToken,
+    required String waypointsText,
+    required String formattedDate,
+    required int flightId,
+  }) async {
+    final title = PushNotificationTexts.newReviewTitle;
+    final body = PushNotificationTexts.newReviewBody(waypointsText, formattedDate);
+
+    final data = {
+      'type': 'new_review',
+      'flight_id': flightId.toString(),
+      'screen': 'flight_detail',
+    };
+
+    return await sendNotification(
+      fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
+
+  /// Отправка уведомления пассажиру о получении отзыва
+  Future<bool> notifyPassengerAboutReviewReceived({
+    required String fcmToken,
+    required String waypointsText,
+    required String formattedDate,
+    required int flightId,
+  }) async {
+    final title = PushNotificationTexts.reviewReceivedTitle;
+    final body = PushNotificationTexts.reviewReceivedBody(waypointsText, formattedDate);
+
+    final data = {
+      'type': 'review_received',
+      'flight_id': flightId.toString(),
+      'screen': 'flight_detail',
+    };
+
+    return await sendNotification(
+      fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
+
+  /// Отправка уведомления пилоту об отмене бронирования
+  Future<bool> notifyPilotAboutCancelledBooking({
+    required String fcmToken,
+    required String waypointsText,
+    required String formattedDate,
+    required int flightId,
+  }) async {
+    final title = PushNotificationTexts.bookingCancelledTitle;
+    final body = PushNotificationTexts.bookingCancelledBody(waypointsText, formattedDate);
+
+    final data = {
+      'type': 'booking_cancelled',
+      'flight_id': flightId.toString(),
+      'screen': 'flight_detail',
+    };
+
+    return await sendNotification(
+      fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
 }
 

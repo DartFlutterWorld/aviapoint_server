@@ -43,5 +43,10 @@ Router _$NewsControllerRouter(NewsController service) {
     r'/api/news/<id>',
     service.updateNews,
   );
+  router.add(
+    'DELETE',
+    r'/api/news/<id>',
+    service.deleteNews,
+  );
   return router;
 }

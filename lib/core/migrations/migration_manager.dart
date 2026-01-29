@@ -63,6 +63,15 @@ class MigrationManager {
         try {
           await _connection.execute(Sql(command));
         } catch (e) {
+          // Игнорируем ошибки создания индексов, если они уже существуют или таблица используется
+          final errorStr = e.toString();
+          if (errorStr.contains('already exists') || 
+              errorStr.contains('being used by active queries') ||
+              errorStr.contains('55006')) {
+            logger.info('⚠️  Пропущена команда (индекс уже существует или таблица используется): ${command.substring(0, command.length > 100 ? 100 : command.length)}...');
+            continue;
+          }
+          
           logger.severe('❌ Ошибка при выполнении команды в миграции $name: $e');
           logger.severe('Команда: ${command.substring(0, command.length > 200 ? 200 : command.length)}...');
           await _connection.execute(Sql('ROLLBACK'));
@@ -85,16 +94,17 @@ class MigrationManager {
 
     await _initMigrationTable();
     final executedMigrations = await _getExecutedMigrations();
+    
+    logger.info('📋 Выполненные миграции: ${executedMigrations.toList()}');
 
     // Список всех миграций в порядке выполнения
-    // Оставлена только базовая миграция синхронизации
     final migrations = [
-      _MigrationInfo(version: '072', name: 'sync_all_tables_and_fields', file: 'migrations/072_sync_all_tables_and_fields.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 
     int executedCount = 0;
     for (final migration in migrations) {
+      logger.info('🔍 Проверка миграции: ${migration.name} (${migration.version}) - выполнена: ${executedMigrations.contains(migration.version)}');
       if (executedMigrations.contains(migration.version)) {
         logger.info('⏭️  Миграция уже выполнена: ${migration.name} (${migration.version})');
         continue;

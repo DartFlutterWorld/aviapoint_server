@@ -29,6 +29,12 @@ BookingModel _$BookingModelFromJson(Map<String, dynamic> json) => BookingModel(
       flightDepartureAirport: json['flight_departure_airport'] as String?,
       flightArrivalAirport: json['flight_arrival_airport'] as String?,
       flightWaypoints: json['flight_waypoints'],
+      pilotFirstName: json['pilot_first_name'] as String?,
+      pilotLastName: json['pilot_last_name'] as String?,
+      pilotPhone: json['pilot_phone'] as String?,
+      pilotEmail: json['pilot_email'] as String?,
+      pilotTelegram: json['pilot_telegram'] as String?,
+      pilotMax: json['pilot_max'] as String?,
     );
 
 Map<String, dynamic> _$BookingModelToJson(BookingModel instance) =>
@@ -54,4 +60,10 @@ Map<String, dynamic> _$BookingModelToJson(BookingModel instance) =>
       'flight_departure_airport': instance.flightDepartureAirport,
       'flight_arrival_airport': instance.flightArrivalAirport,
       'flight_waypoints': instance.flightWaypoints,
+      'pilot_first_name': instance.pilotFirstName,
+      'pilot_last_name': instance.pilotLastName,
+      'pilot_phone': instance.pilotPhone,
+      'pilot_email': instance.pilotEmail,
+      'pilot_telegram': instance.pilotTelegram,
+      'pilot_max': instance.pilotMax,
     };

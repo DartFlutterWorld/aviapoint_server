@@ -60,6 +60,14 @@ class OnTheWayController {
       final cancelledFlights = flights.where((f) => f.status == 'cancelled').toList();
       print('🔵 [OnTheWayController] getFlights: cancelled flights count = ${cancelledFlights.length}');
 
+      // Логируем pilotAvatarUrl перед отправкой ответа
+      if (flights.isNotEmpty) {
+        final firstFlight = flights.first;
+        print('🔵 [OnTheWayController] getFlights: first flight pilotAvatarUrl before jsonEncode: ${firstFlight.pilotAvatarUrl}');
+        final json = firstFlight.toJson();
+        print('🔵 [OnTheWayController] getFlights: first flight pilot_avatar_url in JSON: ${json['pilot_avatar_url']}');
+      }
+
       return Response.ok(jsonEncode(flights), headers: jsonContentHeaders);
     });
   }
@@ -482,6 +490,10 @@ class OnTheWayController {
           // Получаем информацию о полете для уведомления
           final flightInfo = await _onTheWayRepository.getFlightInfoForBookingNotification(createRequest.flightId);
           final pilotId = flightInfo['pilot_id'] as int;
+          final waypoints = flightInfo['waypoints'] as List<String>? ?? [];
+          final departureDate = flightInfo['departure_date'] as DateTime?;
+          final departureAirport = waypoints.isNotEmpty ? waypoints.first : '';
+          final arrivalAirport = waypoints.isNotEmpty ? waypoints.last : '';
 
           // Получаем FCM токен владельца полета
           final pilotInfo = await _onTheWayRepository.getPilotInfoForNotification(pilotId);
@@ -504,9 +516,32 @@ class OnTheWayController {
           } else {
             print('⚠️ [OnTheWayController] FCM токен пилота не найден, уведомление не отправлено');
           }
+
+          // Отправляем уведомление в Telegram
+          try {
+            final telegramBotService = TelegramBotService();
+            await telegramBotService.notifyNewBooking(
+              bookingId: booking.id,
+              flightId: booking.flightId,
+              pilotId: pilotId,
+              passengerId: booking.passengerId,
+              passengerFirstName: booking.passengerFirstName ?? '',
+              passengerLastName: booking.passengerLastName ?? '',
+              passengerPhone: booking.passengerPhone,
+              passengerEmail: booking.passengerEmail,
+              seatsCount: booking.seatsCount,
+              totalPrice: booking.totalPrice,
+              departureAirport: departureAirport,
+              arrivalAirport: arrivalAirport,
+              departureDate: departureDate ?? DateTime.now(),
+            );
+            print('✅ [OnTheWayController] Telegram уведомление о новом бронировании отправлено');
+          } catch (e) {
+            print('⚠️ [OnTheWayController] Ошибка отправки Telegram уведомления о новом бронировании: $e');
+          }
         } catch (e) {
           // Не прерываем выполнение, если не удалось отправить уведомление
-          print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления о новом бронировании: $e');
+          print('⚠️ [OnTheWayController] Ошибка отправки уведомлений о новом бронировании: $e');
         }
 
         print('🔵 [OnTheWayController] createBooking calling booking.toJson()...');
@@ -591,6 +626,10 @@ class OnTheWayController {
         final waypointsText = flightInfo['waypoints_text'] as String? ?? '';
         final formattedDate = flightInfo['formatted_date'] as String? ?? '';
         final flightId = flightInfo['flight_id'] as int;
+        final waypoints = flightInfo['waypoints'] as List<String>? ?? [];
+        final departureDate = flightInfo['departure_date'] as DateTime?;
+        final departureAirport = waypoints.isNotEmpty ? waypoints.first : '';
+        final arrivalAirport = waypoints.isNotEmpty ? waypoints.last : '';
 
         // Отправляем push-уведомление, если есть FCM токен
         if (fcmToken != null && fcmToken.isNotEmpty) {
@@ -605,9 +644,27 @@ class OnTheWayController {
         } else {
           print('⚠️ [OnTheWayController] FCM токен пассажира не найден, уведомление не отправлено');
         }
+
+        // Отправляем уведомление в Telegram
+        try {
+          final telegramBotService = TelegramBotService();
+          await telegramBotService.notifyBookingConfirmed(
+            bookingId: confirmedBooking.id,
+            flightId: confirmedBooking.flightId,
+            passengerId: confirmedBooking.passengerId,
+            passengerFirstName: confirmedBooking.passengerFirstName ?? '',
+            passengerLastName: confirmedBooking.passengerLastName ?? '',
+            departureAirport: departureAirport,
+            arrivalAirport: arrivalAirport,
+            departureDate: departureDate ?? DateTime.now(),
+          );
+          print('✅ [OnTheWayController] Telegram уведомление о подтверждении бронирования отправлено');
+        } catch (e) {
+          print('⚠️ [OnTheWayController] Ошибка отправки Telegram уведомления о подтверждении бронирования: $e');
+        }
       } catch (e) {
         // Не прерываем выполнение, если не удалось отправить уведомление
-        print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления о подтверждении бронирования: $e');
+        print('⚠️ [OnTheWayController] Ошибка отправки уведомлений о подтверждении бронирования: $e');
       }
 
       return Response.ok(jsonEncode(confirmedBooking), headers: jsonContentHeaders);
@@ -647,36 +704,83 @@ class OnTheWayController {
 
       final booking = await _onTheWayRepository.cancelBooking(bookingId);
 
-      // Отправляем push-уведомление пассажиру об отмене бронирования
+      // Отправляем push-уведомления об отмене бронирования
       try {
         final passengerId = booking.passengerId;
-
-        // Получаем FCM токен пассажира
-        final passengerInfo = await _onTheWayRepository.getPilotInfoForNotification(passengerId);
-        final fcmToken = passengerInfo['fcm_token'] as String?;
 
         // Получаем информацию о полете для уведомления (используем flight_id)
         final flightInfo = await _onTheWayRepository.getFlightInfoForBookingNotificationByFlightId(booking.flightId);
         final waypointsText = flightInfo['waypoints_text'] as String? ?? '';
         final formattedDate = flightInfo['formatted_date'] as String? ?? '';
         final flightId = flightInfo['flight_id'] as int;
+        final pilotId = flightInfo['pilot_id'] as int;
+        final waypoints = flightInfo['waypoints'] as List<String>? ?? [];
+        final departureDate = flightInfo['departure_date'] as DateTime?;
+        final departureAirport = waypoints.isNotEmpty ? waypoints.first : '';
+        final arrivalAirport = waypoints.isNotEmpty ? waypoints.last : '';
 
-        // Отправляем push-уведомление, если есть FCM токен
-        if (fcmToken != null && fcmToken.isNotEmpty) {
-          final fcmService = FcmService();
-          final notificationSent = await fcmService.notifyPassengerAboutCancelledBooking(fcmToken: fcmToken, waypointsText: waypointsText, formattedDate: formattedDate, flightId: flightId);
+        // Отправляем push-уведомление пассажиру
+        try {
+          final passengerInfo = await _onTheWayRepository.getPilotInfoForNotification(passengerId);
+          final passengerFcmToken = passengerInfo['fcm_token'] as String?;
 
-          if (notificationSent) {
-            print('✅ [OnTheWayController] Push-уведомление об отмене бронирования отправлено пассажиру полёта #$flightId');
+          if (passengerFcmToken != null && passengerFcmToken.isNotEmpty) {
+            final fcmService = FcmService();
+            final notificationSent = await fcmService.notifyPassengerAboutCancelledBooking(fcmToken: passengerFcmToken, waypointsText: waypointsText, formattedDate: formattedDate, flightId: flightId);
+
+            if (notificationSent) {
+              print('✅ [OnTheWayController] Push-уведомление об отмене бронирования отправлено пассажиру полёта #$flightId');
+            } else {
+              print('⚠️ [OnTheWayController] Не удалось отправить push-уведомление об отмене бронирования пассажиру');
+            }
           } else {
-            print('⚠️ [OnTheWayController] Не удалось отправить push-уведомление об отмене бронирования (нет FCM токена или ошибка отправки)');
+            print('⚠️ [OnTheWayController] FCM токен пассажира не найден, уведомление не отправлено');
           }
-        } else {
-          print('⚠️ [OnTheWayController] FCM токен пассажира не найден, уведомление не отправлено');
+        } catch (e) {
+          print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления пассажиру об отмене бронирования: $e');
+        }
+
+        // Отправляем push-уведомление пилоту (если отмена была инициирована пассажиром)
+        try {
+          final pilotInfo = await _onTheWayRepository.getPilotInfoForNotification(pilotId);
+          final pilotFcmToken = pilotInfo['fcm_token'] as String?;
+
+          if (pilotFcmToken != null && pilotFcmToken.isNotEmpty) {
+            final fcmService = FcmService();
+            final notificationSent = await fcmService.notifyPilotAboutCancelledBooking(fcmToken: pilotFcmToken, waypointsText: waypointsText, formattedDate: formattedDate, flightId: flightId);
+
+            if (notificationSent) {
+              print('✅ [OnTheWayController] Push-уведомление об отмене бронирования отправлено пилоту полёта #$flightId');
+            } else {
+              print('⚠️ [OnTheWayController] Не удалось отправить push-уведомление об отмене бронирования пилоту');
+            }
+          } else {
+            print('⚠️ [OnTheWayController] FCM токен пилота не найден, уведомление не отправлено');
+          }
+        } catch (e) {
+          print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления пилоту об отмене бронирования: $e');
+        }
+
+        // Отправляем уведомление в Telegram
+        try {
+          final telegramBotService = TelegramBotService();
+          await telegramBotService.notifyBookingCancelled(
+            bookingId: booking.id,
+            flightId: booking.flightId,
+            passengerId: booking.passengerId,
+            passengerFirstName: booking.passengerFirstName ?? '',
+            passengerLastName: booking.passengerLastName ?? '',
+            departureAirport: departureAirport,
+            arrivalAirport: arrivalAirport,
+            departureDate: departureDate ?? DateTime.now(),
+          );
+          print('✅ [OnTheWayController] Telegram уведомление об отмене бронирования отправлено');
+        } catch (e) {
+          print('⚠️ [OnTheWayController] Ошибка отправки Telegram уведомления об отмене бронирования: $e');
         }
       } catch (e) {
         // Не прерываем выполнение, если не удалось отправить уведомление
-        print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления об отмене бронирования: $e');
+        print('⚠️ [OnTheWayController] Ошибка отправки уведомлений об отмене бронирования: $e');
       }
 
       return Response.ok(jsonEncode(booking.toJson()), headers: jsonContentHeaders);
@@ -751,12 +855,77 @@ class OnTheWayController {
         replyToReviewId: createRequest.replyToReviewId,
       );
 
-      // Отправляем уведомление в Telegram
+      // Отправляем уведомления о новом отзыве
       try {
         final flightInfo = await _onTheWayRepository.getFlightInfoForNotification(createRequest.bookingId);
-        await _sendTelegramNotification(review, flightInfo);
+        final flightId = flightInfo['flight_id'] as int?;
+        final waypointsText = flightInfo['waypoints_text'] as String? ?? '';
+        final formattedDate = flightInfo['formatted_date'] as String? ?? '';
+
+        // Если это отзыв (не ответ на отзыв)
+        if (createRequest.replyToReviewId == null && flightId != null) {
+          final pilotId = flightInfo['pilot_id'] as int?;
+          final passengerId = flightInfo['passenger_id'] as int?;
+
+          // Если отзыв о пилоте
+          if (pilotId != null && createRequest.reviewedId == pilotId) {
+            // Отправляем push-уведомление пилоту
+            try {
+              final pilotInfo = await _onTheWayRepository.getPilotInfoForNotification(pilotId);
+              final pilotFcmToken = pilotInfo['fcm_token'] as String?;
+
+              if (pilotFcmToken != null && pilotFcmToken.isNotEmpty) {
+                final fcmService = FcmService();
+                final notificationSent = await fcmService.notifyPilotAboutNewReview(
+                  fcmToken: pilotFcmToken,
+                  waypointsText: waypointsText,
+                  formattedDate: formattedDate,
+                  flightId: flightId,
+                );
+
+                if (notificationSent) {
+                  print('✅ [OnTheWayController] Push-уведомление о новом отзыве отправлено пилоту полёта #$flightId');
+                }
+              }
+            } catch (e) {
+              print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления пилоту о новом отзыве: $e');
+            }
+          }
+
+          // Если отзыв о пассажире
+          if (passengerId != null && createRequest.reviewedId == passengerId) {
+            // Отправляем push-уведомление пассажиру
+            try {
+              final passengerInfo = await _onTheWayRepository.getPilotInfoForNotification(passengerId);
+              final passengerFcmToken = passengerInfo['fcm_token'] as String?;
+
+              if (passengerFcmToken != null && passengerFcmToken.isNotEmpty) {
+                final fcmService = FcmService();
+                final notificationSent = await fcmService.notifyPassengerAboutReviewReceived(
+                  fcmToken: passengerFcmToken,
+                  waypointsText: waypointsText,
+                  formattedDate: formattedDate,
+                  flightId: flightId,
+                );
+
+                if (notificationSent) {
+                  print('✅ [OnTheWayController] Push-уведомление о получении отзыва отправлено пассажиру полёта #$flightId');
+                }
+              }
+            } catch (e) {
+              print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления пассажиру о получении отзыва: $e');
+            }
+          }
+        }
+
+        // Отправляем уведомление в Telegram
+        try {
+          await _sendTelegramNotification(review, flightInfo);
+        } catch (e) {
+          print('⚠️ [OnTheWayController] Ошибка отправки Telegram уведомления: $e');
+        }
       } catch (e) {
-        print('⚠️ [OnTheWayController] Ошибка отправки Telegram уведомления: $e');
+        print('⚠️ [OnTheWayController] Ошибка отправки уведомлений о новом отзыве: $e');
         // Не прерываем выполнение, если уведомление не отправилось
       }
 
@@ -1221,6 +1390,61 @@ class OnTheWayController {
 
       final question = await _onTheWayRepository.createQuestion(flightId: int.parse(flightId), authorId: authorId, questionText: createRequest.questionText);
 
+      // Отправляем уведомления о новом вопросе
+      try {
+        final flightInfo = await _onTheWayRepository.getFlightInfoForBookingNotification(int.parse(flightId));
+        final pilotId = flightInfo['pilot_id'] as int;
+        final waypoints = flightInfo['waypoints'] as List<String>? ?? [];
+        final departureDate = flightInfo['departure_date'] as DateTime?;
+        final departureAirport = waypoints.isNotEmpty ? waypoints.first : '';
+        final arrivalAirport = waypoints.isNotEmpty ? waypoints.last : '';
+        final waypointsText = flightInfo['waypoints_text'] as String? ?? '';
+        final formattedDate = flightInfo['formatted_date'] as String? ?? '';
+
+        // Отправляем push-уведомление пилоту
+        try {
+          final pilotInfo = await _onTheWayRepository.getPilotInfoForNotification(pilotId);
+          final pilotFcmToken = pilotInfo['fcm_token'] as String?;
+
+          if (pilotFcmToken != null && pilotFcmToken.isNotEmpty) {
+            final fcmService = FcmService();
+            final notificationSent = await fcmService.notifyPilotAboutNewQuestion(
+              fcmToken: pilotFcmToken,
+              waypointsText: waypointsText,
+              formattedDate: formattedDate,
+              flightId: int.parse(flightId),
+            );
+
+            if (notificationSent) {
+              print('✅ [OnTheWayController] Push-уведомление о новом вопросе отправлено пилоту полёта #${flightId}');
+            }
+          }
+        } catch (e) {
+          print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления пилоту о новом вопросе: $e');
+        }
+
+        // Отправляем уведомление в Telegram
+        try {
+          final telegramBotService = TelegramBotService();
+          await telegramBotService.notifyNewQuestion(
+            questionId: question.id,
+            flightId: int.parse(flightId),
+            passengerId: authorId ?? 0,
+            passengerFirstName: question.authorFirstName ?? '',
+            passengerLastName: question.authorLastName ?? '',
+            questionText: question.questionText,
+            departureAirport: departureAirport,
+            arrivalAirport: arrivalAirport,
+            departureDate: departureDate ?? DateTime.now(),
+          );
+          print('✅ [OnTheWayController] Telegram уведомление о новом вопросе отправлено');
+        } catch (e) {
+          print('⚠️ [OnTheWayController] Ошибка отправки Telegram уведомления о новом вопросе: $e');
+        }
+      } catch (e) {
+        print('⚠️ [OnTheWayController] Ошибка отправки уведомлений о новом вопросе: $e');
+      }
+
       return Response.ok(jsonEncode(question), headers: jsonContentHeaders);
     });
   }
@@ -1336,6 +1560,62 @@ class OnTheWayController {
 
       try {
         final question = await _onTheWayRepository.answerQuestion(questionId: int.parse(id), userId: int.parse(userId), answerText: answerRequest.answerText.trim());
+
+        // Отправляем уведомления об ответе на вопрос
+        try {
+          final flightInfo = await _onTheWayRepository.getFlightInfoForBookingNotification(question.flightId);
+          final waypoints = flightInfo['waypoints'] as List<String>? ?? [];
+          final departureDate = flightInfo['departure_date'] as DateTime?;
+          final departureAirport = waypoints.isNotEmpty ? waypoints.first : '';
+          final arrivalAirport = waypoints.isNotEmpty ? waypoints.last : '';
+          final waypointsText = flightInfo['waypoints_text'] as String? ?? '';
+          final formattedDate = flightInfo['formatted_date'] as String? ?? '';
+
+          // Отправляем push-уведомление пассажиру (автору вопроса), если он авторизован
+          if (question.authorId != null) {
+            try {
+              final passengerInfo = await _onTheWayRepository.getPilotInfoForNotification(question.authorId!);
+              final passengerFcmToken = passengerInfo['fcm_token'] as String?;
+
+              if (passengerFcmToken != null && passengerFcmToken.isNotEmpty) {
+                final fcmService = FcmService();
+                final notificationSent = await fcmService.notifyPassengerAboutQuestionAnswered(
+                  fcmToken: passengerFcmToken,
+                  waypointsText: waypointsText,
+                  formattedDate: formattedDate,
+                  flightId: question.flightId,
+                );
+
+                if (notificationSent) {
+                  print('✅ [OnTheWayController] Push-уведомление об ответе на вопрос отправлено пассажиру полёта #${question.flightId}');
+                }
+              }
+            } catch (e) {
+              print('⚠️ [OnTheWayController] Ошибка отправки push-уведомления пассажиру об ответе на вопрос: $e');
+            }
+          }
+
+          // Отправляем уведомление в Telegram
+          try {
+            final telegramBotService = TelegramBotService();
+            await telegramBotService.notifyQuestionAnswered(
+              questionId: question.id,
+              flightId: question.flightId,
+              pilotId: int.parse(userId),
+              pilotFirstName: question.answeredByFirstName ?? '',
+              pilotLastName: question.answeredByLastName ?? '',
+              answerText: question.answerText ?? '',
+              departureAirport: departureAirport,
+              arrivalAirport: arrivalAirport,
+              departureDate: departureDate ?? DateTime.now(),
+            );
+            print('✅ [OnTheWayController] Telegram уведомление об ответе на вопрос отправлено');
+          } catch (e) {
+            print('⚠️ [OnTheWayController] Ошибка отправки Telegram уведомления об ответе на вопрос: $e');
+          }
+        } catch (e) {
+          print('⚠️ [OnTheWayController] Ошибка отправки уведомлений об ответе на вопрос: $e');
+        }
 
         return Response.ok(jsonEncode(question), headers: jsonContentHeaders);
       } catch (e) {

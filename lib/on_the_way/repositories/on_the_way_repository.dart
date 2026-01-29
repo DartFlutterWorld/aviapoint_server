@@ -210,7 +210,11 @@ class OnTheWayRepository {
           updatedAt: map['updated_at'] as DateTime?,
           pilotFirstName: map['pilot_first_name'] as String?,
           pilotLastName: map['pilot_last_name'] as String?,
-          pilotAvatarUrl: map['pilot_avatar_url'] as String?,
+          pilotAvatarUrl: () {
+            final rawUrl = map['pilot_avatar_url'] as String?;
+            final normalized = _normalizeAvatarUrl(rawUrl);
+            return normalized;
+          }(),
           pilotAverageRating: _parseDouble(map['pilot_average_rating']),
           photos: map['photos'] != null ? List<String>.from((map['photos'] as List).map((e) => e.toString())) : null,
           waypoints: waypoints, // Все точки маршрута из flight_waypoints
@@ -297,6 +301,12 @@ class OnTheWayRepository {
     }
 
     final map = result.first.toColumnMap();
+    // Нормализуем pilot_avatar_url перед парсингом
+    final rawAvatarUrl = map['pilot_avatar_url'] as String?;
+    if (rawAvatarUrl != null) {
+      final normalized = _normalizeAvatarUrl(rawAvatarUrl);
+      map['pilot_avatar_url'] = normalized;
+    }
     final flight = FlightModel.fromJson(map);
 
     // Загружаем waypoints для этого полета
@@ -550,7 +560,7 @@ class OnTheWayRepository {
       updatedAt: flight.updatedAt,
       pilotFirstName: pilotData?['first_name'] as String?,
       pilotLastName: pilotData?['last_name'] as String?,
-      pilotAvatarUrl: pilotData?['avatar_url'] as String?,
+      pilotAvatarUrl: _normalizeAvatarUrl(pilotData?['avatar_url'] as String?),
       pilotAverageRating: null, // Можно загрузить отдельным запросом если нужно
       photos: null,
       waypoints: createdWaypoints,
@@ -703,6 +713,10 @@ class OnTheWayRepository {
         p.first_name AS passenger_first_name,
         p.last_name AS passenger_last_name,
         p.avatar_url AS passenger_avatar_url,
+        p.phone AS passenger_phone,
+        p.email AS passenger_email,
+        p.telegram AS passenger_telegram,
+        p.max AS passenger_max,
         COALESCE((
           SELECT AVG(rating)::numeric
           FROM reviews
@@ -717,10 +731,17 @@ class OnTheWayRepository {
           SELECT json_agg(airport_code ORDER BY sequence_order)
           FROM flight_waypoints
           WHERE flight_id = f.id
-        ), '[]'::json) AS flight_waypoints
+        ), '[]'::json) AS flight_waypoints,
+        pilot.first_name AS pilot_first_name,
+        pilot.last_name AS pilot_last_name,
+        pilot.phone AS pilot_phone,
+        pilot.email AS pilot_email,
+        pilot.telegram AS pilot_telegram,
+        pilot.max AS pilot_max
       FROM bookings b
       LEFT JOIN profiles p ON b.passenger_id = p.id
       LEFT JOIN flights f ON b.flight_id = f.id
+      LEFT JOIN profiles pilot ON f.pilot_id = pilot.id
     ''';
     final parameters = <String, dynamic>{};
 
@@ -765,9 +786,17 @@ class OnTheWayRepository {
             WHERE reviewed_id = p.id 
               AND reply_to_review_id IS NULL 
               AND rating IS NOT NULL
-          ), 0) AS passenger_average_rating
+          ), 0) AS passenger_average_rating,
+          pilot.first_name AS pilot_first_name,
+          pilot.last_name AS pilot_last_name,
+          pilot.phone AS pilot_phone,
+          pilot.email AS pilot_email,
+          pilot.telegram AS pilot_telegram,
+          pilot.max AS pilot_max
         FROM bookings b
         LEFT JOIN profiles p ON b.passenger_id = p.id
+        LEFT JOIN flights f ON b.flight_id = f.id
+        LEFT JOIN profiles pilot ON f.pilot_id = pilot.id
         WHERE b.flight_id = @flight_id
         ORDER BY b.created_at DESC
       '''),
@@ -867,6 +896,7 @@ class OnTheWayRepository {
 
   // Подтверждение бронирования
   Future<BookingModel> confirmBooking(int id) async {
+    // Сначала обновляем статус
     final result = await _connection.execute(
       Sql.named('''
         UPDATE bookings
@@ -881,32 +911,47 @@ class OnTheWayRepository {
       throw Exception('Booking not found');
     }
 
-    // Получаем данные пассажира через JOIN
+    // Получаем полные данные бронирования с данными пассажира и пилота через JOIN
     final bookingMap = result.first.toColumnMap();
+    final flightId = bookingMap['flight_id'] as int;
     final passengerId = bookingMap['passenger_id'] as int;
 
-    final passengerResult = await _connection.execute(
+    // Получаем данные пассажира и пилота одним запросом
+    final fullDataResult = await _connection.execute(
       Sql.named('''
         SELECT 
           p.first_name AS passenger_first_name,
           p.last_name AS passenger_last_name,
           p.avatar_url AS passenger_avatar_url,
+          p.phone AS passenger_phone,
+          p.email AS passenger_email,
+          p.telegram AS passenger_telegram,
+          p.max AS passenger_max,
           COALESCE((
             SELECT AVG(rating)::numeric
             FROM reviews
             WHERE reviewed_id = p.id 
               AND reply_to_review_id IS NULL 
               AND rating IS NOT NULL
-          ), 0) AS passenger_average_rating
-        FROM profiles p
-        WHERE p.id = @passenger_id
+          ), 0) AS passenger_average_rating,
+          pilot.first_name AS pilot_first_name,
+          pilot.last_name AS pilot_last_name,
+          pilot.phone AS pilot_phone,
+          pilot.email AS pilot_email,
+          pilot.telegram AS pilot_telegram,
+          pilot.max AS pilot_max
+        FROM bookings b
+        LEFT JOIN profiles p ON b.passenger_id = p.id
+        LEFT JOIN flights f ON b.flight_id = f.id
+        LEFT JOIN profiles pilot ON f.pilot_id = pilot.id
+        WHERE b.id = @booking_id
       '''),
-      parameters: {'passenger_id': passengerId},
+      parameters: {'booking_id': id},
     );
 
-    if (passengerResult.isNotEmpty) {
-      final passengerMap = passengerResult.first.toColumnMap();
-      bookingMap.addAll(passengerMap);
+    if (fullDataResult.isNotEmpty) {
+      final fullDataMap = fullDataResult.first.toColumnMap();
+      bookingMap.addAll(fullDataMap);
     }
 
     return BookingModel.fromJson(bookingMap);
@@ -1588,6 +1633,32 @@ class OnTheWayRepository {
       }
     }
     return null;
+  }
+
+  /// Нормализует avatar_url: если приходит полный URL, извлекает относительный путь
+  /// Это нужно, так как в БД могут храниться как относительные пути, так и полные URL (из-за старых данных)
+  String? _normalizeAvatarUrl(String? avatarUrl) {
+    if (avatarUrl == null || avatarUrl.isEmpty) {
+      return null;
+    }
+
+    // Если это полный URL, извлекаем относительный путь
+    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+      try {
+        final uri = Uri.parse(avatarUrl);
+        // Извлекаем путь после домена (например, /profiles/4.1766572552960.jpg)
+        final path = uri.path;
+        // Убираем начальный слеш, если есть
+        return path.startsWith('/') ? path.substring(1) : path;
+      } catch (e) {
+        // Если не удалось распарсить URL, возвращаем как есть
+        print('⚠️ [OnTheWayRepository] Ошибка нормализации avatar_url: $avatarUrl, ошибка: $e');
+        return avatarUrl;
+      }
+    }
+
+    // Если это уже относительный путь, возвращаем как есть
+    return avatarUrl;
   }
 
   // ========== FLIGHT QUESTIONS ==========

@@ -44,6 +44,19 @@ class BookingModel {
   final String? flightArrivalAirport;
   @JsonKey(name: 'flight_waypoints')
   final dynamic flightWaypoints; // JSON массив кодов аэропортов
+  // Данные пилота (загружаются через JOIN в SQL)
+  @JsonKey(name: 'pilot_first_name')
+  final String? pilotFirstName;
+  @JsonKey(name: 'pilot_last_name')
+  final String? pilotLastName;
+  @JsonKey(name: 'pilot_phone')
+  final String? pilotPhone;
+  @JsonKey(name: 'pilot_email')
+  final String? pilotEmail;
+  @JsonKey(name: 'pilot_telegram')
+  final String? pilotTelegram;
+  @JsonKey(name: 'pilot_max')
+  final String? pilotMax;
 
   BookingModel({
     required this.id,
@@ -66,6 +79,12 @@ class BookingModel {
     this.flightDepartureAirport,
     this.flightArrivalAirport,
     this.flightWaypoints,
+    this.pilotFirstName,
+    this.pilotLastName,
+    this.pilotPhone,
+    this.pilotEmail,
+    this.pilotTelegram,
+    this.pilotMax,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
@@ -92,6 +111,12 @@ class BookingModel {
         flightDepartureAirport: _safeStringFromJson(json['flight_departure_airport']),
         flightArrivalAirport: _safeStringFromJson(json['flight_arrival_airport']),
         flightWaypoints: json['flight_waypoints'],
+        pilotFirstName: _safeStringFromJson(json['pilot_first_name']),
+        pilotLastName: _safeStringFromJson(json['pilot_last_name']),
+        pilotPhone: _safeStringFromJson(json['pilot_phone']),
+        pilotEmail: _safeStringFromJson(json['pilot_email']),
+        pilotTelegram: _safeStringFromJson(json['pilot_telegram']),
+        pilotMax: _safeStringFromJson(json['pilot_max']),
       );
     } catch (e, stackTrace) {
       print('❌ [BookingModel] fromJson error: $e');

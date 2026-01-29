@@ -65,7 +65,8 @@ docker-compose -f docker-compose.prod.yaml build app
 docker-compose -f docker-compose.prod.yaml up -d
 
 
-
+# Пересобрать контейнер на серваке
+docker-compose -f docker-compose.prod.yaml up -d --build
 
 # Чтобы выйти с сервера (закрыть SSH-сессию), используйте одну из команд:
 

@@ -484,4 +484,181 @@ $bodyText
       logger.severe('Stack trace: $stackTrace');
     }
   }
+
+  /// Уведомление о новом бронировании
+  Future<void> notifyNewBooking({
+    required int bookingId,
+    required int flightId,
+    required int pilotId,
+    required int passengerId,
+    required String passengerFirstName,
+    required String passengerLastName,
+    required String? passengerPhone,
+    required String? passengerEmail,
+    required int seatsCount,
+    required int totalPrice,
+    required String departureAirport,
+    required String arrivalAirport,
+    required DateTime departureDate,
+    String? baseUrl,
+  }) async {
+    final flightDate = departureDate.toLocal().toString().substring(0, 16);
+    final passengerName = '${passengerFirstName ?? ''} ${passengerLastName ?? ''}'.trim();
+    final passengerPhoneText = passengerPhone ?? 'Не указан';
+    final passengerEmailText = passengerEmail ?? 'Не указан';
+    final flightUrl = baseUrl != null ? '$baseUrl/on-the-way/$flightId' : '';
+
+    final message = '''
+✈️ <b>Новое бронирование</b>
+
+👤 <b>Пассажир:</b> ${passengerName.isNotEmpty ? passengerName : 'Пассажир #$passengerId'}
+📞 <b>Телефон:</b> $passengerPhoneText
+📧 <b>Email:</b> $passengerEmailText
+🪑 <b>Мест:</b> $seatsCount
+💰 <b>Сумма:</b> $totalPrice ₽
+
+✈️ <b>Полёт:</b>
+📍 <b>Маршрут:</b> $departureAirport → $arrivalAirport
+📅 <b>Дата:</b> $flightDate
+🆔 <b>ID полёта:</b> $flightId
+🆔 <b>ID бронирования:</b> $bookingId
+
+${flightUrl.isNotEmpty ? '🔗 <b>Ссылка:</b> $flightUrl' : ''}
+🕐 <b>Время:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+''';
+
+    await sendMessage(message);
+  }
+
+  /// Уведомление о подтверждении бронирования
+  Future<void> notifyBookingConfirmed({
+    required int bookingId,
+    required int flightId,
+    required int passengerId,
+    required String passengerFirstName,
+    required String passengerLastName,
+    required String departureAirport,
+    required String arrivalAirport,
+    required DateTime departureDate,
+    String? baseUrl,
+  }) async {
+    final flightDate = departureDate.toLocal().toString().substring(0, 16);
+    final passengerName = '${passengerFirstName ?? ''} ${passengerLastName ?? ''}'.trim();
+    final flightUrl = baseUrl != null ? '$baseUrl/on-the-way/$flightId' : '';
+
+    final message = '''
+✅ <b>Бронирование подтверждено</b>
+
+👤 <b>Пассажир:</b> ${passengerName.isNotEmpty ? passengerName : 'Пассажир #$passengerId'}
+✈️ <b>Полёт:</b> $departureAirport → $arrivalAirport
+📅 <b>Дата:</b> $flightDate
+🆔 <b>ID бронирования:</b> $bookingId
+
+${flightUrl.isNotEmpty ? '🔗 <b>Ссылка:</b> $flightUrl' : ''}
+🕐 <b>Время:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+''';
+
+    await sendMessage(message);
+  }
+
+  /// Уведомление об отмене бронирования
+  Future<void> notifyBookingCancelled({
+    required int bookingId,
+    required int flightId,
+    required int passengerId,
+    required String passengerFirstName,
+    required String passengerLastName,
+    required String departureAirport,
+    required String arrivalAirport,
+    required DateTime departureDate,
+    String? baseUrl,
+  }) async {
+    final flightDate = departureDate.toLocal().toString().substring(0, 16);
+    final passengerName = '${passengerFirstName ?? ''} ${passengerLastName ?? ''}'.trim();
+    final flightUrl = baseUrl != null ? '$baseUrl/on-the-way/$flightId' : '';
+
+    final message = '''
+❌ <b>Бронирование отменено</b>
+
+👤 <b>Пассажир:</b> ${passengerName.isNotEmpty ? passengerName : 'Пассажир #$passengerId'}
+✈️ <b>Полёт:</b> $departureAirport → $arrivalAirport
+📅 <b>Дата:</b> $flightDate
+🆔 <b>ID бронирования:</b> $bookingId
+
+${flightUrl.isNotEmpty ? '🔗 <b>Ссылка:</b> $flightUrl' : ''}
+🕐 <b>Время:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+''';
+
+    await sendMessage(message);
+  }
+
+  /// Уведомление о новом вопросе
+  Future<void> notifyNewQuestion({
+    required int questionId,
+    required int flightId,
+    required int passengerId,
+    required String passengerFirstName,
+    required String passengerLastName,
+    required String questionText,
+    required String departureAirport,
+    required String arrivalAirport,
+    required DateTime departureDate,
+    String? baseUrl,
+  }) async {
+    final flightDate = departureDate.toLocal().toString().substring(0, 16);
+    final passengerName = '${passengerFirstName ?? ''} ${passengerLastName ?? ''}'.trim();
+    final flightUrl = baseUrl != null ? '$baseUrl/on-the-way/$flightId' : '';
+
+    final message = '''
+❓ <b>Новый вопрос к полёту</b>
+
+👤 <b>Пассажир:</b> ${passengerName.isNotEmpty ? passengerName : 'Пассажир #$passengerId'}
+✈️ <b>Полёт:</b> $departureAirport → $arrivalAirport
+📅 <b>Дата:</b> $flightDate
+🆔 <b>ID полёта:</b> $flightId
+
+💬 <b>Вопрос:</b>
+$questionText
+
+${flightUrl.isNotEmpty ? '🔗 <b>Ссылка:</b> $flightUrl' : ''}
+🕐 <b>Время:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+''';
+
+    await sendMessage(message);
+  }
+
+  /// Уведомление об ответе на вопрос
+  Future<void> notifyQuestionAnswered({
+    required int questionId,
+    required int flightId,
+    required int pilotId,
+    required String pilotFirstName,
+    required String pilotLastName,
+    required String answerText,
+    required String departureAirport,
+    required String arrivalAirport,
+    required DateTime departureDate,
+    String? baseUrl,
+  }) async {
+    final flightDate = departureDate.toLocal().toString().substring(0, 16);
+    final pilotName = '${pilotFirstName ?? ''} ${pilotLastName ?? ''}'.trim();
+    final flightUrl = baseUrl != null ? '$baseUrl/on-the-way/$flightId' : '';
+
+    final message = '''
+💬 <b>Ответ на вопрос</b>
+
+👤 <b>Пилот:</b> ${pilotName.isNotEmpty ? pilotName : 'Пилот #$pilotId'}
+✈️ <b>Полёт:</b> $departureAirport → $arrivalAirport
+📅 <b>Дата:</b> $flightDate
+🆔 <b>ID полёта:</b> $flightId
+
+💬 <b>Ответ:</b>
+$answerText
+
+${flightUrl.isNotEmpty ? '🔗 <b>Ссылка:</b> $flightUrl' : ''}
+🕐 <b>Время:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+''';
+
+    await sendMessage(message);
+  }
 }
