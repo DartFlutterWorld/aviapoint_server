@@ -40,29 +40,29 @@ class SubscriptionRepository {
   Future<SubscriptionModel> createSubscription({
     required int userId,
     required String paymentId,
-    required String subscriptionTypeCode, // Код типа подписки из БД (например, 'rosaviatest_365', 'monthly')
+    required int subscriptionTypeId, // ID типа подписки из БД
     required DateTime startDate,
     required int amount, // Цена подписки из платежа
   }) async {
     try {
-      logger.info('Creating subscription: userId=$userId, paymentId=$paymentId, subscriptionTypeCode=$subscriptionTypeCode, amount=$amount');
+      logger.info('Creating subscription: userId=$userId, paymentId=$paymentId, subscriptionTypeId=$subscriptionTypeId, amount=$amount');
 
-      // Получаем ID типа подписки и period_days из БД
+      // Получаем period_days из БД по ID типа подписки
       final typeResult = await _connection.execute(
-        Sql.named('SELECT id, code, name, period_days, price, is_active, created_at, description FROM subscription_types WHERE code = @code'),
-        parameters: {'code': subscriptionTypeCode},
+        Sql.named('SELECT id, code, name, period_days, price, is_active, created_at, description FROM subscription_types WHERE id = @id'),
+        parameters: {'id': subscriptionTypeId},
       );
 
       if (typeResult.isEmpty) {
-        logger.severe('Subscription type not found in database: code=$subscriptionTypeCode');
-        throw ArgumentError('Subscription type "$subscriptionTypeCode" not found in subscription_types table');
+        logger.severe('Subscription type not found in database: id=$subscriptionTypeId');
+        throw ArgumentError('Subscription type with id "$subscriptionTypeId" not found in subscription_types table');
       }
 
       final typeRow = typeResult.first.toColumnMap();
-      final subscriptionTypeId = _parseInt(typeRow['id']);
       final periodDays = _parseInt(typeRow['period_days']); // Берем period_days из subscription_types
+      final subscriptionTypeCode = typeRow['code']?.toString() ?? '';
 
-      logger.info('Found subscription type ID: $subscriptionTypeId for code: $subscriptionTypeCode, period_days: $periodDays');
+      logger.info('Found subscription type: id=$subscriptionTypeId, code=$subscriptionTypeCode, period_days=$periodDays');
 
       // Определяем даты
       final start = startDate;
@@ -71,7 +71,7 @@ class SubscriptionRepository {
       logger.info('Subscription dates: start=$start, end=$end');
 
       // Создаем новую подписку (пользователь может иметь несколько активных подписок)
-      logger.info('Inserting subscription into database with params: user_id=$userId, payment_id=$paymentId, subscription_type_id=$subscriptionTypeId, period_days=$periodDays, amount=$amount');
+      logger.info('Inserting subscription into database: user_id=$userId, payment_id=$paymentId, subscription_type_id=$subscriptionTypeId, period_days=$periodDays, amount=$amount');
 
       final result = await _connection.execute(
         Sql.named('''
@@ -108,7 +108,7 @@ class SubscriptionRepository {
       return SubscriptionModel.fromJson(row.toColumnMap());
     } catch (e, stackTrace) {
       logger.severe('❌ Failed to create subscription: $e');
-      logger.severe('Parameters: userId=$userId, paymentId=$paymentId, subscriptionTypeCode=$subscriptionTypeCode, amount=$amount');
+      logger.severe('Parameters: userId=$userId, paymentId=$paymentId, subscriptionTypeId=$subscriptionTypeId, amount=$amount');
       logger.severe('Stack trace: $stackTrace');
       rethrow;
     }

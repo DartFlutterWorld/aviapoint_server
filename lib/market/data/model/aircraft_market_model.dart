@@ -9,6 +9,8 @@ class AircraftMarketModel {
   final String title;
   final String? description;
   final int price;
+  @JsonKey(defaultValue: 'RUB')
+  final String currency;
   @JsonKey(name: 'aircraft_subcategories_id')
   final int? aircraftSubcategoriesId;
   @JsonKey(name: 'seller_id')
@@ -19,6 +21,8 @@ class AircraftMarketModel {
   @JsonKey(name: 'additional_image_urls', fromJson: _imageUrlsFromJson, toJson: _imageUrlsToJson)
   final List<String> additionalImageUrls;
   final String? brand;
+  @JsonKey(name: 'is_published')
+  final bool isPublished;
   @JsonKey(name: 'is_active')
   final bool isActive;
   @JsonKey(name: 'views_count')
@@ -74,12 +78,14 @@ class AircraftMarketModel {
     required this.title,
     this.description,
     required this.price,
+    this.currency = 'RUB',
     this.aircraftSubcategoriesId,
     required this.sellerId,
     this.location,
     this.mainImageUrl,
     this.additionalImageUrls = const [],
     this.brand,
+    this.isPublished = true,
     this.isActive = true,
     this.viewsCount = 0,
     this.createdAt,
@@ -110,12 +116,14 @@ class AircraftMarketModel {
       title: json['title'] as String,
       description: json['description'] as String?,
       price: _intFromJson(json['price']),
+      currency: (json['currency'] as String?) ?? 'RUB',
       aircraftSubcategoriesId: _intFromJsonNullable(json['aircraft_subcategories_id']),
       sellerId: _intFromJson(json['seller_id']),
       location: json['location'] as String?,
       mainImageUrl: (json['main_image_url'] as String?)?.isNotEmpty == true ? json['main_image_url'] as String? : null,
       additionalImageUrls: _imageUrlsFromJson(json['additional_image_urls']),
       brand: json['brand'] as String?,
+      isPublished: _boolFromJson(json['is_published']) ?? true,
       isActive: _boolFromJson(json['is_active']) ?? true,
       viewsCount: _intFromJsonNullable(json['views_count']) ?? 0,
       createdAt: _dateTimeFromJsonNullable(json['created_at']),

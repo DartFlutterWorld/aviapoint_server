@@ -16,7 +16,7 @@ CreatePaymentRequest _$CreatePaymentRequestFromJson(
       cancelUrl: json['cancel_url'] as String?,
       userId: (json['user_id'] as num?)?.toInt(),
       customerPhone: json['customer_phone'] as String?,
-      subscriptionType: json['subscription_type'] as String?,
+      subscriptionTypeId: (json['subscription_type_id'] as num?)?.toInt(),
       periodDays: (json['period_days'] as num?)?.toInt(),
     );
 
@@ -38,7 +38,7 @@ Map<String, dynamic> _$CreatePaymentRequestToJson(
   writeNotNull('cancel_url', instance.cancelUrl);
   writeNotNull('user_id', instance.userId);
   writeNotNull('customer_phone', instance.customerPhone);
-  writeNotNull('subscription_type', instance.subscriptionType);
+  writeNotNull('subscription_type_id', instance.subscriptionTypeId);
   writeNotNull('period_days', instance.periodDays);
   return val;
 }

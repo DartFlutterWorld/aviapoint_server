@@ -81,6 +81,25 @@ class PaymentController {
         }
       }
 
+      // Получаем period_days из subscription_type_id, если передан ID
+      int? periodDays = createPaymentRequest.periodDays;
+      int? subscriptionTypeId = createPaymentRequest.subscriptionTypeId;
+      
+      if (subscriptionTypeId != null && periodDays == null) {
+        try {
+          final subscriptionTypes = await _subscriptionRepository.getAllSubscriptionTypes();
+          final subscriptionTypeModel = subscriptionTypes.firstWhere(
+            (type) => type.id == subscriptionTypeId,
+            orElse: () => throw StateError('Subscription type with id $subscriptionTypeId not found'),
+          );
+          periodDays = subscriptionTypeModel.periodDays;
+          logger.info('Got period_days=$periodDays from subscription_type_id=$subscriptionTypeId');
+        } catch (e) {
+          logger.severe('Failed to get subscription type by ID: $e');
+          // Продолжаем без period_days
+        }
+      }
+
       final payment = await _paymentRepository.createPayment(
         amount: createPaymentRequest.amount,
         currency: createPaymentRequest.currency,
@@ -89,8 +108,8 @@ class PaymentController {
         cancelUrl: createPaymentRequest.cancelUrl,
         userId: createPaymentRequest.userId,
         customerPhone: customerPhone,
-        subscriptionType: createPaymentRequest.subscriptionType,
-        periodDays: createPaymentRequest.periodDays,
+        subscriptionTypeId: subscriptionTypeId,
+        periodDays: periodDays,
       );
 
       return Response.ok(
@@ -125,6 +144,75 @@ class PaymentController {
 
       if (payment == null) {
         return Response.notFound(jsonEncode({'error': 'Payment not found'}), headers: jsonContentHeaders);
+      }
+
+      // Если платеж успешен, но подписка еще не активирована (для тестового режима, где webhook может не прийти)
+      if (payment.status == 'succeeded' && payment.paid && payment.userId > 0) {
+        try {
+          logger.info('Payment succeeded, checking subscription activation: paymentId=$paymentId, userId=${payment.userId}');
+          
+          // Проверяем, есть ли уже активная подписка для этого платежа
+          final paymentData = await _paymentRepository.getPaymentDataById(paymentId);
+          logger.info('Payment data from DB: ${paymentData?.keys.toList()}');
+          
+          if (paymentData != null) {
+            final userId = paymentData['user_id'] as int?;
+            final subscriptionTypeIdValue = paymentData['subscription_type_id'];
+            int? subscriptionTypeId;
+            if (subscriptionTypeIdValue != null) {
+              subscriptionTypeId = subscriptionTypeIdValue is int ? subscriptionTypeIdValue : (int.tryParse(subscriptionTypeIdValue.toString()));
+            }
+            
+            logger.info('Payment data: userId=$userId, subscriptionTypeId=$subscriptionTypeId');
+            
+            if (userId != null && userId > 0 && subscriptionTypeId != null) {
+              // Проверяем, есть ли уже подписка для этого платежа
+              final subscriptions = await _subscriptionRepository.getUserSubscriptions(userId);
+              final hasSubscriptionForPayment = subscriptions.any((s) => s.paymentId == paymentId);
+              
+              logger.info('Subscriptions for user $userId: ${subscriptions.length}, hasSubscriptionForPayment=$hasSubscriptionForPayment');
+              
+              if (!hasSubscriptionForPayment) {
+                logger.info('Payment succeeded but subscription not activated, activating now: paymentId=$paymentId, userId=$userId, subscriptionTypeId=$subscriptionTypeId');
+                
+                dynamic amountValue = paymentData['amount'];
+                int subscriptionAmount = 0;
+                if (amountValue != null) {
+                  if (amountValue is int) {
+                    subscriptionAmount = amountValue;
+                  } else if (amountValue is num) {
+                    subscriptionAmount = amountValue.toInt();
+                  } else if (amountValue is String) {
+                    final doubleValue = double.tryParse(amountValue);
+                    subscriptionAmount = doubleValue?.toInt() ?? 0;
+                  }
+                }
+                
+                logger.info('Creating subscription: userId=$userId, paymentId=$paymentId, subscriptionTypeId=$subscriptionTypeId, amount=$subscriptionAmount');
+                
+                await _subscriptionRepository.createSubscription(
+                  userId: userId,
+                  paymentId: paymentId,
+                  subscriptionTypeId: subscriptionTypeId,
+                  startDate: DateTime.now(),
+                  amount: subscriptionAmount,
+                );
+                
+                logger.info('✅ Subscription activated for user $userId, payment: $paymentId, subscriptionTypeId: $subscriptionTypeId');
+              } else {
+                logger.info('Subscription already exists for payment $paymentId');
+              }
+            } else {
+              logger.severe('Cannot activate subscription: userId is null or 0: userId=$userId');
+            }
+          } else {
+            logger.severe('Payment data not found in DB for paymentId: $paymentId');
+          }
+        } catch (e, stackTrace) {
+          logger.severe('❌ Failed to activate subscription after status check: $e');
+          logger.severe('Stack trace: $stackTrace');
+          // Не прерываем выполнение - возвращаем статус платежа
+        }
       }
 
       return Response.ok(
@@ -287,7 +375,7 @@ class PaymentController {
         // Если платеж успешен, активируем подписку
         if (event == 'payment.succeeded' && paid) {
           try {
-            // Получаем информацию о платеже из БД (включая subscription_type и period_days)
+            // Получаем информацию о платеже из БД (включая subscription_type_id и period_days)
             Map<String, dynamic>? paymentRow = await _paymentRepository.getPaymentDataById(paymentId);
 
             // Если платеж не найден в БД, но у нас есть paymentObject, используем его
@@ -297,19 +385,24 @@ class PaymentController {
               final metadata = paymentObject['metadata'] as Map<String, dynamic>?;
               final amountObj = paymentObject['amount'] as Map<String, dynamic>?;
 
+              final subscriptionTypeIdFromMetadata = metadata?['subscription_type_id'];
               paymentRow = {
                 'user_id': metadata?['user_id'],
-                'subscription_type': metadata?['subscription_type']?.toString(),
+                'subscription_type_id': subscriptionTypeIdFromMetadata,
                 'period_days': metadata?['period_days'],
                 'amount': amountObj?['value'],
                 'description': paymentObject['description']?.toString() ?? '',
               };
             }
             final userId = paymentRow['user_id'] as int?;
-            final subscriptionTypeStr = paymentRow['subscription_type'] as String?;
+            final subscriptionTypeIdValue = paymentRow['subscription_type_id'];
+            int? subscriptionTypeId;
+            if (subscriptionTypeIdValue != null) {
+              subscriptionTypeId = subscriptionTypeIdValue is int ? subscriptionTypeIdValue : (int.tryParse(subscriptionTypeIdValue.toString()) ?? 0);
+            }
             final periodDaysValue = paymentRow['period_days'];
 
-            logger.info('Payment data extracted: userId=$userId, subscriptionType=$subscriptionTypeStr, periodDays=$periodDaysValue');
+            logger.info('Payment data extracted: userId=$userId, subscriptionTypeId=$subscriptionTypeId, periodDays=$periodDaysValue');
 
             // Пытаемся получить amount из webhook объекта (более надежно), если нет - из БД
             dynamic amountValue = paymentRow['amount'];
@@ -345,41 +438,28 @@ class PaymentController {
 
             logger.info('Parsed subscription amount from payment: $amountValue -> $subscriptionAmount');
 
-            // Определяем код типа подписки из БД
-            String subscriptionTypeCode = 'rosaviatest_365'; // Дефолтный код
-
-            if (subscriptionTypeStr != null && subscriptionTypeStr.isNotEmpty) {
-              // Используем код напрямую из БД (может быть любым, например 'rosaviatest_365')
-              subscriptionTypeCode = subscriptionTypeStr;
-              logger.info('Using subscription type code from payment: $subscriptionTypeCode');
-            } else {
-              // Fallback: определяем из описания, если данные не сохранены
-              logger.severe('Subscription type code not found in payment, using default: $subscriptionTypeCode');
-              final description = (paymentRow['description'] as String? ?? '').toLowerCase();
-
-              if (description.contains('месяц') || description.contains('monthly')) {
-                subscriptionTypeCode = 'monthly';
-              } else if (description.contains('квартал') || description.contains('quarterly')) {
-                subscriptionTypeCode = 'quarterly';
-              } else if (description.contains('год') || description.contains('yearly') || description.contains('годов')) {
-                subscriptionTypeCode = 'yearly';
-              }
+            // Используем subscription_type_id напрямую
+            if (subscriptionTypeId == null || subscriptionTypeId == 0) {
+              logger.severe('Subscription type ID not found in payment: $paymentId');
+              return Response.ok(jsonEncode({'status': 'ok', 'message': 'Subscription type ID not found'}), headers: jsonContentHeaders);
             }
 
-            logger.info('Creating subscription with: code=$subscriptionTypeCode (period_days will be taken from subscription_types)');
+            logger.info('Creating subscription with subscription_type_id=$subscriptionTypeId (period_days will be taken from subscription_types)');
 
-            // Получаем period_days из subscription_types для Telegram уведомления
+            // Получаем информацию о типе подписки для уведомлений
             int periodDaysForNotification = 365; // Дефолт
+            String subscriptionTypeCode = 'unknown'; // Дефолт
             try {
               final subscriptionTypes = await _subscriptionRepository.getAllSubscriptionTypes();
               final subscriptionType = subscriptionTypes.firstWhere(
-                (type) => type.code == subscriptionTypeCode,
+                (type) => type.id == subscriptionTypeId,
                 orElse: () => subscriptionTypes.isNotEmpty ? subscriptionTypes.first : throw StateError('No subscription types found'),
               );
               periodDaysForNotification = subscriptionType.periodDays;
-              logger.info('Found period_days for notification: $periodDaysForNotification');
+              subscriptionTypeCode = subscriptionType.code;
+              logger.info('Found subscription type: code=$subscriptionTypeCode, period_days=$periodDaysForNotification');
             } catch (e) {
-              logger.info('Failed to get period_days from subscription_types for notification: $e');
+              logger.info('Failed to get subscription type from subscription_types for notification: $e');
             }
 
             // Активируем подписку
@@ -387,18 +467,17 @@ class PaymentController {
             await _subscriptionRepository.createSubscription(
               userId: userId,
               paymentId: paymentId,
-              subscriptionTypeCode: subscriptionTypeCode,
+              subscriptionTypeId: subscriptionTypeId,
               startDate: DateTime.now(),
               amount: subscriptionAmount,
             );
 
-            logger.info('Subscription activated for user $userId, payment: $paymentId, type: $subscriptionTypeCode');
+            logger.info('Subscription activated for user $userId, payment: $paymentId, subscriptionTypeId: $subscriptionTypeId');
 
             // Отправляем уведомление в Telegram о покупке подписки
             try {
               final profileRepository = await getIt.getAsync<ProfileRepository>();
               final profile = await profileRepository.fetchProfileById(userId);
-
               TelegramBotService().notifySubscriptionPurchase(
                 userId: userId,
                 phone: profile.phone,
@@ -575,7 +654,7 @@ class PaymentController {
         userId: verifyRequest.userId,
         transactionId: verificationResult.transactionId,
         originalTransactionId: verificationResult.originalTransactionId ?? verificationResult.transactionId,
-        subscriptionType: subscriptionTypeCode,
+        subscriptionTypeId: subscriptionType.id,
         periodDays: subscriptionType.periodDays,
         amount: amount,
         purchaseDate: purchaseDate,
@@ -587,7 +666,7 @@ class PaymentController {
       await _subscriptionRepository.createSubscription(
         userId: verifyRequest.userId,
         paymentId: paymentId,
-        subscriptionTypeCode: subscriptionTypeCode,
+        subscriptionTypeId: subscriptionType.id,
         startDate: purchaseDate,
         amount: amount.toInt(),
       );
@@ -618,7 +697,7 @@ class PaymentController {
           'status': 'success',
           'payment_id': paymentId,
           'transaction_id': verificationResult.transactionId,
-          'subscription_type': subscriptionTypeCode,
+          'subscription_type_id': subscriptionType.id,
           'expires_date': expiresDate?.toIso8601String(),
         }),
         headers: jsonContentHeaders,

@@ -100,6 +100,14 @@ class MigrationManager {
     // Список всех миграций в порядке выполнения
     final migrations = [
       _MigrationInfo(version: '073', name: 'add_iap_support_to_payments', file: 'migrations/073_add_iap_support_to_payments.sql'),
+      _MigrationInfo(version: '074', name: 'create_parts_categories', file: 'migrations/074_create_parts_categories.sql'),
+      _MigrationInfo(version: '075', name: 'add_subscription_type_id_to_payments', file: 'migrations/075_add_subscription_type_id_to_payments.sql'),
+      _MigrationInfo(version: '076', name: 'fix_subscription_type_column', file: 'migrations/076_fix_subscription_type_column.sql'),
+      _MigrationInfo(version: '077', name: 'create_parts_market', file: 'migrations/077_create_parts_market.sql'),
+      _MigrationInfo(version: '078', name: 'add_is_published_to_aircraft_market', file: 'migrations/078_add_is_published_to_aircraft_market.sql'),
+      _MigrationInfo(version: '079', name: 'add_is_published_to_parts_market', file: 'migrations/079_add_is_published_to_parts_market.sql'),
+      _MigrationInfo(version: '080', name: 'create_parts_market_price_history', file: 'migrations/080_create_parts_market_price_history.sql'),
+      _MigrationInfo(version: '081', name: 'add_currency_to_aircraft_market', file: 'migrations/081_add_currency_to_aircraft_market.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 

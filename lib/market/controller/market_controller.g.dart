@@ -39,6 +39,11 @@ Router _$MarketControllerRouter(MarketController service) {
     service.getPriceHistory,
   );
   router.add(
+    'GET',
+    r'/api/market/parts/<id>/price-history',
+    service.getPartPriceHistory,
+  );
+  router.add(
     'POST',
     r'/api/market/aircraft',
     service.createAircraft,
@@ -74,6 +79,16 @@ Router _$MarketControllerRouter(MarketController service) {
     service.unpublishProduct,
   );
   router.add(
+    'POST',
+    r'/api/market/aircraft/<id>/deactivate',
+    service.deactivateAircraft,
+  );
+  router.add(
+    'POST',
+    r'/api/market/aircraft/<id>/activate',
+    service.activateAircraft,
+  );
+  router.add(
     'DELETE',
     r'/api/market/aircraft/<id>',
     service.deleteProduct,
@@ -87,6 +102,81 @@ Router _$MarketControllerRouter(MarketController service) {
     'POST',
     r'/api/market/products/<id>/additional-images',
     service.uploadAdditionalImages,
+  );
+  router.add(
+    'GET',
+    r'/api/market/parts/main-categories',
+    service.getPartsMainCategories,
+  );
+  router.add(
+    'GET',
+    r'/api/market/parts/subcategories',
+    service.getPartsSubcategories,
+  );
+  router.add(
+    'GET',
+    r'/api/market/parts/manufacturers',
+    service.getPartsManufacturers,
+  );
+  router.add(
+    'GET',
+    r'/api/market/parts',
+    service.getParts,
+  );
+  router.add(
+    'GET',
+    r'/api/market/parts/<id>',
+    service.getPartById,
+  );
+  router.add(
+    'POST',
+    r'/api/market/parts',
+    service.createPart,
+  );
+  router.add(
+    'PUT',
+    r'/api/market/parts/<id>',
+    service.updatePart,
+  );
+  router.add(
+    'POST',
+    r'/api/market/parts/<id>/publish',
+    service.publishPart,
+  );
+  router.add(
+    'POST',
+    r'/api/market/parts/<id>/unpublish',
+    service.unpublishPart,
+  );
+  router.add(
+    'POST',
+    r'/api/market/parts/<id>/deactivate',
+    service.deactivatePart,
+  );
+  router.add(
+    'POST',
+    r'/api/market/parts/<id>/activate',
+    service.activatePart,
+  );
+  router.add(
+    'DELETE',
+    r'/api/market/parts/<id>',
+    service.deletePart,
+  );
+  router.add(
+    'POST',
+    r'/api/market/parts/<id>/favorite',
+    service.addPartToFavorites,
+  );
+  router.add(
+    'DELETE',
+    r'/api/market/parts/<id>/favorite',
+    service.removePartFromFavorites,
+  );
+  router.add(
+    'GET',
+    r'/api/market/parts/favorites',
+    service.getFavoriteParts,
   );
   return router;
 }

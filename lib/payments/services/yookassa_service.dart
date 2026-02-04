@@ -60,11 +60,15 @@ class YooKassaService {
         'description': description,
       };
 
-      // Сохраняем subscription_type, period_days и user_id в metadata для использования в webhook
+      // Сохраняем subscription_type_id, period_days и user_id в metadata для использования в webhook
       if (subscriptionType != null || periodDays != null || userId != null) {
         requestData['metadata'] = <String, dynamic>{};
         if (subscriptionType != null) {
-          requestData['metadata']['subscription_type'] = subscriptionType;
+          // subscriptionType передается как строка с ID, преобразуем в int
+          final subscriptionTypeId = int.tryParse(subscriptionType);
+          if (subscriptionTypeId != null) {
+            requestData['metadata']['subscription_type_id'] = subscriptionTypeId;
+          }
         }
         if (periodDays != null) {
           requestData['metadata']['period_days'] = periodDays;
@@ -80,13 +84,15 @@ class YooKassaService {
       // - ЮKassa возвращает на return_url как при успешной оплате, так и при отмене/ошибке
       // - cancel_url не поддерживается API ЮKassa
       // - ЮKassa НЕ передает payment_id в query параметрах при редиректе
-      // Решение: добавляем payment_id в return_url после создания платежа (см. ниже)
-      // Для мобильных приложений используем deep link, если returnUrl не передан
-      final baseReturnUrl = returnUrl ?? 'aviapoint://payment/return';
+      // - return_url ОБЯЗАТЕЛЕН и должен начинаться с http:// или https://
+      // ВАЖНО: returnUrl должен быть передан с фронтенда (для мобильных это HTTP URL вида https://avia-point.com/payments/return)
+      if (returnUrl == null || returnUrl.isEmpty) {
+        throw ArgumentError('return_url is required and must be a valid HTTP/HTTPS URL');
+      }
 
       requestData['confirmation'] = {
         'type': 'redirect',
-        'return_url': baseReturnUrl,
+        'return_url': returnUrl,
       };
 
       // Добавляем receipt с customer
@@ -139,8 +145,8 @@ class YooKassaService {
       // Извлекаем данные из metadata
       final metadata = response.data['metadata'] as Map<String, dynamic>?;
       final userIdFromMetadata = metadata?['user_id'];
-      final subscriptionTypeFromMetadata = metadata?['subscription_type'];
       final periodDaysFromMetadata = metadata?['period_days'];
+      final subscriptionTypeIdFromMetadata = metadata?['subscription_type_id'];
 
       return PaymentModel(
         id: response.data['id'],
@@ -152,7 +158,7 @@ class YooKassaService {
         createdAt: DateTime.parse(response.data['created_at']),
         paid: response.data['paid'] ?? false,
         userId: userIdFromMetadata is int ? userIdFromMetadata : (userIdFromMetadata != null ? int.tryParse(userIdFromMetadata.toString()) ?? 0 : 0),
-        subscriptionType: subscriptionTypeFromMetadata?.toString() ?? '',
+        subscriptionTypeId: subscriptionTypeIdFromMetadata is int ? subscriptionTypeIdFromMetadata : (subscriptionTypeIdFromMetadata != null ? int.tryParse(subscriptionTypeIdFromMetadata.toString()) ?? 0 : 0),
         periodDays: periodDaysFromMetadata is int ? periodDaysFromMetadata : (periodDaysFromMetadata != null ? int.tryParse(periodDaysFromMetadata.toString()) ?? 0 : 0),
       );
     } catch (e, stackTrace) {
@@ -186,8 +192,8 @@ class YooKassaService {
       // Извлекаем данные из metadata
       final metadata = response.data['metadata'] as Map<String, dynamic>?;
       final userIdFromMetadata = metadata?['user_id'];
-      final subscriptionTypeFromMetadata = metadata?['subscription_type'];
       final periodDaysFromMetadata = metadata?['period_days'];
+      final subscriptionTypeIdFromMetadata = metadata?['subscription_type_id'];
 
       return PaymentModel(
         id: response.data['id'],
@@ -199,7 +205,7 @@ class YooKassaService {
         createdAt: DateTime.parse(response.data['created_at']),
         paid: response.data['paid'] ?? false,
         userId: userIdFromMetadata is int ? userIdFromMetadata : (userIdFromMetadata != null ? int.tryParse(userIdFromMetadata.toString()) ?? 0 : 0),
-        subscriptionType: subscriptionTypeFromMetadata?.toString() ?? '',
+        subscriptionTypeId: subscriptionTypeIdFromMetadata is int ? subscriptionTypeIdFromMetadata : (subscriptionTypeIdFromMetadata != null ? int.tryParse(subscriptionTypeIdFromMetadata.toString()) ?? 0 : 0),
         periodDays: periodDaysFromMetadata is int ? periodDaysFromMetadata : (periodDaysFromMetadata != null ? int.tryParse(periodDaysFromMetadata.toString()) ?? 0 : 0),
       );
     } catch (e, stackTrace) {

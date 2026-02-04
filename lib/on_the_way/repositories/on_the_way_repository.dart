@@ -158,7 +158,6 @@ class OnTheWayRepository {
         f.departure_date ASC
     ''';
 
-    print('🔵 [OnTheWayRepository] fetchFlights SQL query: $query');
     print('🔵 [OnTheWayRepository] fetchFlights parameters: $parameters');
 
     final result = await _connection.execute(Sql.named(query), parameters: parameters);

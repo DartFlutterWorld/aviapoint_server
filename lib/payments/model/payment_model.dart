@@ -14,7 +14,7 @@ class PaymentModel {
     required this.createdAt,
     required this.paid,
     required this.userId,
-    required this.subscriptionType,
+    this.subscriptionTypeId = 0, // Может быть 0 для старых записей без subscription_type_id
     required this.periodDays,
     this.paymentSource = 'yookassa',
     this.appleTransactionId,
@@ -34,8 +34,8 @@ class PaymentModel {
   final bool paid;
   @JsonKey(name: 'user_id', fromJson: _intFromJson)
   final int userId;
-  @JsonKey(name: 'subscription_type')
-  final String subscriptionType;
+  @JsonKey(name: 'subscription_type_id', fromJson: _intFromJsonNullable)
+  final int subscriptionTypeId;
   @JsonKey(name: 'period_days', fromJson: _intFromJson)
   final int periodDays;
   @JsonKey(name: 'payment_source')
@@ -83,5 +83,18 @@ class PaymentModel {
       return int.parse(value);
     }
     throw ArgumentError('Cannot convert $value (${value.runtimeType}) to int');
+  }
+
+  static int _intFromJsonNullable(dynamic value) {
+    if (value == null) {
+      return 0; // Дефолтное значение для старых записей
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
   }
 }

@@ -20,12 +20,13 @@ class PaymentRepository {
     String? cancelUrl,
     int? userId,
     String? customerPhone,
-    String? subscriptionType,
+    int? subscriptionTypeId,
     int? periodDays,
   }) async {
     try {
       // Создаем платеж в ЮKassa
       // Сначала создаем платеж без payment_id в return_url
+      // Для ЮKassa metadata используем subscription_type_id как строку
       final payment = await _yookassaService.createPayment(
         amount: amount,
         currency: currency,
@@ -33,16 +34,51 @@ class PaymentRepository {
         returnUrl: returnUrl,
         cancelUrl: cancelUrl,
         customerPhone: customerPhone,
-        subscriptionType: subscriptionType,
+        subscriptionType: subscriptionTypeId?.toString(),
         periodDays: periodDays,
         userId: userId,
       );
 
-      // НЕ сохраняем платеж в БД сразу - сохраним только после успешной оплаты через webhook
-      // Это позволяет избежать накопления неоплаченных платежей в БД
-      // Платеж будет сохранен автоматически в updatePaymentStatus при получении webhook
+      // Сохраняем платеж в БД сразу со статусом 'pending'
+      // Это необходимо для:
+      // 1. Тестового режима (webhook не приходит на localhost)
+      // 2. Проверки статуса платежа через API
+      // 3. Активации подписки после успешной оплаты
+      try {
+        await _connection.execute(
+          Sql.named('''
+            INSERT INTO payments (
+              id, status, amount, currency, description, 
+              payment_url, created_at, paid, subscription_type_id, period_days, user_id
+            ) VALUES (
+              @id, @status, @amount, @currency, @description,
+              @payment_url, @created_at, @paid, @subscription_type_id, @period_days, @user_id
+            )
+            ON CONFLICT (id) DO UPDATE SET
+              payment_url = EXCLUDED.payment_url
+          '''),
+          parameters: {
+            'id': payment.id,
+            'status': payment.status,
+            'amount': payment.amount,
+            'currency': payment.currency,
+            'description': payment.description,
+            'payment_url': payment.paymentUrl,
+            'created_at': payment.createdAt,
+            'paid': payment.paid,
+            'subscription_type_id': subscriptionTypeId,
+            'period_days': periodDays ?? 0,
+            'user_id': userId ?? 0,
+          },
+        );
+        logger.info('Payment saved to database: ${payment.id}, status=${payment.status}, user_id=$userId');
+      } catch (e, stackTrace) {
+        logger.severe('Failed to save payment to database: $e');
+        logger.severe('Stack trace: $stackTrace');
+        // Не прерываем выполнение - платеж создан в ЮKassa, можно продолжить
+      }
 
-      logger.info('Payment created in YooKassa: ${payment.id}, user_id: $userId (will be saved after successful payment)');
+      logger.info('Payment created in YooKassa: ${payment.id}, user_id: $userId');
 
       // ВАЖНО: ЮKassa не передает payment_id в query параметрах при редиректе
       // Поэтому payment_id нужно получать из других источников (последние платежи пользователя, webhook и т.д.)
@@ -62,12 +98,52 @@ class PaymentRepository {
       final dbResult = await _connection.execute(Sql.named('SELECT * FROM payments WHERE id = @id'), parameters: {'id': paymentId});
 
       if (dbResult.isEmpty) {
-        // Если нет в БД, получаем из ЮKassa
-        return await _yookassaService.getPayment(paymentId);
+        // Если нет в БД, получаем из ЮKassa и сохраняем в БД
+        logger.info('Payment $paymentId not found in DB, fetching from YooKassa');
+        final payment = await _yookassaService.getPayment(paymentId);
+        
+        // Сохраняем платеж в БД для последующих проверок
+        try {
+          await updatePaymentStatus(
+            paymentId: payment.id,
+            status: payment.status,
+            paid: payment.paid,
+            paymentObject: null, // Нет данных из webhook, используем данные из API
+          );
+        } catch (e) {
+          logger.severe('Failed to save payment from API to DB: $e');
+          // Продолжаем - возвращаем платеж из API
+        }
+        
+        return payment;
       }
 
       final row = dbResult.first;
-      return PaymentModel.fromJson(row.toColumnMap());
+      final paymentFromDb = PaymentModel.fromJson(row.toColumnMap());
+      
+      // Если платеж в БД имеет статус 'pending', проверяем актуальный статус в ЮKassa
+      // Это важно для тестового режима, где webhook может не прийти
+      if (paymentFromDb.status == 'pending' || paymentFromDb.status == 'waiting_for_capture') {
+        try {
+          final paymentFromYooKassa = await _yookassaService.getPayment(paymentId);
+          // Если статус изменился, обновляем в БД
+          if (paymentFromYooKassa.status != paymentFromDb.status || paymentFromYooKassa.paid != paymentFromDb.paid) {
+            logger.info('Payment status changed: ${paymentFromDb.status} -> ${paymentFromYooKassa.status}, updating DB');
+            await updatePaymentStatus(
+              paymentId: paymentId,
+              status: paymentFromYooKassa.status,
+              paid: paymentFromYooKassa.paid,
+              paymentObject: null,
+            );
+            return paymentFromYooKassa;
+          }
+        } catch (e) {
+          logger.info('Failed to check payment status from YooKassa: $e, using DB value');
+          // Используем значение из БД, если не удалось проверить в ЮKassa
+        }
+      }
+      
+      return paymentFromDb;
     } catch (e, stackTrace) {
       logger.severe('Failed to get payment: $e');
       logger.severe('Stack trace: $stackTrace');
@@ -135,7 +211,7 @@ class PaymentRepository {
     }
   }
 
-  /// Получение полных данных платежа из БД (включая subscription_type и period_days)
+  /// Получение полных данных платежа из БД (включая subscription_type_id и period_days)
   Future<Map<String, dynamic>?> getPaymentDataById(String paymentId) async {
     try {
       final dbResult = await _connection.execute(Sql.named('SELECT * FROM payments WHERE id = @id'), parameters: {'id': paymentId});
@@ -153,7 +229,7 @@ class PaymentRepository {
   }
 
   /// Обновление статуса платежа
-  /// Принимает paymentObject для получения metadata с subscription_type и period_days
+  /// Принимает paymentObject для получения metadata с subscription_type_id и period_days
   Future<void> updatePaymentStatus({required String paymentId, required String status, required bool paid, Map<String, dynamic>? paymentObject}) async {
     try {
       // Проверяем, существует ли платеж в БД
@@ -216,8 +292,8 @@ class PaymentRepository {
           }
         }
 
-        // Получаем subscription_type, period_days и user_id из metadata платежа
-        String subscriptionType = '';
+        // Получаем subscription_type_id, period_days и user_id из metadata платежа
+        int? subscriptionTypeId;
         int periodDays = 0;
         int userIdFromMetadata = 0;
 
@@ -225,7 +301,10 @@ class PaymentRepository {
         if (paymentObject != null) {
           final metadata = paymentObject['metadata'] as Map<String, dynamic>?;
           if (metadata != null) {
-            subscriptionType = metadata['subscription_type']?.toString() ?? '';
+            final subscriptionTypeIdStr = metadata['subscription_type_id'];
+            if (subscriptionTypeIdStr != null) {
+              subscriptionTypeId = subscriptionTypeIdStr is int ? subscriptionTypeIdStr : (int.tryParse(subscriptionTypeIdStr.toString()));
+            }
             final periodDaysStr = metadata['period_days'];
             if (periodDaysStr != null) {
               periodDays = periodDaysStr is int ? periodDaysStr : (int.tryParse(periodDaysStr.toString()) ?? 0);
@@ -253,17 +332,17 @@ class PaymentRepository {
           }
         }
 
-        logger.info('Inserting payment into DB: id=$paymentId, status=$status, amount=$amount, user_id=$finalUserId, subscription_type=$subscriptionType, period_days=$periodDays');
+        logger.info('Inserting payment into DB: id=$paymentId, status=$status, amount=$amount, user_id=$finalUserId, subscription_type_id=$subscriptionTypeId, period_days=$periodDays');
 
         try {
           await _connection.execute(
             Sql.named('''
               INSERT INTO payments (
                 id, status, amount, currency, description, 
-                payment_url, created_at, paid, subscription_type, period_days, user_id
+                payment_url, created_at, paid, subscription_type_id, period_days, user_id
               ) VALUES (
                 @id, @status, @amount, @currency, @description,
-                @payment_url, @created_at, @paid, @subscription_type, @period_days, @user_id
+                @payment_url, @created_at, @paid, @subscription_type_id, @period_days, @user_id
               )
             '''),
             parameters: {
@@ -275,7 +354,7 @@ class PaymentRepository {
               'payment_url': paymentUrl,
               'created_at': createdAt,
               'paid': paid,
-              'subscription_type': subscriptionType,
+              'subscription_type_id': subscriptionTypeId,
               'period_days': periodDays,
               'user_id': finalUserId,
             },
@@ -313,21 +392,35 @@ class PaymentRepository {
     required int userId,
     required String transactionId,
     required String originalTransactionId,
-    required String subscriptionType,
+    required int subscriptionTypeId,
     required int periodDays,
     required double amount,
     required DateTime purchaseDate,
   }) async {
     try {
+      // Получаем код типа подписки для описания
+      String subscriptionTypeCode = '';
+      try {
+        final typeResult = await _connection.execute(
+          Sql.named('SELECT code FROM subscription_types WHERE id = @id'),
+          parameters: {'id': subscriptionTypeId},
+        );
+        if (typeResult.isNotEmpty) {
+          subscriptionTypeCode = typeResult.first.toColumnMap()['code']?.toString() ?? '';
+        }
+      } catch (e) {
+        logger.info('Failed to get subscription type code: $e');
+      }
+      
       await _connection.execute(
         Sql.named('''
           INSERT INTO payments (
             id, status, amount, currency, description,
-            payment_url, created_at, paid, subscription_type, period_days, user_id,
+            payment_url, created_at, paid, subscription_type_id, period_days, user_id,
             payment_source, apple_transaction_id, apple_original_transaction_id
           ) VALUES (
             @id, @status, @amount, @currency, @description,
-            @payment_url, @created_at, @paid, @subscription_type, @period_days, @user_id,
+            @payment_url, @created_at, @paid, @subscription_type_id, @period_days, @user_id,
             @payment_source, @apple_transaction_id, @apple_original_transaction_id
           )
         '''),
@@ -336,11 +429,11 @@ class PaymentRepository {
           'status': 'succeeded',
           'amount': amount,
           'currency': 'USD', // Apple IAP всегда в USD (или валюта App Store)
-          'description': 'Apple In-App Purchase: $subscriptionType',
+          'description': 'Apple In-App Purchase: ${subscriptionTypeCode.isNotEmpty ? subscriptionTypeCode : 'subscription_type_id=$subscriptionTypeId'}',
           'payment_url': '',
           'created_at': purchaseDate,
           'paid': true,
-          'subscription_type': subscriptionType,
+          'subscription_type_id': subscriptionTypeId,
           'period_days': periodDays,
           'user_id': userId,
           'payment_source': 'apple_iap',

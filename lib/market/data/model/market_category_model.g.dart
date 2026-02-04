@@ -14,6 +14,7 @@ MarketCategoryModel _$MarketCategoryModelFromJson(Map<String, dynamic> json) =>
       iconUrl: json['icon_url'] as String?,
       productType: json['product_type'] as String,
       parentId: (json['parent_id'] as num?)?.toInt(),
+      partsMainCategoryId: (json['parts_main_category_id'] as num?)?.toInt(),
       displayOrder: (json['display_order'] as num?)?.toInt() ?? 0,
       isMain: json['is_main'] as bool? ?? false,
     );
@@ -27,6 +28,7 @@ Map<String, dynamic> _$MarketCategoryModelToJson(
       'icon_url': instance.iconUrl,
       'product_type': instance.productType,
       'parent_id': instance.parentId,
+      'parts_main_category_id': instance.partsMainCategoryId,
       'display_order': instance.displayOrder,
       'is_main': instance.isMain,
     };

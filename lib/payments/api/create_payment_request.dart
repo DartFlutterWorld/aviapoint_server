@@ -16,8 +16,8 @@ class CreatePaymentRequest {
     this.cancelUrl,
     this.userId, // ID пользователя для связи платежа с подпиской
     this.customerPhone, // Телефон покупателя для receipt
-    this.subscriptionType, // Тип подписки: 'monthly', 'quarterly', 'yearly', 'custom'
-    this.periodDays, // Количество дней для кастомной подписки
+    this.subscriptionTypeId, // ID типа подписки из таблицы subscription_types
+    this.periodDays, // Количество дней (берется из subscription_types, если не указано)
   });
 
   final double amount;
@@ -32,8 +32,8 @@ class CreatePaymentRequest {
   final int? userId;
   @JsonKey(name: 'customer_phone')
   final String? customerPhone;
-  @JsonKey(name: 'subscription_type')
-  final String? subscriptionType;
+  @JsonKey(name: 'subscription_type_id')
+  final int? subscriptionTypeId;
   @JsonKey(name: 'period_days')
   final int? periodDays;
 

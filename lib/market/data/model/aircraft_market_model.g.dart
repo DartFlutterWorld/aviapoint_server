@@ -12,6 +12,7 @@ AircraftMarketModel _$AircraftMarketModelFromJson(Map<String, dynamic> json) =>
       title: json['title'] as String,
       description: json['description'] as String?,
       price: (json['price'] as num).toInt(),
+      currency: json['currency'] as String? ?? 'RUB',
       aircraftSubcategoriesId:
           (json['aircraft_subcategories_id'] as num?)?.toInt(),
       sellerId: (json['seller_id'] as num).toInt(),
@@ -22,6 +23,7 @@ AircraftMarketModel _$AircraftMarketModelFromJson(Map<String, dynamic> json) =>
           : AircraftMarketModel._imageUrlsFromJson(
               json['additional_image_urls']),
       brand: json['brand'] as String?,
+      isPublished: json['is_published'] as bool? ?? true,
       isActive: json['is_active'] as bool? ?? true,
       viewsCount: (json['views_count'] as num?)?.toInt() ?? 0,
       createdAt:
@@ -55,6 +57,7 @@ Map<String, dynamic> _$AircraftMarketModelToJson(
       'title': instance.title,
       'description': instance.description,
       'price': instance.price,
+      'currency': instance.currency,
       'aircraft_subcategories_id': instance.aircraftSubcategoriesId,
       'seller_id': instance.sellerId,
       'location': instance.location,
@@ -62,6 +65,7 @@ Map<String, dynamic> _$AircraftMarketModelToJson(
       'additional_image_urls':
           AircraftMarketModel._imageUrlsToJson(instance.additionalImageUrls),
       'brand': instance.brand,
+      'is_published': instance.isPublished,
       'is_active': instance.isActive,
       'views_count': instance.viewsCount,
       'created_at':

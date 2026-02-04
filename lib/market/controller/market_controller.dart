@@ -206,6 +206,26 @@ class MarketController {
     });
   }
 
+  /// Получить историю цен для запчасти
+  @Route.get('/api/market/parts/<id>/price-history')
+  @OpenApiRoute()
+  Future<Response> getPartPriceHistory(Request request) async {
+    return wrapResponse(() async {
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Part ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid part ID'}), headers: jsonContentHeaders);
+      }
+
+      final priceHistory = await _repository.getPartPriceHistory(id);
+      return Response.ok(jsonEncode(priceHistory.map((h) => h.toJson()).toList()), headers: jsonContentHeaders);
+    });
+  }
+
   /// Создать объявление о самолёте (требуется авторизация)
   @Route.post('/api/market/aircraft')
   @OpenApiRoute()
@@ -376,6 +396,7 @@ class MarketController {
         title: body['title'] as String,
         description: body['description'] as String?,
         price: body['price'] is String ? int.parse(body['price'] as String) : (body['price'] as num).toInt(),
+        currency: (body['currency'] as String?) ?? 'RUB',
         aircraftSubcategoriesId: body['aircraft_subcategories_id'] != null
             ? (body['aircraft_subcategories_id'] is String ? int.tryParse(body['aircraft_subcategories_id'] as String) : (body['aircraft_subcategories_id'] as num).toInt())
             : null,
@@ -396,6 +417,7 @@ class MarketController {
             body['share_denominator'] != null ? (body['share_denominator'] is String ? int.tryParse(body['share_denominator'] as String) : (body['share_denominator'] as num).toInt()) : null,
         isLeasing: body['is_leasing'] != null ? (body['is_leasing'] is String ? body['is_leasing'] == 'true' : body['is_leasing'] as bool) : null,
         leasingConditions: body['leasing_conditions'] as String?,
+        isPublished: body['is_published'] != null ? (body['is_published'] is bool ? body['is_published'] as bool : body['is_published'].toString().toLowerCase() == 'true') : true,
       );
 
       final productId = product.id;
@@ -835,6 +857,7 @@ class MarketController {
           title: body['title'] as String?,
           description: body['description'] as String?,
           price: body['price'] != null ? (body['price'] is String ? int.tryParse(body['price'] as String) : (body['price'] as num).toInt()) : null,
+          currency: body['currency'] as String?,
           aircraftSubcategoriesId: body['aircraft_subcategories_id'] != null
               ? (body['aircraft_subcategories_id'] is String ? int.tryParse(body['aircraft_subcategories_id'] as String) : (body['aircraft_subcategories_id'] as num).toInt())
               : null,
@@ -966,6 +989,78 @@ class MarketController {
         }
         rethrow;
       }
+    });
+  }
+
+  /// Деактивировать объявление о самолете (только для админа - блокирует публикацию)
+  @Route.post('/api/market/aircraft/<id>/deactivate')
+  @OpenApiRoute()
+  Future<Response> deactivateAircraft(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем, что пользователь - админ
+      final profileRepository = await getIt.getAsync<ProfileRepository>();
+      final isAdmin = await profileRepository.isAdmin(userId);
+      if (!isAdmin) {
+        return Response.forbidden(jsonEncode({'error': 'Only admins can deactivate aircraft'}), headers: jsonContentHeaders);
+      }
+
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Product ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid product ID'}), headers: jsonContentHeaders);
+      }
+
+      final product = await _repository.deactivateAircraft(productId: id);
+      if (product == null) {
+        return Response.notFound(jsonEncode({'error': 'Product not found'}), headers: jsonContentHeaders);
+      }
+
+      return Response.ok(jsonEncode(product.toJson()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Активировать объявление о самолете (только для админа - разблокирует публикацию)
+  @Route.post('/api/market/aircraft/<id>/activate')
+  @OpenApiRoute()
+  Future<Response> activateAircraft(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем, что пользователь - админ
+      final profileRepository = await getIt.getAsync<ProfileRepository>();
+      final isAdmin = await profileRepository.isAdmin(userId);
+      if (!isAdmin) {
+        return Response.forbidden(jsonEncode({'error': 'Only admins can activate aircraft'}), headers: jsonContentHeaders);
+      }
+
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Product ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid product ID'}), headers: jsonContentHeaders);
+      }
+
+      final product = await _repository.activateAircraft(productId: id);
+      if (product == null) {
+        return Response.notFound(jsonEncode({'error': 'Product not found'}), headers: jsonContentHeaders);
+      }
+
+      return Response.ok(jsonEncode(product.toJson()), headers: jsonContentHeaders);
     });
   }
 
@@ -1430,5 +1525,997 @@ class MarketController {
     }
 
     return {'content-disposition': headers['content-disposition'], 'content-type': headers['content-type'], 'data': bodyBytes};
+  }
+
+  // ============================================
+  // API ДЛЯ КАТЕГОРИЙ ЗАПЧАСТЕЙ (ДВУХЭТАПНЫЙ ВЫБОР)
+  // ============================================
+
+  /// Получить основные категории запчастей (типы техники)
+  @Route.get('/api/market/parts/main-categories')
+  @OpenApiRoute()
+  Future<Response> getPartsMainCategories(Request request) async {
+    return wrapResponse(() async {
+      final categories = await _repository.getPartsMainCategories();
+      return Response.ok(jsonEncode(categories.map((c) => c.toJson()).toList()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Получить подкатегории запчастей по основной категории
+  @Route.get('/api/market/parts/subcategories')
+  @OpenApiRoute()
+  Future<Response> getPartsSubcategories(Request request) async {
+    return wrapResponse(() async {
+      final params = request.url.queryParameters;
+      final mainCategoryId = params['main_category_id'] != null ? int.tryParse(params['main_category_id']!) : null;
+      final parentId = params['parent_id'] != null ? int.tryParse(params['parent_id']!) : null;
+
+      List categories;
+      if (parentId != null) {
+        categories = await _repository.getPartsSubcategoriesByParent(parentId);
+      } else if (mainCategoryId != null) {
+        categories = await _repository.getPartsSubcategoriesByMainCategory(mainCategoryId);
+      } else {
+        return Response.badRequest(
+          body: jsonEncode({'error': 'Either main_category_id or parent_id is required'}),
+          headers: jsonContentHeaders,
+        );
+      }
+
+      return Response.ok(jsonEncode(categories.map((c) => c.toJson()).toList()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Получить список производителей запчастей
+  @Route.get('/api/market/parts/manufacturers')
+  @OpenApiRoute()
+  Future<Response> getPartsManufacturers(Request request) async {
+    return wrapResponse(() async {
+      final search = request.url.queryParameters['search'];
+      final manufacturers = await _repository.getPartsManufacturers(search: search);
+      return Response.ok(jsonEncode(manufacturers), headers: jsonContentHeaders);
+    });
+  }
+
+  // ============================================
+  // API ДЛЯ ОБЪЯВЛЕНИЙ О ЗАПЧАСТЯХ
+  // ============================================
+
+  /// Получить список объявлений о запчастях
+  @Route.get('/api/market/parts')
+  @OpenApiRoute()
+  Future<Response> getParts(Request request) async {
+    return wrapResponse(() async {
+      final params = request.url.queryParameters;
+
+      // Получаем ID пользователя из токена
+      int? userId;
+      try {
+        final authHeader = request.headers['Authorization'];
+        if (authHeader != null && authHeader.startsWith('Bearer ')) {
+          final token = authHeader.substring(7);
+          if (_tokenService.validateToken(token)) {
+            final userIdStr = _tokenService.getUserIdFromToken(token);
+            if (userIdStr != null && userIdStr.isNotEmpty) {
+              userId = int.tryParse(userIdStr);
+            }
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки авторизации
+      }
+
+      final mainCategoryId = params['main_category_id'] != null ? int.tryParse(params['main_category_id']!) : null;
+      final subcategoryId = params['subcategory_id'] != null ? int.tryParse(params['subcategory_id']!) : null;
+      final sellerId = params['seller_id'] != null ? int.tryParse(params['seller_id']!) : null;
+      final manufacturerId = params['manufacturer_id'] != null ? int.tryParse(params['manufacturer_id']!) : null;
+      final searchQuery = params['search'];
+      final condition = params['condition'];
+      final priceFrom = params['price_from'] != null ? int.tryParse(params['price_from']!) : null;
+      final priceTo = params['price_to'] != null ? int.tryParse(params['price_to']!) : null;
+      final sortBy = params['sort_by'] ?? 'default';
+      final limit = params['limit'] != null ? int.tryParse(params['limit']!) ?? 20 : 20;
+      final offset = params['offset'] != null ? int.tryParse(params['offset']!) ?? 0 : 0;
+      final includeInactiveParam = params['include_inactive'] == 'true';
+      final includeInactive = includeInactiveParam && userId != null && sellerId != null && userId == sellerId;
+
+      final parts = await _repository.getParts(
+        mainCategoryId: mainCategoryId,
+        subcategoryId: subcategoryId,
+        sellerId: sellerId,
+        manufacturerId: manufacturerId,
+        searchQuery: searchQuery,
+        condition: condition,
+        priceFrom: priceFrom,
+        priceTo: priceTo,
+        sortBy: sortBy,
+        userId: userId,
+        includeInactive: includeInactive,
+        limit: limit,
+        offset: offset,
+      );
+
+      // Логирование для отладки
+      // print('🔵 [getParts] Найдено запчастей: ${parts.length}, includeInactive: $includeInactive, userId: $userId, sellerId: $sellerId');
+      // if (parts.isEmpty) {
+      //   print('⚠️ [getParts] Список пуст! Фильтры: mainCategoryId=$mainCategoryId, subcategoryId=$subcategoryId, searchQuery=$searchQuery');
+      // }
+
+      return Response.ok(jsonEncode(parts.map((p) => p.toJson()).toList()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Получить объявление о запчасти по ID
+  @Route.get('/api/market/parts/<id>')
+  @OpenApiRoute()
+  Future<Response> getPartById(Request request) async {
+    return wrapResponse(() async {
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Part ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid part ID'}), headers: jsonContentHeaders);
+      }
+
+      // Получаем ID пользователя из токена
+      int? userId;
+      try {
+        final authHeader = request.headers['Authorization'];
+        if (authHeader != null && authHeader.startsWith('Bearer ')) {
+          final token = authHeader.substring(7);
+          if (_tokenService.validateToken(token)) {
+            final userIdStr = _tokenService.getUserIdFromToken(token);
+            if (userIdStr != null && userIdStr.isNotEmpty) {
+              userId = int.tryParse(userIdStr);
+            }
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки авторизации
+      }
+
+      final part = await _repository.getPartById(id, userId: userId);
+      if (part == null) {
+        return Response.notFound(jsonEncode({'error': 'Part not found'}), headers: jsonContentHeaders);
+      }
+
+      // Увеличиваем счетчик просмотров
+      await _repository.incrementPartViews(id);
+
+      return Response.ok(jsonEncode(part.toJson()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Создать объявление о запчасти
+  @Route.post('/api/market/parts')
+  @OpenApiRoute()
+  Future<Response> createPart(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем Content-Type
+      final contentType = request.headers['Content-Type'] ?? '';
+      final isMultipart = contentType.startsWith('multipart/form-data');
+
+      Map<String, dynamic> body = {};
+      String? mainImageUrl;
+      List<String> additionalImageUrls = [];
+      String? mainImageTempPath;
+      final additionalImagesTempPaths = <String>[];
+
+      if (isMultipart) {
+        // Парсим multipart запрос
+        final mediaType = MediaType.parse(contentType);
+        final boundary = mediaType.parameters['boundary'];
+        if (boundary == null) {
+          return Response.badRequest(body: jsonEncode({'error': 'Missing boundary in Content-Type'}), headers: jsonContentHeaders);
+        }
+
+        // Читаем тело запроса
+        final bodyBytes = <int>[];
+        await for (final chunk in request.read()) {
+          bodyBytes.addAll(chunk);
+        }
+
+        // Парсим multipart вручную
+        final boundaryMarker = '--$boundary';
+        final boundaryBytes = utf8.encode(boundaryMarker);
+        final parts = <Map<String, dynamic>>[];
+
+        int searchStart = 0;
+        while (true) {
+          final boundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+          if (boundaryIndex == -1) break;
+
+          searchStart = boundaryIndex + boundaryBytes.length;
+          if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 13) searchStart++;
+          if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 10) searchStart++;
+
+          final nextBoundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+          final partEnd = nextBoundaryIndex == -1 ? bodyBytes.length : nextBoundaryIndex;
+
+          if (partEnd > searchStart) {
+            final partBytes = bodyBytes.sublist(searchStart, partEnd);
+            final partData = _parseMultipartPart(partBytes);
+            if (partData != null) {
+              parts.add(partData);
+            }
+          }
+
+          if (nextBoundaryIndex == -1) break;
+          searchStart = nextBoundaryIndex;
+        }
+
+        // Сохраняем файлы во временную директорию
+        final tempDir = Directory('public/market/parts/temp');
+        if (!await tempDir.exists()) {
+          await tempDir.create(recursive: true);
+        }
+
+        for (final part in parts) {
+          final contentDisposition = part['content-disposition'] as String?;
+          if (contentDisposition == null) continue;
+
+          // Извлекаем имя поля
+          final nameMatch = RegExp('name=["\']?([^"\';\\s]+)').firstMatch(contentDisposition);
+          if (nameMatch == null) continue;
+          final fieldName = nameMatch.group(1);
+          if (fieldName == null) continue;
+
+          // Обрабатываем текстовые поля
+          if (fieldName != 'main_image' && fieldName != 'additional_images') {
+            final fieldData = part['data'] as List<int>?;
+            if (fieldData != null && fieldData.isNotEmpty) {
+              final fieldValue = utf8.decode(fieldData);
+              if (fieldName.endsWith('[]')) {
+                final arrayName = fieldName.substring(0, fieldName.length - 2);
+                if (body[arrayName] == null) {
+                  body[arrayName] = <String>[];
+                }
+                (body[arrayName] as List).add(fieldValue);
+              } else {
+                body[fieldName] = fieldValue;
+              }
+            }
+            continue;
+          }
+
+          // Обрабатываем изображения
+          final imageData = part['data'] as List<int>?;
+          if (imageData != null && imageData.isNotEmpty) {
+            // Валидация размера (максимум 5MB)
+            if (imageData.length > 5 * 1024 * 1024) {
+              continue; // Пропускаем слишком большие файлы
+            }
+
+            // Определяем расширение
+            String extension = 'jpg';
+            final partContentType = part['content-type'] as String?;
+            if (partContentType != null) {
+              final partMediaType = MediaType.parse(partContentType);
+              if (partMediaType.subtype == 'jpeg' || partMediaType.subtype == 'jpg') {
+                extension = 'jpg';
+              } else if (partMediaType.subtype == 'png') {
+                extension = 'png';
+              } else if (partMediaType.subtype == 'webp') {
+                extension = 'webp';
+              }
+            }
+
+            // Сохраняем во временную директорию
+            final timestamp = DateTime.now().millisecondsSinceEpoch;
+            final random = DateTime.now().microsecondsSinceEpoch % 1000000;
+            final fileName = '$fieldName.$timestamp.$random.$extension';
+            final filePath = 'public/market/parts/temp/$fileName';
+            final file = File(filePath);
+            await file.writeAsBytes(imageData);
+
+            if (fieldName == 'main_image') {
+              mainImageTempPath = filePath;
+            } else if (fieldName == 'additional_images') {
+              additionalImagesTempPaths.add(filePath);
+            }
+          }
+        }
+      } else {
+        // Обычный JSON запрос
+        final bodyStr = await request.readAsString();
+        if (bodyStr.isEmpty) {
+          return Response.badRequest(body: jsonEncode({'error': 'Request body is required'}), headers: jsonContentHeaders);
+        }
+        body = jsonDecode(bodyStr) as Map<String, dynamic>;
+      }
+
+      final title = body['title'] as String?;
+      if (title == null || title.isEmpty) {
+        return Response.badRequest(body: jsonEncode({'error': 'Title is required'}), headers: jsonContentHeaders);
+      }
+
+      final price = body['price'];
+      if (price == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Price is required'}), headers: jsonContentHeaders);
+      }
+      final priceInt = price is int ? price : (price is num ? price.toInt() : int.tryParse(price.toString()));
+
+      if (priceInt == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid price'}), headers: jsonContentHeaders);
+      }
+
+      // Парсим совместимые модели самолетов
+      List<int>? compatibleAircraftModelIds;
+      if (body['compatible_aircraft_model_ids'] != null) {
+        if (body['compatible_aircraft_model_ids'] is List) {
+          compatibleAircraftModelIds =
+              (body['compatible_aircraft_model_ids'] as List).map((e) => e is int ? e : (e is num ? e.toInt() : int.tryParse(e.toString()))).where((e) => e != null).cast<int>().toList();
+        } else if (body['compatible_aircraft_model_ids'] is String) {
+          // Обрабатываем строку с запятыми
+          final idsStr = body['compatible_aircraft_model_ids'] as String;
+          if (idsStr.isNotEmpty) {
+            compatibleAircraftModelIds = idsStr.split(',').map((e) => int.tryParse(e.trim())).whereType<int>().toList();
+          }
+        }
+      }
+
+      // Парсим дополнительные изображения из JSON (если не multipart)
+      if (!isMultipart) {
+        if (body['additional_image_urls'] != null && body['additional_image_urls'] is List) {
+          additionalImageUrls = (body['additional_image_urls'] as List).map((e) => e.toString()).toList();
+        }
+      }
+
+      // Создаем запчасть в БД (без изображений пока, если multipart)
+      final part = await _repository.createPart(
+        sellerId: userId,
+        title: title,
+        description: body['description'] as String?,
+        price: priceInt,
+        currency: body['currency'] as String? ?? 'RUB',
+        partsMainCategoryId: body['parts_main_category_id'] != null
+            ? (body['parts_main_category_id'] is String ? int.tryParse(body['parts_main_category_id'] as String) : (body['parts_main_category_id'] as num).toInt())
+            : null,
+        partsSubcategoryId: body['parts_subcategory_id'] != null
+            ? (body['parts_subcategory_id'] is String ? int.tryParse(body['parts_subcategory_id'] as String) : (body['parts_subcategory_id'] as num).toInt())
+            : null,
+        manufacturerId: body['manufacturer_id'] != null ? (body['manufacturer_id'] is String ? int.tryParse(body['manufacturer_id'] as String) : (body['manufacturer_id'] as num).toInt()) : null,
+        manufacturerName: body['manufacturer_name'] as String?,
+        partNumber: body['part_number'] as String?,
+        oemNumber: body['oem_number'] as String?,
+        condition: body['condition'] as String?,
+        quantity: body['quantity'] != null
+            ? (body['quantity'] is int ? body['quantity'] : (body['quantity'] is String ? int.tryParse(body['quantity'] as String) ?? 1 : (body['quantity'] as num).toInt()))
+            : 1,
+        mainImageUrl: isMultipart ? null : (body['main_image_url'] as String?),
+        additionalImageUrls: isMultipart ? const [] : additionalImageUrls,
+        weightKg: body['weight_kg'] != null ? (body['weight_kg'] is num ? (body['weight_kg'] as num).toDouble() : double.tryParse(body['weight_kg'].toString())) : null,
+        dimensionsLengthCm: body['dimensions_length_cm'] != null
+            ? (body['dimensions_length_cm'] is num ? (body['dimensions_length_cm'] as num).toDouble() : double.tryParse(body['dimensions_length_cm'].toString()))
+            : null,
+        dimensionsWidthCm: body['dimensions_width_cm'] != null
+            ? (body['dimensions_width_cm'] is num ? (body['dimensions_width_cm'] as num).toDouble() : double.tryParse(body['dimensions_width_cm'].toString()))
+            : null,
+        dimensionsHeightCm: body['dimensions_height_cm'] != null
+            ? (body['dimensions_height_cm'] is num ? (body['dimensions_height_cm'] as num).toDouble() : double.tryParse(body['dimensions_height_cm'].toString()))
+            : null,
+        compatibleAircraftModelsText: body['compatible_aircraft_models_text'] as String?,
+        location: body['location'] as String?,
+        compatibleAircraftModelIds: compatibleAircraftModelIds,
+        isPublished: body['is_published'] != null ? (body['is_published'] is bool ? body['is_published'] as bool : body['is_published'].toString().toLowerCase() == 'true') : true,
+      );
+
+      final partId = part.id;
+
+      // Если multipart, перемещаем файлы из временной директории в директорию запчасти
+      if (isMultipart) {
+        // Создаем директорию для изображений запчасти
+        final partDir = Directory('public/market/parts/$partId');
+        if (!await partDir.exists()) {
+          await partDir.create(recursive: true);
+        }
+
+        // Перемещаем основное изображение
+        if (mainImageTempPath != null) {
+          final tempFile = File(mainImageTempPath);
+          if (await tempFile.exists()) {
+            final fileName = mainImageTempPath.split('/').last;
+            final newPath = 'public/market/parts/$partId/$fileName';
+            await tempFile.copy(newPath);
+            await tempFile.delete();
+            mainImageUrl = 'market/parts/$partId/$fileName';
+          }
+        }
+
+        // Перемещаем дополнительные изображения
+        for (final tempPath in additionalImagesTempPaths) {
+          final tempFile = File(tempPath);
+          if (await tempFile.exists()) {
+            final fileName = tempPath.split('/').last;
+            final newPath = 'public/market/parts/$partId/$fileName';
+            await tempFile.copy(newPath);
+            await tempFile.delete();
+            additionalImageUrls.add('market/parts/$partId/$fileName');
+          }
+        }
+
+        // Обновляем запчасть с URL изображений
+        if (mainImageUrl != null || additionalImageUrls.isNotEmpty) {
+          await _repository.updatePart(
+            partId: partId,
+            sellerId: userId,
+            mainImageUrl: mainImageUrl,
+            additionalImageUrls: additionalImageUrls,
+          );
+        }
+
+        // Получаем обновленную запчасть
+        final updatedPart = await _repository.getPartById(partId, userId: userId);
+        if (updatedPart != null) {
+          return Response.ok(jsonEncode(updatedPart.toJson()), headers: jsonContentHeaders);
+        }
+      }
+
+      return Response.ok(jsonEncode(part.toJson()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Обновить объявление о запчасти
+  @Route.put('/api/market/parts/<id>')
+  @OpenApiRoute()
+  Future<Response> updatePart(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Part ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid part ID'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем права доступа
+      final part = await _repository.getPartById(id, userId: userId);
+      if (part == null) {
+        return Response.notFound(jsonEncode({'error': 'Part not found'}), headers: jsonContentHeaders);
+      }
+
+      final isOwner = part.sellerId == userId;
+      if (!isOwner) {
+        final profileRepository = await getIt.getAsync<ProfileRepository>();
+        final isAdmin = await profileRepository.isAdmin(userId);
+        if (!isAdmin) {
+          return Response.forbidden(jsonEncode({'error': 'You do not have permission to update this part'}), headers: jsonContentHeaders);
+        }
+      }
+
+      // Проверяем Content-Type
+      final contentType = request.headers['Content-Type'] ?? '';
+      final isMultipart = contentType.startsWith('multipart/form-data');
+
+      Map<String, dynamic> body = {};
+      String? mainImageUrl;
+      List<String>? additionalImageUrls;
+
+      if (isMultipart) {
+        // Парсим multipart запрос (аналогично updateAircraft)
+        final mediaType = MediaType.parse(contentType);
+        final boundary = mediaType.parameters['boundary'];
+        if (boundary == null) {
+          return Response.badRequest(body: jsonEncode({'error': 'Missing boundary in Content-Type'}), headers: jsonContentHeaders);
+        }
+
+        // Читаем тело запроса
+        final bodyBytes = <int>[];
+        await for (final chunk in request.read()) {
+          bodyBytes.addAll(chunk);
+        }
+
+        // Парсим multipart вручную
+        final boundaryMarker = '--$boundary';
+        final boundaryBytes = utf8.encode(boundaryMarker);
+        final parts = <Map<String, dynamic>>[];
+
+        int searchStart = 0;
+        while (true) {
+          final boundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+          if (boundaryIndex == -1) break;
+
+          searchStart = boundaryIndex + boundaryBytes.length;
+          if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 13) searchStart++;
+          if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 10) searchStart++;
+
+          final nextBoundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+          final partEnd = nextBoundaryIndex == -1 ? bodyBytes.length : nextBoundaryIndex;
+
+          if (partEnd > searchStart) {
+            final partBytes = bodyBytes.sublist(searchStart, partEnd);
+            final partData = _parseMultipartPart(partBytes);
+            if (partData != null) {
+              parts.add(partData);
+            }
+          }
+
+          if (nextBoundaryIndex == -1) break;
+          searchStart = nextBoundaryIndex;
+        }
+
+        // Создаем директорию для изображений запчасти
+        final publicDir = Directory('public');
+        if (!await publicDir.exists()) {
+          await publicDir.create(recursive: true);
+        }
+
+        final marketDir = Directory('public/market');
+        if (!await marketDir.exists()) {
+          await marketDir.create(recursive: true);
+        }
+
+        final partsDir = Directory('public/market/parts');
+        if (!await partsDir.exists()) {
+          await partsDir.create(recursive: true);
+        }
+
+        final partDir = Directory('public/market/parts/$id');
+        if (!await partDir.exists()) {
+          await partDir.create(recursive: true);
+        }
+
+        // Обрабатываем части multipart
+        final additionalImageUrlsList = <String>[];
+
+        for (final partData in parts) {
+          final contentDisposition = partData['content-disposition'] as String?;
+          if (contentDisposition == null) continue;
+
+          // Извлекаем имя поля
+          final nameMatch = RegExp('name=["\']?([^"\';\\s]+)').firstMatch(contentDisposition);
+          if (nameMatch == null) continue;
+          final fieldName = nameMatch.group(1);
+          if (fieldName == null) continue;
+
+          // Обрабатываем текстовые поля
+          if (fieldName != 'main_image' && fieldName != 'additional_images') {
+            final fieldData = partData['data'] as List<int>?;
+            if (fieldData != null && fieldData.isNotEmpty) {
+              final fieldValue = utf8.decode(fieldData);
+              // Обрабатываем массивы (например, additional_image_urls[])
+              if (fieldName.endsWith('[]')) {
+                final arrayName = fieldName.substring(0, fieldName.length - 2);
+                if (body[arrayName] == null) {
+                  body[arrayName] = <String>[];
+                }
+                (body[arrayName] as List).add(fieldValue);
+              } else {
+                body[fieldName] = fieldValue;
+              }
+            }
+            continue;
+          }
+
+          // Обрабатываем основное изображение
+          if (fieldName == 'main_image') {
+            final imageData = partData['data'] as List<int>?;
+            if (imageData != null && imageData.isNotEmpty) {
+              // Валидация размера (максимум 5MB)
+              if (imageData.length > 5 * 1024 * 1024) {
+                return Response.badRequest(body: jsonEncode({'error': 'Main image file size exceeds 5MB limit'}), headers: jsonContentHeaders);
+              }
+
+              // Определяем расширение
+              String extension = 'jpg';
+              final partContentType = partData['content-type'] as String?;
+              if (partContentType != null) {
+                final partMediaType = MediaType.parse(partContentType);
+                if (partMediaType.subtype == 'jpeg' || partMediaType.subtype == 'jpg') {
+                  extension = 'jpg';
+                } else if (partMediaType.subtype == 'png') {
+                  extension = 'png';
+                } else if (partMediaType.subtype == 'webp') {
+                  extension = 'webp';
+                }
+              }
+
+              // Сохраняем изображение
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final random = DateTime.now().microsecondsSinceEpoch % 1000000;
+              final fileName = 'main.$timestamp.$random.$extension';
+              final filePath = 'public/market/parts/$id/$fileName';
+              final file = File(filePath);
+              await file.writeAsBytes(imageData);
+
+              mainImageUrl = 'market/parts/$id/$fileName';
+            }
+            continue;
+          }
+
+          // Обрабатываем дополнительные изображения
+          if (fieldName == 'additional_images') {
+            final imageData = partData['data'] as List<int>?;
+            if (imageData != null && imageData.isNotEmpty) {
+              // Валидация размера (максимум 5MB)
+              if (imageData.length > 5 * 1024 * 1024) {
+                continue; // Пропускаем слишком большие файлы
+              }
+
+              // Определяем расширение
+              String extension = 'jpg';
+              final partContentType = partData['content-type'] as String?;
+              if (partContentType != null) {
+                final partMediaType = MediaType.parse(partContentType);
+                if (partMediaType.subtype == 'jpeg' || partMediaType.subtype == 'jpg') {
+                  extension = 'jpg';
+                } else if (partMediaType.subtype == 'png') {
+                  extension = 'png';
+                } else if (partMediaType.subtype == 'webp') {
+                  extension = 'webp';
+                }
+              }
+
+              // Сохраняем изображение
+              final timestamp = DateTime.now().millisecondsSinceEpoch;
+              final random = DateTime.now().microsecondsSinceEpoch % 1000000;
+              final fileName = 'additional.$timestamp.$random.$extension';
+              final filePath = 'public/market/parts/$id/$fileName';
+              final file = File(filePath);
+              await file.writeAsBytes(imageData);
+
+              additionalImageUrlsList.add('market/parts/$id/$fileName');
+            }
+            continue;
+          }
+        }
+
+        // Если mainImageUrl не был установлен из файла, но есть в body, используем его
+        if (mainImageUrl == null && body.containsKey('main_image_url')) {
+          final bodyMainImageUrl = body['main_image_url'] as String?;
+          mainImageUrl = bodyMainImageUrl;
+        }
+
+        // Обрабатываем дополнительные изображения
+        if (additionalImageUrlsList.isNotEmpty) {
+          // Если пришли новые файлы - объединяем с существующими из body
+          final existingUrls = body['additional_image_urls'] != null ? (body['additional_image_urls'] is List ? List<String>.from(body['additional_image_urls'] as List) : []) : [];
+          additionalImageUrls = [...existingUrls, ...additionalImageUrlsList];
+        } else if (body.containsKey('additional_image_urls')) {
+          // Если поле передано явно, используем его (может быть пустой список '[]')
+          if (body['additional_image_urls'] is List) {
+            additionalImageUrls = List<String>.from(body['additional_image_urls'] as List);
+          } else if (body['additional_image_urls'] is String && body['additional_image_urls'] == '[]') {
+            // Если передана строка '[]', значит нужно удалить все
+            additionalImageUrls = [];
+          } else {
+            additionalImageUrls = [];
+          }
+        } else {
+          // Если ничего не передано, сохраняем существующие
+          additionalImageUrls = part.additionalImageUrls;
+        }
+      } else {
+        // Обычный JSON запрос
+        final bodyStr = await request.readAsString();
+        if (bodyStr.isEmpty) {
+          return Response.badRequest(body: jsonEncode({'error': 'Request body is required'}), headers: jsonContentHeaders);
+        }
+        body = jsonDecode(bodyStr) as Map<String, dynamic>;
+        mainImageUrl = body['main_image_url'] as String?;
+        additionalImageUrls = body['additional_image_urls'] != null ? List<String>.from(body['additional_image_urls'] as List) : null;
+      }
+
+      // Парсим совместимые модели самолетов
+      List<int>? compatibleAircraftModelIds;
+      if (body['compatible_aircraft_model_ids'] != null) {
+        if (body['compatible_aircraft_model_ids'] is List) {
+          compatibleAircraftModelIds =
+              (body['compatible_aircraft_model_ids'] as List).map((e) => e is int ? e : (e is num ? e.toInt() : int.tryParse(e.toString()))).where((e) => e != null).cast<int>().toList();
+        } else if (body['compatible_aircraft_model_ids'] is String) {
+          // Обрабатываем строку с запятыми
+          final idsStr = body['compatible_aircraft_model_ids'] as String;
+          if (idsStr.isNotEmpty) {
+            compatibleAircraftModelIds = idsStr.split(',').map((e) => int.tryParse(e.trim())).whereType<int>().toList();
+          }
+        }
+      }
+
+      final updatedPartResult = await _repository.updatePart(
+        partId: id,
+        sellerId: userId,
+        title: body['title'] as String?,
+        description: body['description'] as String?,
+        price: body['price'] != null ? (body['price'] is int ? body['price'] : (body['price'] is num ? (body['price'] as num).toInt() : int.tryParse(body['price'].toString()))) : null,
+        currency: body['currency'] as String?,
+        partsMainCategoryId: body['parts_main_category_id'] != null
+            ? (body['parts_main_category_id'] is String ? int.tryParse(body['parts_main_category_id'] as String) : (body['parts_main_category_id'] as num).toInt())
+            : null,
+        partsSubcategoryId: body['parts_subcategory_id'] != null
+            ? (body['parts_subcategory_id'] is String ? int.tryParse(body['parts_subcategory_id'] as String) : (body['parts_subcategory_id'] as num).toInt())
+            : null,
+        manufacturerId: body['manufacturer_id'] != null ? (body['manufacturer_id'] is String ? int.tryParse(body['manufacturer_id'] as String) : (body['manufacturer_id'] as num).toInt()) : null,
+        manufacturerName: body['manufacturer_name'] as String?,
+        partNumber: body['part_number'] as String?,
+        oemNumber: body['oem_number'] as String?,
+        condition: body['condition'] as String?,
+        quantity: body['quantity'] != null
+            ? (body['quantity'] is int ? body['quantity'] : (body['quantity'] is String ? int.tryParse(body['quantity'] as String) : (body['quantity'] as num).toInt()))
+            : null,
+        mainImageUrl: body['main_image_url'] as String?,
+        additionalImageUrls: additionalImageUrls,
+        weightKg: body['weight_kg'] != null ? (body['weight_kg'] is num ? (body['weight_kg'] as num).toDouble() : double.tryParse(body['weight_kg'].toString())) : null,
+        dimensionsLengthCm: body['dimensions_length_cm'] != null
+            ? (body['dimensions_length_cm'] is num ? (body['dimensions_length_cm'] as num).toDouble() : double.tryParse(body['dimensions_length_cm'].toString()))
+            : null,
+        dimensionsWidthCm: body['dimensions_width_cm'] != null
+            ? (body['dimensions_width_cm'] is num ? (body['dimensions_width_cm'] as num).toDouble() : double.tryParse(body['dimensions_width_cm'].toString()))
+            : null,
+        dimensionsHeightCm: body['dimensions_height_cm'] != null
+            ? (body['dimensions_height_cm'] is num ? (body['dimensions_height_cm'] as num).toDouble() : double.tryParse(body['dimensions_height_cm'].toString()))
+            : null,
+        compatibleAircraftModelsText: body['compatible_aircraft_models_text'] as String?,
+        location: body['location'] as String?,
+        compatibleAircraftModelIds: compatibleAircraftModelIds,
+      );
+
+      if (updatedPartResult == null) {
+        return Response.notFound(jsonEncode({'error': 'Part not found'}), headers: jsonContentHeaders);
+      }
+
+      return Response.ok(jsonEncode(updatedPartResult.toJson()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Опубликовать объявление о запчасти
+  @Route.post('/api/market/parts/<id>/publish')
+  @OpenApiRoute()
+  Future<Response> publishPart(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Part ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid part ID'}), headers: jsonContentHeaders);
+      }
+
+      final part = await _repository.publishPart(partId: id, sellerId: userId);
+      if (part == null) {
+        return Response.notFound(jsonEncode({'error': 'Part not found'}), headers: jsonContentHeaders);
+      }
+
+      return Response.ok(jsonEncode(part.toJson()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Снять с публикации
+  @Route.post('/api/market/parts/<id>/unpublish')
+  @OpenApiRoute()
+  Future<Response> unpublishPart(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Part ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid part ID'}), headers: jsonContentHeaders);
+      }
+
+      final part = await _repository.unpublishPart(partId: id, sellerId: userId);
+      if (part == null) {
+        return Response.notFound(jsonEncode({'error': 'Part not found'}), headers: jsonContentHeaders);
+      }
+
+      return Response.ok(jsonEncode(part.toJson()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Деактивировать объявление (только для админа - блокирует публикацию)
+  @Route.post('/api/market/parts/<id>/deactivate')
+  @OpenApiRoute()
+  Future<Response> deactivatePart(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем, что пользователь - админ
+      final profileRepository = await getIt.getAsync<ProfileRepository>();
+      final isAdmin = await profileRepository.isAdmin(userId);
+      if (!isAdmin) {
+        return Response.forbidden(jsonEncode({'error': 'Only admins can deactivate parts'}), headers: jsonContentHeaders);
+      }
+
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Part ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid part ID'}), headers: jsonContentHeaders);
+      }
+
+      final part = await _repository.deactivatePart(partId: id);
+      if (part == null) {
+        return Response.notFound(jsonEncode({'error': 'Part not found'}), headers: jsonContentHeaders);
+      }
+
+      return Response.ok(jsonEncode(part.toJson()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Активировать объявление (только для админа - разблокирует публикацию)
+  @Route.post('/api/market/parts/<id>/activate')
+  @OpenApiRoute()
+  Future<Response> activatePart(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      // Проверяем, что пользователь - админ
+      final profileRepository = await getIt.getAsync<ProfileRepository>();
+      final isAdmin = await profileRepository.isAdmin(userId);
+      if (!isAdmin) {
+        return Response.forbidden(jsonEncode({'error': 'Only admins can activate parts'}), headers: jsonContentHeaders);
+      }
+
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Part ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid part ID'}), headers: jsonContentHeaders);
+      }
+
+      final part = await _repository.activatePart(partId: id);
+      if (part == null) {
+        return Response.notFound(jsonEncode({'error': 'Part not found'}), headers: jsonContentHeaders);
+      }
+
+      return Response.ok(jsonEncode(part.toJson()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Удалить объявление о запчасти
+  @Route.delete('/api/market/parts/<id>')
+  @OpenApiRoute()
+  Future<Response> deletePart(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Part ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid part ID'}), headers: jsonContentHeaders);
+      }
+
+      final deleted = await _repository.deletePart(partId: id, sellerId: userId);
+      if (!deleted) {
+        return Response.notFound(jsonEncode({'error': 'Part not found'}), headers: jsonContentHeaders);
+      }
+
+      return Response.ok(jsonEncode({'message': 'Part deleted successfully'}), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Добавить в избранное
+  @Route.post('/api/market/parts/<id>/favorite')
+  @OpenApiRoute()
+  Future<Response> addPartToFavorites(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Part ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid part ID'}), headers: jsonContentHeaders);
+      }
+
+      await _repository.addPartToFavorites(userId, id);
+      return Response.ok(jsonEncode({'message': 'Part added to favorites'}), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Удалить из избранного
+  @Route.delete('/api/market/parts/<id>/favorite')
+  @OpenApiRoute()
+  Future<Response> removePartFromFavorites(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      final idStr = request.params['id'];
+      if (idStr == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Part ID is required'}), headers: jsonContentHeaders);
+      }
+
+      final id = int.tryParse(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid part ID'}), headers: jsonContentHeaders);
+      }
+
+      await _repository.removePartFromFavorites(userId, id);
+      return Response.ok(jsonEncode({'message': 'Part removed from favorites'}), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Получить избранные запчасти
+  @Route.get('/api/market/parts/favorites')
+  @OpenApiRoute()
+  Future<Response> getFavoriteParts(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      final params = request.url.queryParameters;
+      final limit = params['limit'] != null ? int.tryParse(params['limit']!) ?? 20 : 20;
+      final offset = params['offset'] != null ? int.tryParse(params['offset']!) ?? 0 : 0;
+
+      final parts = await _repository.getFavoriteParts(userId, limit: limit, offset: offset);
+      return Response.ok(jsonEncode(parts.map((p) => p.toJson()).toList()), headers: jsonContentHeaders);
+    });
+  }
+
+  /// Вспомогательный метод для получения userId из запроса
+  int? _getUserIdFromRequest(Request request) {
+    try {
+      final authHeader = request.headers['Authorization'];
+      if (authHeader != null && authHeader.startsWith('Bearer ')) {
+        final token = authHeader.substring(7);
+        if (_tokenService.validateToken(token)) {
+          final userIdStr = _tokenService.getUserIdFromToken(token);
+          if (userIdStr != null && userIdStr.isNotEmpty) {
+            return int.tryParse(userIdStr);
+          }
+        }
+      }
+    } catch (e) {
+      // Игнорируем ошибки
+    }
+    return null;
   }
 }

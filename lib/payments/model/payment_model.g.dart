@@ -16,7 +16,9 @@ PaymentModel _$PaymentModelFromJson(Map<String, dynamic> json) => PaymentModel(
       createdAt: PaymentModel._dateTimeFromJson(json['created_at']),
       paid: json['paid'] as bool,
       userId: PaymentModel._intFromJson(json['user_id']),
-      subscriptionType: json['subscription_type'] as String,
+      subscriptionTypeId: json['subscription_type_id'] == null
+          ? 0
+          : PaymentModel._intFromJsonNullable(json['subscription_type_id']),
       periodDays: PaymentModel._intFromJson(json['period_days']),
       paymentSource: json['payment_source'] as String? ?? 'yookassa',
       appleTransactionId: json['apple_transaction_id'] as String?,
@@ -35,7 +37,7 @@ Map<String, dynamic> _$PaymentModelToJson(PaymentModel instance) {
     'created_at': PaymentModel._dateTimeToJson(instance.createdAt),
     'paid': instance.paid,
     'user_id': instance.userId,
-    'subscription_type': instance.subscriptionType,
+    'subscription_type_id': instance.subscriptionTypeId,
     'period_days': instance.periodDays,
     'payment_source': instance.paymentSource,
   };
