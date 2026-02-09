@@ -108,6 +108,20 @@ class MigrationManager {
       _MigrationInfo(version: '079', name: 'add_is_published_to_parts_market', file: 'migrations/079_add_is_published_to_parts_market.sql'),
       _MigrationInfo(version: '080', name: 'create_parts_market_price_history', file: 'migrations/080_create_parts_market_price_history.sql'),
       _MigrationInfo(version: '081', name: 'add_currency_to_aircraft_market', file: 'migrations/081_add_currency_to_aircraft_market.sql'),
+      _MigrationInfo(version: '082', name: 'create_jobs_vacancies_and_resumes', file: 'migrations/082_create_jobs_vacancies_and_resumes.sql'),
+      _MigrationInfo(version: '084', name: 'create_checko_entities', file: 'migrations/084_create_checko_entities.sql'),
+      _MigrationInfo(version: '085', name: 'drop_user_id_from_checko_tables', file: 'migrations/085_drop_user_id_from_checko_tables.sql'),
+      _MigrationInfo(version: '086', name: 'change_checko_company_unique_to_inn_only', file: 'migrations/086_change_checko_company_unique_to_inn_only.sql'),
+      _MigrationInfo(version: '087', name: 'add_employer_inn_to_jobs_vacancies', file: 'migrations/087_add_employer_inn_to_jobs_vacancies.sql'),
+      _MigrationInfo(version: '088', name: 'drop_jobs_vacancy_location_columns', file: 'migrations/088_drop_jobs_vacancy_location_columns.sql'),
+      _MigrationInfo(version: '089', name: 'add_job_vacancy_contact_fields', file: 'migrations/089_add_job_vacancy_contact_fields.sql'),
+      _MigrationInfo(version: '090', name: 'add_jobs_vacancy_is_private', file: 'migrations/090_add_jobs_vacancy_is_private.sql'),
+      _MigrationInfo(version: '091', name: 'create_jobs_contact_profiles_and_link', file: 'migrations/091_create_jobs_contact_profiles_and_link.sql'),
+      _MigrationInfo(version: '092', name: 'move_jobs_address_to_contact_profiles', file: 'migrations/092_move_jobs_address_to_contact_profiles.sql'),
+      _MigrationInfo(version: '093', name: 'drop_jobs_vacancies_is_remote', file: 'migrations/093_drop_jobs_vacancies_is_remote.sql'),
+      _MigrationInfo(version: '094', name: 'add_contact_profile_images', file: 'migrations/094_add_contact_profile_images.sql'),
+      _MigrationInfo(version: '095', name: 'resume_extended_fields_and_contacts', file: 'migrations/095_resume_extended_fields_and_contacts.sql'),
+      _MigrationInfo(version: '096', name: 'add_employer_comment_to_vacancy_responses', file: 'migrations/096_add_employer_comment_to_vacancy_responses.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 

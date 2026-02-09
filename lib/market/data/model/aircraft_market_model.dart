@@ -9,7 +9,6 @@ class AircraftMarketModel {
   final String title;
   final String? description;
   final int price;
-  @JsonKey(defaultValue: 'RUB')
   final String currency;
   @JsonKey(name: 'aircraft_subcategories_id')
   final int? aircraftSubcategoriesId;
@@ -162,22 +161,6 @@ class AircraftMarketModel {
     if (json is int) return json;
     if (json is num) return json.toInt();
     if (json is String) return int.tryParse(json);
-    return null;
-  }
-
-  static double _doubleFromJson(dynamic json) {
-    if (json == null) throw FormatException('Double cannot be null');
-    if (json is double) return json;
-    if (json is num) return json.toDouble();
-    if (json is String) return double.parse(json);
-    throw FormatException('Invalid double format: $json');
-  }
-
-  static double? _doubleFromJsonNullable(dynamic json) {
-    if (json == null) return null;
-    if (json is double) return json;
-    if (json is num) return json.toDouble();
-    if (json is String) return double.tryParse(json);
     return null;
   }
 

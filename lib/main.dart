@@ -19,11 +19,13 @@ import 'package:aviapoint_server/on_the_way/controller/feedback_controller.dart'
 import 'package:aviapoint_server/on_the_way/controller/aircraft_catalog_controller.dart';
 import 'package:aviapoint_server/blog/controller/blog_controller.dart';
 import 'package:aviapoint_server/market/controller/market_controller.dart';
+import 'package:aviapoint_server/jobs/controller/jobs_controller.dart';
 import 'package:aviapoint_server/app_settings/controller/app_settings_controller.dart';
 import 'package:aviapoint_server/on_the_way/repositories/on_the_way_repository.dart';
 import 'package:aviapoint_server/on_the_way/services/flight_status_service.dart';
 import 'package:aviapoint_server/push_notifications/fcm_service.dart';
 import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
+import 'package:aviapoint_server/checko/controller/checko_controller.dart';
 import 'package:postgres/postgres.dart';
 import 'package:talker/talker.dart';
 import 'package:shelf/shelf.dart';
@@ -76,6 +78,7 @@ Future<void> main() async {
   await getIt.getAsync<BlogController>();
   await getIt.getAsync<MarketController>();
   await getIt.getAsync<AppSettingsController>();
+  await getIt.getAsync<CheckoController>();
 
   // Проверяем что соединение с БД установлено
   Connection? connection;
@@ -131,7 +134,9 @@ Future<void> main() async {
       .add(getIt<AircraftCatalogController>().router)
       .add(getIt<BlogController>().router)
       .add(getIt<MarketController>().router)
+      .add(getIt<JobsController>().router)
       .add(getIt<AppSettingsController>().router)
+      .add(getIt<CheckoController>().router)
       .add(logStaticRequests(staticHandler))
       .add(Router()..mount('/api/openapi', SwaggerUI('public/open_api.yaml', docExpansion: DocExpansion.list, syntaxHighlightTheme: SyntaxHighlightTheme.tomorrowNight, title: 'Swagger AviaPoint')))
       .handler;

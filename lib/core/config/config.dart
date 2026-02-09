@@ -85,6 +85,9 @@ class Config {
   static late final String appleIAPPrivateKey;
   static late final String appleBundleId;
 
+  // Checko (проверка контрагентов)
+  static late final String checkoApiKey;
+
   // Период публикации объявлений (в месяцах)
   // Можно настроить через переменную окружения PUBLICATION_DURATION_MONTHS (по умолчанию 1 месяц)
   static int get publicationDurationMonths => int.tryParse(Platform.environment['PUBLICATION_DURATION_MONTHS'] ?? '1') ?? 1;
@@ -125,6 +128,15 @@ class Config {
     appleIAPIssuerId = _getEnv('APPLE_IAP_ISSUER_ID', defaultValue: '') ?? '';
     appleIAPPrivateKey = _getEnv('APPLE_IAP_PRIVATE_KEY', defaultValue: '') ?? '';
     appleBundleId = _getEnv('APPLE_BUNDLE_ID', defaultValue: 'com.aviapoint.app') ?? 'com.aviapoint.app';
+
+    // Checko API key
+    // Можно перекрыть через переменную окружения CHECKO_API_KEY,
+    // но по умолчанию используется зашитый ключ.
+    checkoApiKey = _getEnv(
+          'CHECKO_API_KEY',
+          defaultValue: 'sFPqXKdGHCKsruZu',
+        ) ??
+        'sFPqXKdGHCKsruZu';
   }
 
   static bool get isLocal => environment == 'local';

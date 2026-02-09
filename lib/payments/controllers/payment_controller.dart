@@ -84,7 +84,7 @@ class PaymentController {
       // Получаем period_days из subscription_type_id, если передан ID
       int? periodDays = createPaymentRequest.periodDays;
       int? subscriptionTypeId = createPaymentRequest.subscriptionTypeId;
-      
+
       if (subscriptionTypeId != null && periodDays == null) {
         try {
           final subscriptionTypes = await _subscriptionRepository.getAllSubscriptionTypes();
@@ -150,11 +150,11 @@ class PaymentController {
       if (payment.status == 'succeeded' && payment.paid && payment.userId > 0) {
         try {
           logger.info('Payment succeeded, checking subscription activation: paymentId=$paymentId, userId=${payment.userId}');
-          
+
           // Проверяем, есть ли уже активная подписка для этого платежа
           final paymentData = await _paymentRepository.getPaymentDataById(paymentId);
           logger.info('Payment data from DB: ${paymentData?.keys.toList()}');
-          
+
           if (paymentData != null) {
             final userId = paymentData['user_id'] as int?;
             final subscriptionTypeIdValue = paymentData['subscription_type_id'];
@@ -162,19 +162,19 @@ class PaymentController {
             if (subscriptionTypeIdValue != null) {
               subscriptionTypeId = subscriptionTypeIdValue is int ? subscriptionTypeIdValue : (int.tryParse(subscriptionTypeIdValue.toString()));
             }
-            
+
             logger.info('Payment data: userId=$userId, subscriptionTypeId=$subscriptionTypeId');
-            
+
             if (userId != null && userId > 0 && subscriptionTypeId != null) {
               // Проверяем, есть ли уже подписка для этого платежа
               final subscriptions = await _subscriptionRepository.getUserSubscriptions(userId);
               final hasSubscriptionForPayment = subscriptions.any((s) => s.paymentId == paymentId);
-              
+
               logger.info('Subscriptions for user $userId: ${subscriptions.length}, hasSubscriptionForPayment=$hasSubscriptionForPayment');
-              
+
               if (!hasSubscriptionForPayment) {
                 logger.info('Payment succeeded but subscription not activated, activating now: paymentId=$paymentId, userId=$userId, subscriptionTypeId=$subscriptionTypeId');
-                
+
                 dynamic amountValue = paymentData['amount'];
                 int subscriptionAmount = 0;
                 if (amountValue != null) {
@@ -187,9 +187,9 @@ class PaymentController {
                     subscriptionAmount = doubleValue?.toInt() ?? 0;
                   }
                 }
-                
+
                 logger.info('Creating subscription: userId=$userId, paymentId=$paymentId, subscriptionTypeId=$subscriptionTypeId, amount=$subscriptionAmount');
-                
+
                 await _subscriptionRepository.createSubscription(
                   userId: userId,
                   paymentId: paymentId,
@@ -197,7 +197,7 @@ class PaymentController {
                   startDate: DateTime.now(),
                   amount: subscriptionAmount,
                 );
-                
+
                 logger.info('✅ Subscription activated for user $userId, payment: $paymentId, subscriptionTypeId: $subscriptionTypeId');
               } else {
                 logger.info('Subscription already exists for payment $paymentId');
@@ -501,10 +501,8 @@ class PaymentController {
 
               if (adminFcmTokens.isNotEmpty) {
                 final fcmService = FcmService();
-                final userName = profile.firstName != null && profile.lastName != null
-                    ? '${profile.firstName} ${profile.lastName}'.trim()
-                    : profile.firstName ?? profile.lastName;
-                
+                final userName = profile.firstName != null && profile.lastName != null ? '${profile.firstName} ${profile.lastName}'.trim() : profile.firstName ?? profile.lastName;
+
                 final sentCount = await fcmService.notifyAdminsAboutSubscriptionPurchase(
                   adminFcmTokens: adminFcmTokens,
                   userPhone: profile.phone,
@@ -512,7 +510,7 @@ class PaymentController {
                   subscriptionType: subscriptionTypeCode,
                   amount: subscriptionAmount,
                 );
-                
+
                 logger.info('✅ Отправлено push-уведомлений администраторам о покупке подписки: $sentCount из ${adminFcmTokens.length}');
               } else {
                 logger.info('⚠️ Не найдено FCM токенов администраторов для отправки уведомления о покупке подписки');
@@ -625,7 +623,7 @@ class PaymentController {
       // Предполагаем, что productId имеет формат: com.aviapoint.subscription.monthly
       final productId = verificationResult.productId ?? '';
       String subscriptionTypeCode = 'rosaviatest_365'; // Дефолтный
-      
+
       if (productId.contains('monthly')) {
         subscriptionTypeCode = 'monthly';
       } else if (productId.contains('yearly') || productId.contains('year')) {
@@ -645,7 +643,7 @@ class PaymentController {
       final paymentId = 'iap_${verificationResult.transactionId}';
       final purchaseDate = verificationResult.purchaseDate ?? DateTime.now();
       final expiresDate = verificationResult.expiresDate;
-      
+
       // Вычисляем amount (цена подписки)
       final amount = subscriptionType.price.toDouble();
 

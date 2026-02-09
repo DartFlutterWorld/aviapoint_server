@@ -33,8 +33,12 @@ import 'package:aviapoint_server/blog/controller/blog_controller.dart';
 import 'package:aviapoint_server/blog/repositories/blog_repository.dart';
 import 'package:aviapoint_server/market/controller/market_controller.dart';
 import 'package:aviapoint_server/market/repositories/market_repository.dart';
+import 'package:aviapoint_server/jobs/controller/jobs_controller.dart';
+import 'package:aviapoint_server/jobs/repositories/jobs_repository.dart';
 import 'package:aviapoint_server/app_settings/controller/app_settings_controller.dart';
 import 'package:aviapoint_server/app_settings/data/repositories/app_settings_repository.dart';
+import 'package:aviapoint_server/checko/controller/checko_controller.dart';
+import 'package:aviapoint_server/checko/repositories/checko_repository.dart';
 import 'package:postgres/postgres.dart';
 import 'package:get_it/get_it.dart';
 
@@ -252,6 +256,31 @@ Future<void> setupDependencies() async {
     final repository = await getIt.getAsync<MarketRepository>();
     final tokenService = await getIt.getAsync<TokenService>();
     return MarketController(repository: repository, tokenService: tokenService);
+  });
+
+  // Jobs Repository (вакансии и резюме)
+  getIt.registerSingletonAsync<JobsRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return JobsRepository(connection: connection);
+  });
+
+  // Jobs Controller
+  getIt.registerSingletonAsync<JobsController>(() async {
+    final repository = await getIt.getAsync<JobsRepository>();
+    final tokenService = await getIt.getAsync<TokenService>();
+    return JobsController(repository: repository, tokenService: tokenService);
+  });
+
+  // Checko Repository (API проверки контрагентов)
+  getIt.registerSingletonAsync<CheckoRepository>(() async {
+    final connection = await getIt.getAsync<Connection>();
+    return CheckoRepository(connection: connection);
+  });
+
+  // Checko Controller
+  getIt.registerSingletonAsync<CheckoController>(() async {
+    final repository = await getIt.getAsync<CheckoRepository>();
+    return CheckoController(repository: repository);
   });
 
   // Инициализируем Telegram бота
