@@ -22,19 +22,17 @@ PaymentModel _$PaymentModelFromJson(Map<String, dynamic> json) => PaymentModel(
       periodDays: PaymentModel._intFromJson(json['period_days']),
     );
 
-Map<String, dynamic> _$PaymentModelToJson(PaymentModel instance) {
-  final val = <String, dynamic>{
-    'id': instance.id,
-    'status': instance.status,
-    'amount': instance.amount,
-    'currency': instance.currency,
-    'description': instance.description,
-    'payment_url': instance.paymentUrl,
-    'created_at': PaymentModel._dateTimeToJson(instance.createdAt),
-    'paid': instance.paid,
-    'user_id': instance.userId,
-    'subscription_type_id': instance.subscriptionTypeId,
-    'period_days': instance.periodDays,
-  };
-  return val;
-}
+Map<String, dynamic> _$PaymentModelToJson(PaymentModel instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'status': instance.status,
+      'amount': instance.amount,
+      'currency': instance.currency,
+      'description': instance.description,
+      'payment_url': instance.paymentUrl,
+      'created_at': PaymentModel._dateTimeToJson(instance.createdAt),
+      'paid': instance.paid,
+      'user_id': instance.userId,
+      'subscription_type_id': instance.subscriptionTypeId,
+      'period_days': instance.periodDays,
+    };
