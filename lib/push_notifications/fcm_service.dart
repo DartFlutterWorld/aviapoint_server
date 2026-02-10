@@ -392,5 +392,51 @@ class FcmService {
       data: data,
     );
   }
+
+  /// Уведомление работодателю о новом отклике на вакансию
+  Future<bool> notifyEmployerAboutNewVacancyResponse({
+    required String fcmToken,
+    required String vacancyTitle,
+    required int vacancyId,
+  }) async {
+    final title = PushNotificationTexts.newVacancyResponseTitle;
+    final body = PushNotificationTexts.newVacancyResponseBody(vacancyTitle);
+
+    final data = {
+      'type': 'vacancy_new_response',
+      'vacancy_id': vacancyId.toString(),
+      'screen': 'employer_vacancy_responses',
+    };
+
+    return await sendNotification(
+      fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
+
+  /// Уведомление кандидату об ответе работодателя на отклик
+  Future<bool> notifyCandidateAboutVacancyResponseReply({
+    required String fcmToken,
+    required String vacancyTitle,
+    required int vacancyId,
+  }) async {
+    final title = PushNotificationTexts.vacancyResponseReplyTitle;
+    final body = PushNotificationTexts.vacancyResponseReplyBody(vacancyTitle);
+
+    final data = {
+      'type': 'vacancy_response_reply',
+      'vacancy_id': vacancyId.toString(),
+      'screen': 'my_vacancy_responses',
+    };
+
+    return await sendNotification(
+      fcmToken: fcmToken,
+      title: title,
+      body: body,
+      data: data,
+    );
+  }
 }
 

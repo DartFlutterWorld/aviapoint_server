@@ -268,7 +268,12 @@ Future<void> setupDependencies() async {
   getIt.registerSingletonAsync<JobsController>(() async {
     final repository = await getIt.getAsync<JobsRepository>();
     final tokenService = await getIt.getAsync<TokenService>();
-    return JobsController(repository: repository, tokenService: tokenService);
+    final profileRepository = await getIt.getAsync<ProfileRepository>();
+    return JobsController(
+      repository: repository,
+      tokenService: tokenService,
+      profileRepository: profileRepository,
+    );
   });
 
   // Checko Repository (API проверки контрагентов)

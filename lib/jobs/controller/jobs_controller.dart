@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:aviapoint_server/auth/token/token_service.dart';
 import 'package:aviapoint_server/core/wrap_response.dart';
 import 'package:aviapoint_server/jobs/repositories/jobs_repository.dart';
+import 'package:aviapoint_server/profiles/data/repositories/profile_repository.dart';
+import 'package:aviapoint_server/push_notifications/fcm_service.dart';
+import 'package:aviapoint_server/telegram/telegram_bot_service.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
@@ -12,10 +15,15 @@ import 'package:shelf_router/shelf_router.dart';
 class JobsController {
   final JobsRepository _repository;
   final TokenService _tokenService;
+  final ProfileRepository _profileRepository;
 
-  JobsController({required JobsRepository repository, required TokenService tokenService})
-      : _repository = repository,
-        _tokenService = tokenService;
+  JobsController({
+    required JobsRepository repository,
+    required TokenService tokenService,
+    required ProfileRepository profileRepository,
+  })  : _repository = repository,
+        _tokenService = tokenService,
+        _profileRepository = profileRepository;
 
   Router get router {
     final router = Router();
@@ -236,6 +244,25 @@ class JobsController {
         skills: skills,
       );
 
+      // Уведомление в Telegram-канал о новой вакансии
+      try {
+        final fullVacancy = await _repository.getVacancyById(vacancy['id'] as int);
+        if (fullVacancy != null) {
+          final empFirstName = fullVacancy['employer_first_name'] as String?;
+          final empLastName = fullVacancy['employer_last_name'] as String?;
+          final employerName = '${empFirstName ?? ''} ${empLastName ?? ''}'.trim();
+          await TelegramBotService().notifyVacancyCreated(
+            vacancyId: vacancy['id'] as int,
+            employerId: userId,
+            employerName: employerName.isNotEmpty ? employerName : null,
+            employerPhone: fullVacancy['employer_phone'] as String?,
+            title: fullVacancy['title'] as String? ?? title.trim(),
+            companyName: fullVacancy['company_name'] as String?,
+            address: fullVacancy['address'] as String?,
+          );
+        }
+      } catch (_) {}
+
       return Response.ok(jsonEncode(_toJsonEncodable(vacancy)), headers: jsonContentHeaders);
     });
   }
@@ -405,6 +432,31 @@ class JobsController {
         coverLetter: coverLetter,
       );
 
+      // Push-уведомление работодателю о новом отклике
+      try {
+        final vacancy = await _repository.getVacancyById(id);
+        if (vacancy != null) {
+          final employerId = vacancy['employer_id'] as int?;
+          final vacancyTitle = vacancy['title'] as String? ?? '';
+          if (employerId != null) {
+            final tokensList = await _profileRepository.getAllFcmTokens(employerId);
+            final tokens = tokensList.map((m) => m['fcm_token'] as String).where((t) => t.isNotEmpty).toList();
+            if (tokens.isNotEmpty) {
+              await FcmService().sendNotificationToAllUserTokens(
+                fcmTokens: tokens,
+                title: '📩 Новый отклик на вакансию',
+                body: 'По вакансии «$vacancyTitle» поступил новый отклик',
+                data: {
+                  'type': 'vacancy_new_response',
+                  'vacancy_id': id.toString(),
+                  'screen': 'employer_vacancy_responses',
+                },
+              );
+            }
+          }
+        }
+      } catch (_) {}
+
       return Response.ok(jsonEncode(_toJsonEncodable(response)), headers: jsonContentHeaders);
     });
   }
@@ -517,6 +569,30 @@ class JobsController {
           headers: jsonContentHeaders,
         );
       }
+
+      // Push-уведомление кандидату об ответе на отклик
+      try {
+        final candidateId = updated['candidate_id'] as int?;
+        final vacancy = await _repository.getVacancyById(vacancyId);
+        final vacancyTitle = vacancy?['title'] as String? ?? '';
+        if (candidateId != null && vacancyTitle.isNotEmpty) {
+          final tokensList = await _profileRepository.getAllFcmTokens(candidateId);
+          final tokens = tokensList.map((m) => m['fcm_token'] as String).where((t) => t.isNotEmpty).toList();
+          if (tokens.isNotEmpty) {
+            await FcmService().sendNotificationToAllUserTokens(
+              fcmTokens: tokens,
+              title: '💬 Ответ на ваш отклик',
+              body: 'Работодатель ответил на ваш отклик по вакансии «$vacancyTitle»',
+              data: {
+                'type': 'vacancy_response_reply',
+                'vacancy_id': vacancyId.toString(),
+                'screen': 'my_vacancy_responses',
+              },
+            );
+          }
+        }
+      } catch (_) {}
+
       return Response.ok(jsonEncode(_toJsonEncodable(updated)), headers: jsonContentHeaders);
     });
   }
@@ -1206,6 +1282,25 @@ class JobsController {
         typeRatings: body['type_ratings'] as String?,
         medicalClass: body['medical_class'] as String?,
       );
+
+      // Уведомление в Telegram-канал о новом резюме
+      try {
+        final fullResume = await _repository.getResumeById(resume['id'] as int);
+        if (fullResume != null) {
+          final contactName = fullResume['contact_name'] as String?;
+          final contactPhone = fullResume['contact_phone'] as String? ?? fullResume['user_phone'] as String?;
+          await TelegramBotService().notifyResumeCreated(
+            resumeId: resume['id'] as int,
+            userId: userId,
+            contactName: contactName?.trim().isNotEmpty == true ? contactName : null,
+            contactPhone: contactPhone?.trim().isNotEmpty == true ? contactPhone : null,
+            title: fullResume['title'] as String? ?? title.trim(),
+            currentPosition: fullResume['current_position'] as String?,
+            desiredSalary: fullResume['desired_salary'] is int ? fullResume['desired_salary'] as int : (fullResume['desired_salary'] is num ? (fullResume['desired_salary'] as num).toInt() : null),
+            currency: fullResume['currency'] as String?,
+          );
+        }
+      } catch (_) {}
 
       return Response.ok(jsonEncode(_toJsonEncodable(resume)), headers: jsonContentHeaders);
     });

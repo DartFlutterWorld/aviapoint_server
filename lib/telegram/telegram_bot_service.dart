@@ -627,6 +627,66 @@ ${flightUrl.isNotEmpty ? '🔗 <b>Ссылка:</b> $flightUrl' : ''}
     await sendMessage(message);
   }
 
+  /// Уведомление в канал о создании новой вакансии
+  Future<void> notifyVacancyCreated({
+    required int vacancyId,
+    required int employerId,
+    String? employerName,
+    String? employerPhone,
+    required String title,
+    String? companyName,
+    String? address,
+  }) async {
+    final message = '''
+📋 <b>Новая вакансия</b>
+
+🆔 <b>ID вакансии:</b> $vacancyId
+👤 <b>Работодатель ID:</b> $employerId
+${employerName != null && employerName.isNotEmpty ? '👤 <b>Контакт:</b> $employerName' : ''}
+${employerPhone != null && employerPhone.isNotEmpty ? '📱 <b>Телефон:</b> $employerPhone' : ''}
+
+📌 <b>Название:</b> $title
+${companyName != null && companyName.isNotEmpty ? '🏢 <b>Компания:</b> $companyName' : ''}
+${address != null && address.isNotEmpty ? '📍 <b>Адрес:</b> $address' : ''}
+
+🕐 <b>Время:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+''';
+
+    await sendMessage(message);
+  }
+
+  /// Уведомление в канал о создании нового резюме
+  Future<void> notifyResumeCreated({
+    required int resumeId,
+    required int userId,
+    String? contactName,
+    String? contactPhone,
+    required String title,
+    String? currentPosition,
+    int? desiredSalary,
+    String? currency,
+  }) async {
+    final salaryText = desiredSalary != null
+        ? '${desiredSalary.toString()} ${currency ?? 'RUB'}'
+        : 'не указана';
+    final message = '''
+📄 <b>Новое резюме</b>
+
+🆔 <b>ID резюме:</b> $resumeId
+👤 <b>Пользователь ID:</b> $userId
+${contactName != null && contactName.isNotEmpty ? '👤 <b>Контакт:</b> $contactName' : ''}
+${contactPhone != null && contactPhone.isNotEmpty ? '📱 <b>Телефон:</b> $contactPhone' : ''}
+
+📌 <b>Название:</b> $title
+${currentPosition != null && currentPosition.isNotEmpty ? '💼 <b>Должность:</b> $currentPosition' : ''}
+💰 <b>Желаемая зарплата:</b> $salaryText
+
+🕐 <b>Время:</b> ${DateTime.now().toLocal().toString().substring(0, 19)}
+''';
+
+    await sendMessage(message);
+  }
+
   /// Уведомление об ответе на вопрос
   Future<void> notifyQuestionAnswered({
     required int questionId,
