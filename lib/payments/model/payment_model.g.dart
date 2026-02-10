@@ -20,10 +20,6 @@ PaymentModel _$PaymentModelFromJson(Map<String, dynamic> json) => PaymentModel(
           ? 0
           : PaymentModel._intFromJsonNullable(json['subscription_type_id']),
       periodDays: PaymentModel._intFromJson(json['period_days']),
-      paymentSource: json['payment_source'] as String? ?? 'yookassa',
-      appleTransactionId: json['apple_transaction_id'] as String?,
-      appleOriginalTransactionId:
-          json['apple_original_transaction_id'] as String?,
     );
 
 Map<String, dynamic> _$PaymentModelToJson(PaymentModel instance) {
@@ -39,17 +35,6 @@ Map<String, dynamic> _$PaymentModelToJson(PaymentModel instance) {
     'user_id': instance.userId,
     'subscription_type_id': instance.subscriptionTypeId,
     'period_days': instance.periodDays,
-    'payment_source': instance.paymentSource,
   };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('apple_transaction_id', instance.appleTransactionId);
-  writeNotNull(
-      'apple_original_transaction_id', instance.appleOriginalTransactionId);
   return val;
 }

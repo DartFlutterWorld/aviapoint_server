@@ -122,6 +122,7 @@ class MigrationManager {
       _MigrationInfo(version: '094', name: 'add_contact_profile_images', file: 'migrations/094_add_contact_profile_images.sql'),
       _MigrationInfo(version: '095', name: 'resume_extended_fields_and_contacts', file: 'migrations/095_resume_extended_fields_and_contacts.sql'),
       _MigrationInfo(version: '096', name: 'add_employer_comment_to_vacancy_responses', file: 'migrations/096_add_employer_comment_to_vacancy_responses.sql'),
+      _MigrationInfo(version: '097', name: 'drop_iap_from_payments', file: 'migrations/097_drop_iap_from_payments.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 

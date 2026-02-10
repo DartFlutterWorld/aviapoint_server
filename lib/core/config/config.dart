@@ -79,12 +79,6 @@ class Config {
   static late final String yookassaSecretKey;
   static late final bool yookassaTestMode;
 
-  // Apple In-App Purchase настройки
-  static late final String appleIAPKeyId;
-  static late final String appleIAPIssuerId;
-  static late final String appleIAPPrivateKey;
-  static late final String appleBundleId;
-
   // Checko (проверка контрагентов)
   static late final String checkoApiKey;
 
@@ -122,12 +116,6 @@ class Config {
       yookassaSecretKey = _getEnv('YOOKASSA_SECRET_KEY', defaultValue: 'live_A8iyj3kBLfq4YUiKwlHoPpvBP0B7BQIBhY3vOPuDisc') ?? 'live_A8iyj3kBLfq4YUiKwlHoPpvBP0B7BQIBhY3vOPuDisc';
       print('🔧 ЮKassa: ПРОДАКШН режим');
     }
-
-    // Apple In-App Purchase настройки
-    appleIAPKeyId = _getEnv('APPLE_IAP_KEY_ID', defaultValue: '') ?? '';
-    appleIAPIssuerId = _getEnv('APPLE_IAP_ISSUER_ID', defaultValue: '') ?? '';
-    appleIAPPrivateKey = _getEnv('APPLE_IAP_PRIVATE_KEY', defaultValue: '') ?? '';
-    appleBundleId = _getEnv('APPLE_BUNDLE_ID', defaultValue: 'com.aviapoint.app') ?? 'com.aviapoint.app';
 
     // Checko API key
     // Можно перекрыть через переменную окружения CHECKO_API_KEY,

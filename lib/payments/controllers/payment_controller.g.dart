@@ -33,10 +33,5 @@ Router _$PaymentControllerRouter(PaymentController service) {
     r'/api/payments/webhook',
     service.webhook,
   );
-  router.add(
-    'POST',
-    r'/api/payments/verify-iap',
-    service.verifyIAP,
-  );
   return router;
 }
