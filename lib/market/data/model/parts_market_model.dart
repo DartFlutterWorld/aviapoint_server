@@ -21,6 +21,8 @@ class PartsMarketModel {
   @JsonKey(name: 'manufacturer_name')
   final String? manufacturerName;
   final String? location;
+  @JsonKey(name: 'address', fromJson: _addressFromJson, toJson: _addressToJson)
+  final Map<String, dynamic>? address;
   @JsonKey(name: 'main_image_url')
   final String? mainImageUrl;
   @JsonKey(name: 'additional_image_urls', fromJson: _imageUrlsFromJson, toJson: _imageUrlsToJson)
@@ -94,6 +96,7 @@ class PartsMarketModel {
     this.manufacturerId,
     this.manufacturerName,
     this.location,
+    this.address,
     this.mainImageUrl,
     this.additionalImageUrls = const [],
     this.partNumber,
@@ -207,4 +210,19 @@ class PartsMarketModel {
     }
     return null;
   }
+
+  static Map<String, dynamic>? _addressFromJson(dynamic json) {
+    if (json == null) return null;
+    if (json is Map<String, dynamic>) return json;
+    if (json is String) {
+      try {
+        return jsonDecode(json) as Map<String, dynamic>;
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  static dynamic _addressToJson(Map<String, dynamic>? address) => address;
 }

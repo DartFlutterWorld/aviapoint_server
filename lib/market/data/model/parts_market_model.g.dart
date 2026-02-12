@@ -18,6 +18,7 @@ PartsMarketModel _$PartsMarketModelFromJson(Map<String, dynamic> json) =>
       manufacturerId: (json['manufacturer_id'] as num?)?.toInt(),
       manufacturerName: json['manufacturer_name'] as String?,
       location: json['location'] as String?,
+      address: PartsMarketModel._addressFromJson(json['address']),
       mainImageUrl: json['main_image_url'] as String?,
       additionalImageUrls: json['additional_image_urls'] == null
           ? const []
@@ -70,6 +71,7 @@ Map<String, dynamic> _$PartsMarketModelToJson(PartsMarketModel instance) =>
       'manufacturer_id': instance.manufacturerId,
       'manufacturer_name': instance.manufacturerName,
       'location': instance.location,
+      'address': PartsMarketModel._addressToJson(instance.address),
       'main_image_url': instance.mainImageUrl,
       'additional_image_urls':
           PartsMarketModel._imageUrlsToJson(instance.additionalImageUrls),

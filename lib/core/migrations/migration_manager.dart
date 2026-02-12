@@ -123,6 +123,8 @@ class MigrationManager {
       _MigrationInfo(version: '095', name: 'resume_extended_fields_and_contacts', file: 'migrations/095_resume_extended_fields_and_contacts.sql'),
       _MigrationInfo(version: '096', name: 'add_employer_comment_to_vacancy_responses', file: 'migrations/096_add_employer_comment_to_vacancy_responses.sql'),
       _MigrationInfo(version: '097', name: 'drop_iap_from_payments', file: 'migrations/097_drop_iap_from_payments.sql'),
+      _MigrationInfo(version: '098', name: 'add_address_to_market', file: 'migrations/098_add_address_to_market.sql'),
+      _MigrationInfo(version: '099', name: 'add_additional_image_urls_to_jobs_vacancies', file: 'migrations/099_add_additional_image_urls_to_jobs_vacancies.sql'),
       // Добавьте здесь новые миграции по порядку
     ];
 

@@ -47,7 +47,6 @@ class JobsRepository {
         cp.contact_email,
         cp.contact_site,
         cp.logo_url,
-        cp.additional_image_urls,
         cp.address AS address,
         p.first_name AS employer_first_name,
         p.last_name AS employer_last_name,
@@ -146,9 +145,8 @@ class JobsRepository {
           cp.contact_max,
           cp.contact_email,
           cp.contact_site,
-          cp.logo_url,
-          cp.additional_image_urls,
-          cp.address AS address,
+cp.logo_url,
+        cp.address AS address,
           p.first_name AS employer_first_name,
           p.last_name AS employer_last_name,
           p.phone AS employer_phone,
@@ -173,7 +171,7 @@ class JobsRepository {
     return result.first.toColumnMap();
   }
 
-  /// Создать вакансию
+  /// Создать вакансию. По умолчанию создаётся опубликованной (isPublished: true), как в маркете.
   Future<Map<String, dynamic>> createVacancy({
     required int employerId,
     required String title,
@@ -199,6 +197,7 @@ class JobsRepository {
     int? minFlightHours,
     String? requiredTypeRating,
     List<String>? skills,
+    bool isPublished = true,
   }) async {
     final durationResult = await _connection.execute(
       Sql.named('SELECT publication_duration_months FROM publication_settings WHERE table_name = @table_name'),
@@ -229,7 +228,8 @@ class JobsRepository {
             @employment_form, @work_hours,
             @relocation_allowed, @business_trips,
             @aircraft_category, @required_license, @min_flight_hours, @required_type_rating,
-            TRUE, TRUE, 'published', NOW() + MAKE_INTERVAL(months => @duration),
+            @is_published, TRUE, CASE WHEN @is_published THEN 'published' ELSE 'active' END,
+            CASE WHEN @is_published THEN NOW() + MAKE_INTERVAL(months => @duration) ELSE NULL END,
             0, 0
           )
           RETURNING *
@@ -259,6 +259,7 @@ class JobsRepository {
           'min_flight_hours': minFlightHours,
           'required_type_rating': requiredTypeRating,
           'duration': durationMonths,
+          'is_published': isPublished,
         },
       );
 
@@ -296,7 +297,7 @@ class JobsRepository {
     }
   }
 
-  /// Обновить вакансию
+  /// Обновить вакансию. [isPublished] — управление публикацией (как в маркете).
   Future<Map<String, dynamic>?> updateVacancy({
     required int vacancyId,
     required int employerId,
@@ -323,16 +324,26 @@ class JobsRepository {
     int? minFlightHours,
     String? requiredTypeRating,
     List<String>? skills,
+    bool? isPublished,
+    List<String>? additionalImageUrls,
   }) async {
-    // Проверка владельца
+    // Проверка прав: владелец или администратор
     final ownerResult = await _connection.execute(
       Sql.named('SELECT employer_id FROM jobs_vacancies WHERE id = @id'),
       parameters: {'id': vacancyId},
     );
     if (ownerResult.isEmpty) return null;
     final ownerId = ownerResult.first[0] as int;
-    if (ownerId != employerId) {
-      throw Exception('You do not have permission to update this vacancy');
+    final isOwner = ownerId == employerId;
+    if (!isOwner) {
+      final adminCheck = await _connection.execute(
+        Sql.named('SELECT is_admin FROM profiles WHERE id = @id'),
+        parameters: {'id': employerId},
+      );
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+      if (!isAdmin) {
+        throw Exception('You do not have permission to update this vacancy');
+      }
     }
 
     final updates = <String>[];
@@ -365,6 +376,29 @@ class JobsRepository {
     if (requiredLicense != null) setField('required_license', 'required_license', requiredLicense);
     if (minFlightHours != null) setField('min_flight_hours', 'min_flight_hours', minFlightHours);
     if (requiredTypeRating != null) setField('required_type_rating', 'required_type_rating', requiredTypeRating);
+    if (additionalImageUrls != null) {
+      updates.add('additional_image_urls = @additional_image_urls::jsonb');
+      parameters['additional_image_urls'] = jsonEncode(additionalImageUrls);
+    }
+
+    if (isPublished != null) {
+      if (isPublished) {
+        final durationResult = await _connection.execute(
+          Sql.named('SELECT publication_duration_months FROM publication_settings WHERE table_name = @table_name'),
+          parameters: {'table_name': 'jobs_vacancies'},
+        );
+        final durationMonths = durationResult.isNotEmpty ? (durationResult.first[0] as int? ?? 1) : 1;
+        updates.add('is_published = TRUE');
+        updates.add("status = 'published'");
+        updates.add('published_until = NOW() + MAKE_INTERVAL(months => @pub_duration)');
+        parameters['pub_duration'] = durationMonths;
+      } else {
+        updates.add('is_published = FALSE');
+        updates.add("status = 'closed'");
+        updates.add('published_until = NULL');
+        updates.add('closed_at = NOW()');
+      }
+    }
 
     if (updates.isEmpty && skills == null) {
       return await getVacancyById(vacancyId);
@@ -402,7 +436,7 @@ class JobsRepository {
     return await getVacancyById(vacancyId);
   }
 
-  /// Опубликовать вакансию (учитывая publication_settings)
+  /// Опубликовать вакансию (учитывая publication_settings). Разрешено владельцу или админу.
   Future<Map<String, dynamic>?> publishVacancy({
     required int vacancyId,
     required int employerId,
@@ -413,8 +447,16 @@ class JobsRepository {
     );
     if (ownerResult.isEmpty) return null;
     final ownerId = ownerResult.first[0] as int;
-    if (ownerId != employerId) {
-      throw Exception('You do not have permission to publish this vacancy');
+    final isOwner = ownerId == employerId;
+    if (!isOwner) {
+      final adminCheck = await _connection.execute(
+        Sql.named('SELECT is_admin FROM profiles WHERE id = @id'),
+        parameters: {'id': employerId},
+      );
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+      if (!isAdmin) {
+        throw Exception('You do not have permission to publish this vacancy');
+      }
     }
 
     final durationResult = await _connection.execute(
@@ -444,7 +486,7 @@ class JobsRepository {
     return result.first.toColumnMap();
   }
 
-  /// Снять вакансию с публикации
+  /// Снять вакансию с публикации. Разрешено владельцу или админу.
   Future<Map<String, dynamic>?> unpublishVacancy({
     required int vacancyId,
     required int employerId,
@@ -455,8 +497,16 @@ class JobsRepository {
     );
     if (ownerResult.isEmpty) return null;
     final ownerId = ownerResult.first[0] as int;
-    if (ownerId != employerId) {
-      throw Exception('You do not have permission to unpublish this vacancy');
+    final isOwner = ownerId == employerId;
+    if (!isOwner) {
+      final adminCheck = await _connection.execute(
+        Sql.named('SELECT is_admin FROM profiles WHERE id = @id'),
+        parameters: {'id': employerId},
+      );
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+      if (!isAdmin) {
+        throw Exception('You do not have permission to unpublish this vacancy');
+      }
     }
 
     final result = await _connection.execute(
@@ -775,9 +825,8 @@ class JobsRepository {
           cp.contact_max,
           cp.contact_email,
           cp.contact_site,
-          cp.logo_url,
-          cp.additional_image_urls,
-          cp.address AS address,
+cp.logo_url,
+        cp.address AS address,
           p.first_name AS employer_first_name,
           p.last_name AS employer_last_name,
           p.phone AS employer_phone,
@@ -1070,7 +1119,7 @@ class JobsRepository {
     return result.first.toColumnMap();
   }
 
-  /// Создать резюме
+  /// Создать резюме. По умолчанию видно работодателям (isVisibleForEmployers: true), как в маркете.
   Future<Map<String, dynamic>> createResume({
     required int userId,
     required String title,
@@ -1096,6 +1145,7 @@ class JobsRepository {
     String? licenses,
     String? typeRatings,
     String? medicalClass,
+    bool isVisibleForEmployers = true,
   }) async {
     final result = await _connection.execute(
       Sql.named('''
@@ -1110,7 +1160,7 @@ class JobsRepository {
           licenses, type_ratings, medical_class,
           created_at, updated_at, last_active_at
         ) VALUES (
-          @user_id, @title, @about, 'active', TRUE,
+          @user_id, @title, @about, 'active', @is_visible_for_employers,
           @desired_salary, @currency, @employment_types, @schedules,
           @ready_to_relocate, @ready_for_business_trips,
           @address, @date_of_birth, string_to_array(COALESCE(@citizenship, 'RU'), ',')::text[], @work_permit,
@@ -1147,6 +1197,7 @@ class JobsRepository {
         'licenses': licenses,
         'type_ratings': typeRatings,
         'medical_class': medicalClass,
+        'is_visible_for_employers': isVisibleForEmployers,
       },
     );
 
@@ -1188,14 +1239,23 @@ class JobsRepository {
     String? status,
     bool? isVisibleForEmployers,
   }) async {
+    // Проверка прав: владелец или администратор
     final ownerResult = await _connection.execute(
       Sql.named('SELECT user_id FROM jobs_resumes WHERE id = @id'),
       parameters: {'id': resumeId},
     );
     if (ownerResult.isEmpty) return null;
     final ownerId = ownerResult.first[0] as int;
-    if (ownerId != userId) {
-      throw Exception('You do not have permission to update this resume');
+    final isOwner = ownerId == userId;
+    if (!isOwner) {
+      final adminCheck = await _connection.execute(
+        Sql.named('SELECT is_admin FROM profiles WHERE id = @id'),
+        parameters: {'id': userId},
+      );
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+      if (!isAdmin) {
+        throw Exception('You do not have permission to update this resume');
+      }
     }
 
     final updates = <String>[];

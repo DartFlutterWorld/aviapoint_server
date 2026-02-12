@@ -12,6 +12,54 @@ class MarketRepository {
 
   MarketRepository({required Connection connection}) : _connection = connection;
 
+  /// Собирает человекочитаемую строку адреса из структуры Nominatim
+  /// и убирает дубли типа "Москва, Москва".
+  static String? buildLocationFromAddress(Map<String, dynamic>? address) {
+    if (address == null) return null;
+
+    final parts = <String>[];
+
+    // Регион / область
+    final region = address['state'] ?? address['region'] ?? address['state_district'];
+    // Город / посёлок
+    final city = address['city'] ??
+        address['town'] ??
+        address['village'] ??
+        address['municipality'] ??
+        address['hamlet'];
+
+    final regionStr = region?.toString().trim();
+    final cityStr = city?.toString().trim();
+
+    if (regionStr != null && regionStr.isNotEmpty) {
+      parts.add(regionStr);
+    }
+
+    if (cityStr != null &&
+        cityStr.isNotEmpty &&
+        cityStr != regionStr) {
+      parts.add(cityStr);
+    }
+
+    // Если region нет, но есть city — всё равно добавим город
+    if (regionStr == null && cityStr != null && cityStr.isNotEmpty && !parts.contains(cityStr)) {
+      parts.add(cityStr);
+    }
+
+    // Улица и дом
+    final road = address['road'] ?? address['street'];
+    final houseNumber = address['house_number'];
+    final roadStr = road?.toString().trim();
+    final houseStr = houseNumber?.toString().trim();
+
+    if (roadStr != null && roadStr.isNotEmpty) {
+      parts.add(houseStr != null && houseStr.isNotEmpty ? '$roadStr, $houseStr' : roadStr);
+    }
+
+    if (parts.isEmpty) return null;
+    return parts.join(', ');
+  }
+
   /// Получить период публикации для таблицы (в месяцах)
   /// Если настройка не найдена, возвращает значение по умолчанию (1 месяц)
   Future<int> _getPublicationDurationMonths(String tableName) async {
@@ -503,6 +551,7 @@ class MarketRepository {
     List<String> additionalImageUrls = const [],
     String? brand,
     String? location,
+    Map<String, dynamic>? address,
     int? year,
     int? totalFlightHours,
     int? enginePower,
@@ -519,11 +568,14 @@ class MarketRepository {
     // Получаем период публикации из БД
     final durationMonths = await _getPublicationDurationMonths('aircraft_market');
 
+    // Если пришла структура адреса – нормализуем строку location
+    final normalizedLocation = address != null ? buildLocationFromAddress(address) ?? location : location;
+
     final result = await _connection.execute(
       Sql.named('''
         INSERT INTO aircraft_market (
           seller_id, title, description, price, currency, aircraft_subcategories_id,
-          main_image_url, additional_image_urls, brand, location,
+          main_image_url, additional_image_urls, brand, location, address,
           year, total_flight_hours, engine_power, engine_volume, seats, condition, 
           is_share_sale, share_numerator, share_denominator,
           is_leasing, leasing_conditions,
@@ -531,7 +583,7 @@ class MarketRepository {
         )
         VALUES (
           @seller_id, @title, @description, @price, @currency, @aircraft_subcategories_id,
-          @main_image_url, @additional_image_urls::jsonb, @brand, @location,
+          @main_image_url, @additional_image_urls::jsonb, @brand, @location, @address,
           @year, @total_flight_hours, @engine_power, @engine_volume, @seats, @condition,
           @is_share_sale, @share_numerator, @share_denominator,
           @is_leasing, @leasing_conditions,
@@ -549,7 +601,8 @@ class MarketRepository {
         'main_image_url': mainImageUrl,
         'additional_image_urls': jsonEncode(additionalImageUrls),
         'brand': brand,
-        'location': location,
+        'location': normalizedLocation,
+        'address': address,
         'year': year,
         'total_flight_hours': totalFlightHours,
         'engine_power': enginePower,
@@ -659,6 +712,7 @@ class MarketRepository {
     List<String>? additionalImageUrls,
     String? brand,
     String? location,
+    Map<String, dynamic>? address,
     int? year,
     int? totalFlightHours,
     int? enginePower,
@@ -767,9 +821,16 @@ class MarketRepository {
       updates.add('brand = @brand');
       parameters['brand'] = brand;
     }
-    if (location != null) {
-      updates.add('location = @location');
-      parameters['location'] = location;
+    if (location != null || address != null) {
+      final normalizedLocation = address != null ? buildLocationFromAddress(address) ?? location : location;
+      if (normalizedLocation != null) {
+        updates.add('location = @location');
+        parameters['location'] = normalizedLocation;
+      }
+      if (address != null) {
+        updates.add('address = @address');
+        parameters['address'] = address;
+      }
     }
     if (year != null) {
       updates.add('year = @year');
@@ -1446,11 +1507,15 @@ class MarketRepository {
     double? dimensionsHeightCm,
     String? compatibleAircraftModelsText,
     String? location,
+    Map<String, dynamic>? address,
     List<int>? compatibleAircraftModelIds,
     bool isPublished = true,
   }) async {
     // Получаем период публикации из БД
     final durationMonths = await _getPublicationDurationMonths('parts_market');
+
+    // Нормализуем строку location из структуры адреса (если есть)
+    final normalizedLocation = address != null ? buildLocationFromAddress(address) ?? location : location;
 
     await _connection.execute(Sql('BEGIN'));
     try {
@@ -1464,7 +1529,7 @@ class MarketRepository {
             part_number, oem_number, condition, quantity,
             main_image_url, additional_image_urls,
             weight_kg, dimensions_length_cm, dimensions_width_cm, dimensions_height_cm,
-            compatible_aircraft_models_text, location,
+            compatible_aircraft_models_text, location, address,
             is_published, is_active, published_until, views_count, favorites_count
           )
           VALUES (
@@ -1474,7 +1539,7 @@ class MarketRepository {
             @part_number, @oem_number, @condition, @quantity,
             @main_image_url, @additional_image_urls::jsonb,
             @weight_kg, @dimensions_length_cm, @dimensions_width_cm, @dimensions_height_cm,
-            @compatible_aircraft_models_text, @location,
+            @compatible_aircraft_models_text, @location, @address,
             @is_published, true, @published_until, 0, 0
           )
           RETURNING *
@@ -1500,7 +1565,8 @@ class MarketRepository {
           'dimensions_width_cm': dimensionsWidthCm,
           'dimensions_height_cm': dimensionsHeightCm,
           'compatible_aircraft_models_text': compatibleAircraftModelsText,
-          'location': location,
+          'location': normalizedLocation,
+          'address': address,
           'is_published': isPublished,
           'published_until': isPublished ? DateTime.now().add(Duration(days: durationMonths * 30)) : null,
         },
@@ -1570,6 +1636,7 @@ class MarketRepository {
     double? dimensionsHeightCm,
     String? compatibleAircraftModelsText,
     String? location,
+    Map<String, dynamic>? address,
     List<int>? compatibleAircraftModelIds,
   }) async {
     // Проверяем права и получаем старую цену
@@ -1587,8 +1654,20 @@ class MarketRepository {
     // price в parts_market имеет тип NUMERIC(10, 2), преобразуем в int
     final oldPriceValue = existingPartMap['price'];
     final oldPrice = (oldPriceValue is num ? oldPriceValue : num.parse(oldPriceValue.toString())).toInt();
-    if (partSellerId != sellerId) {
-      throw Exception('You do not have permission to update this part');
+
+    // Проверяем права: владелец или администратор (аналогично updateAircraft)
+    final isOwner = partSellerId == sellerId;
+    if (!isOwner) {
+      // Проверяем, является ли пользователь администратором
+      final adminCheck = await _connection.execute(
+        Sql.named('SELECT is_admin FROM profiles WHERE id = @id'),
+        parameters: {'id': sellerId},
+      );
+      final isAdmin = adminCheck.isNotEmpty && (adminCheck.first.toColumnMap()['is_admin'] as bool? ?? false);
+
+      if (!isAdmin) {
+        throw Exception('You do not have permission to update this part');
+      }
     }
 
     await _connection.execute(Sql('BEGIN'));
@@ -1673,9 +1752,16 @@ class MarketRepository {
         updates.add('compatible_aircraft_models_text = @compatible_aircraft_models_text');
         parameters['compatible_aircraft_models_text'] = compatibleAircraftModelsText;
       }
-      if (location != null) {
-        updates.add('location = @location');
-        parameters['location'] = location;
+      if (location != null || address != null) {
+        final normalizedLocation = address != null ? buildLocationFromAddress(address) ?? location : location;
+        if (normalizedLocation != null) {
+          updates.add('location = @location');
+          parameters['location'] = normalizedLocation;
+        }
+        if (address != null) {
+          updates.add('address = @address');
+          parameters['address'] = address;
+        }
       }
 
       if (updates.isEmpty) {

@@ -15,6 +15,8 @@ class AircraftMarketModel {
   @JsonKey(name: 'seller_id')
   final int sellerId;
   final String? location;
+  /// Структура адреса из геокодинга (Nominatim): country, region, city, street, house_number, postcode
+  final Map<String, dynamic>? address;
   @JsonKey(name: 'main_image_url')
   final String? mainImageUrl;
   @JsonKey(name: 'additional_image_urls', fromJson: _imageUrlsFromJson, toJson: _imageUrlsToJson)
@@ -81,6 +83,7 @@ class AircraftMarketModel {
     this.aircraftSubcategoriesId,
     required this.sellerId,
     this.location,
+    this.address,
     this.mainImageUrl,
     this.additionalImageUrls = const [],
     this.brand,
@@ -119,6 +122,7 @@ class AircraftMarketModel {
       aircraftSubcategoriesId: _intFromJsonNullable(json['aircraft_subcategories_id']),
       sellerId: _intFromJson(json['seller_id']),
       location: json['location'] as String?,
+      address: _addressFromJson(json['address']),
       mainImageUrl: (json['main_image_url'] as String?)?.isNotEmpty == true ? json['main_image_url'] as String? : null,
       additionalImageUrls: _imageUrlsFromJson(json['additional_image_urls']),
       brand: json['brand'] as String?,
@@ -199,6 +203,19 @@ class AircraftMarketModel {
 
   static dynamic _imageUrlsToJson(List<String> imageUrls) {
     return imageUrls;
+  }
+
+  static Map<String, dynamic>? _addressFromJson(dynamic json) {
+    if (json == null) return null;
+    if (json is Map<String, dynamic>) return json;
+    if (json is String) {
+      try {
+        return jsonDecode(json) as Map<String, dynamic>;
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 
   Map<String, dynamic> toJson() => _$AircraftMarketModelToJson(this);

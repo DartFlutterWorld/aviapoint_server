@@ -17,6 +17,7 @@ AircraftMarketModel _$AircraftMarketModelFromJson(Map<String, dynamic> json) =>
           (json['aircraft_subcategories_id'] as num?)?.toInt(),
       sellerId: (json['seller_id'] as num).toInt(),
       location: json['location'] as String?,
+      address: json['address'] as Map<String, dynamic>?,
       mainImageUrl: json['main_image_url'] as String?,
       additionalImageUrls: json['additional_image_urls'] == null
           ? const []
@@ -61,6 +62,7 @@ Map<String, dynamic> _$AircraftMarketModelToJson(
       'aircraft_subcategories_id': instance.aircraftSubcategoriesId,
       'seller_id': instance.sellerId,
       'location': instance.location,
+      'address': instance.address,
       'main_image_url': instance.mainImageUrl,
       'additional_image_urls':
           AircraftMarketModel._imageUrlsToJson(instance.additionalImageUrls),

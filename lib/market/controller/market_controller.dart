@@ -404,6 +404,7 @@ class MarketController {
         additionalImageUrls: const [],
         brand: body['brand'] as String?,
         location: body['location'] as String?,
+        address: body['address'] as Map<String, dynamic>?,
         year: body['year'] != null ? (body['year'] is String ? int.tryParse(body['year'] as String) : (body['year'] as num).toInt()) : null,
         totalFlightHours:
             body['total_flight_hours'] != null ? (body['total_flight_hours'] is String ? int.tryParse(body['total_flight_hours'] as String) : (body['total_flight_hours'] as num).toInt()) : null,
@@ -865,6 +866,7 @@ class MarketController {
           additionalImageUrls: additionalImageUrls,
           brand: body['brand'] as String?,
           location: body['location'] as String?,
+          address: body['address'] as Map<String, dynamic>?,
           year: body['year'] != null ? (body['year'] is String ? int.tryParse(body['year'] as String) : (body['year'] as num).toInt()) : null,
           totalFlightHours:
               body['total_flight_hours'] != null ? (body['total_flight_hours'] is String ? int.tryParse(body['total_flight_hours'] as String) : (body['total_flight_hours'] as num).toInt()) : null,
@@ -1904,6 +1906,7 @@ class MarketController {
             : null,
         compatibleAircraftModelsText: body['compatible_aircraft_models_text'] as String?,
         location: body['location'] as String?,
+        address: body['address'] as Map<String, dynamic>?,
         compatibleAircraftModelIds: compatibleAircraftModelIds,
         isPublished: body['is_published'] != null ? (body['is_published'] is bool ? body['is_published'] as bool : body['is_published'].toString().toLowerCase() == 'true') : true,
       );
@@ -2261,6 +2264,7 @@ class MarketController {
             : null,
         compatibleAircraftModelsText: body['compatible_aircraft_models_text'] as String?,
         location: body['location'] as String?,
+        address: body['address'] as Map<String, dynamic>?,
         compatibleAircraftModelIds: compatibleAircraftModelIds,
       );
 

@@ -38,6 +38,7 @@ class JobsController {
     router.get('/api/jobs/vacancies/<id>', getVacancyById);
     router.post('/api/jobs/vacancies', createVacancy);
     router.put('/api/jobs/vacancies/<id>', updateVacancy);
+    router.post('/api/jobs/vacancies/<id>/additional-images', uploadVacancyAdditionalImages);
     router.post('/api/jobs/vacancies/<id>/publish', publishVacancy);
     router.post('/api/jobs/vacancies/<id>/unpublish', unpublishVacancy);
     router.post('/api/jobs/vacancies/<id>/responses', respondToVacancy);
@@ -215,6 +216,10 @@ class JobsController {
       if (body['skills'] is List) {
         skills = (body['skills'] as List).map((e) => e.toString()).toList();
       }
+      final rawIsPublished = body['is_published'];
+      final isPublished = rawIsPublished == null
+          ? true
+          : (rawIsPublished is bool ? rawIsPublished : rawIsPublished.toString().toLowerCase() == 'true');
       final vacancy = await _repository.createVacancy(
         employerId: userId,
         title: title.trim(),
@@ -242,6 +247,7 @@ class JobsController {
             : (body['min_flight_hours'] is num ? (body['min_flight_hours'] as num).toInt() : int.tryParse('${body['min_flight_hours']}')),
         requiredTypeRating: body['required_type_rating'] as String?,
         skills: skills,
+        isPublished: isPublished,
       );
 
       // Уведомление в Telegram-канал о новой вакансии
@@ -290,6 +296,11 @@ class JobsController {
       if (body['skills'] is List) {
         skills = (body['skills'] as List).map((e) => e.toString()).toList();
       }
+      bool? isPublished;
+      if (body['is_published'] != null) {
+        final v = body['is_published'];
+        isPublished = v is bool ? v : v.toString().toLowerCase() == 'true';
+      }
 
       final updated = await _repository.updateVacancy(
         vacancyId: id,
@@ -329,6 +340,10 @@ class JobsController {
             : null,
         requiredTypeRating: body['required_type_rating'] as String?,
         skills: skills,
+        isPublished: isPublished,
+        additionalImageUrls: body['additional_image_urls'] is List
+            ? List<String>.from(body['additional_image_urls'] as List)
+            : null,
       );
 
       if (updated == null) {
@@ -1094,12 +1109,23 @@ class JobsController {
         final partContentType = part['content-type'] as String?;
         if (partContentType != null) {
           final partMediaType = MediaType.parse(partContentType);
-          if (partMediaType.subtype == 'jpeg' || partMediaType.subtype == 'jpg') {
+          final subtype = partMediaType.subtype;
+          if (subtype == 'jpeg' || subtype == 'jpg') {
             extension = 'jpg';
-          } else if (partMediaType.subtype == 'png') {
+          } else if (subtype == 'png') {
             extension = 'png';
-          } else if (partMediaType.subtype == 'webp') {
+          } else if (subtype == 'webp') {
             extension = 'webp';
+          } else if (subtype == 'pdf') {
+            extension = 'pdf';
+          } else if (subtype == 'msword') {
+            extension = 'doc';
+          } else if (subtype == 'vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            extension = 'docx';
+          } else if (subtype == 'vnd.ms-excel') {
+            extension = 'xls';
+          } else if (subtype == 'vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+            extension = 'xlsx';
           }
         }
 
@@ -1114,7 +1140,7 @@ class JobsController {
       }
 
       if (imageUrls.isEmpty) {
-        return Response.badRequest(body: jsonEncode({'error': 'No images provided'}), headers: jsonContentHeaders);
+        return Response.badRequest(body: jsonEncode({'error': 'No files provided'}), headers: jsonContentHeaders);
       }
 
       final existingRaw = profile['additional_image_urls'];
@@ -1242,6 +1268,11 @@ class JobsController {
         }
       }
 
+      final rawVisible = body['is_visible_for_employers'];
+      final isVisibleForEmployers = rawVisible == null
+          ? true
+          : (rawVisible is bool ? rawVisible : rawVisible.toString().toLowerCase() == 'true');
+
       final resume = await _repository.createResume(
         userId: userId,
         title: title.trim(),
@@ -1281,6 +1312,7 @@ class JobsController {
         licenses: body['licenses'] as String?,
         typeRatings: body['type_ratings'] as String?,
         medicalClass: body['medical_class'] as String?,
+        isVisibleForEmployers: isVisibleForEmployers,
       );
 
       // Уведомление в Telegram-канал о новом резюме
@@ -1665,14 +1697,23 @@ class JobsController {
         final partContentType = part['content-type'] as String?;
         if (partContentType != null) {
           final partMediaType = MediaType.parse(partContentType);
-          if (partMediaType.subtype == 'jpeg' || partMediaType.subtype == 'jpg') {
+          final subtype = partMediaType.subtype;
+          if (subtype == 'jpeg' || subtype == 'jpg') {
             extension = 'jpg';
-          } else if (partMediaType.subtype == 'png') {
+          } else if (subtype == 'png') {
             extension = 'png';
-          } else if (partMediaType.subtype == 'webp') {
+          } else if (subtype == 'webp') {
             extension = 'webp';
-          } else if (partMediaType.subtype == 'pdf') {
+          } else if (subtype == 'pdf') {
             extension = 'pdf';
+          } else if (subtype == 'msword') {
+            extension = 'doc';
+          } else if (subtype == 'vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            extension = 'docx';
+          } else if (subtype == 'vnd.ms-excel') {
+            extension = 'xls';
+          } else if (subtype == 'vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+            extension = 'xlsx';
           }
         }
 
@@ -1687,7 +1728,7 @@ class JobsController {
       }
 
       if (imageUrls.isEmpty) {
-        return Response.badRequest(body: jsonEncode({'error': 'No images provided'}), headers: jsonContentHeaders);
+        return Response.badRequest(body: jsonEncode({'error': 'No files provided'}), headers: jsonContentHeaders);
       }
 
       final existingRaw = resume['additional_photo_urls'];
@@ -1712,6 +1753,137 @@ class JobsController {
 
       if (updated == null) {
         return Response.internalServerError(body: jsonEncode({'error': 'Failed to update resume'}), headers: jsonContentHeaders);
+      }
+
+      return Response.ok(jsonEncode({'urls': imageUrls}), headers: jsonContentHeaders);
+    });
+  }
+
+  Future<Response> uploadVacancyAdditionalImages(Request request) async {
+    return wrapResponse(() async {
+      final userId = _getUserIdFromRequest(request);
+      if (userId == null) {
+        return Response.unauthorized(jsonEncode({'error': 'Authentication required'}), headers: jsonContentHeaders);
+      }
+
+      final idStr = request.params['id'];
+      final id = _parseId(idStr);
+      if (id == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Invalid vacancy ID'}), headers: jsonContentHeaders);
+      }
+
+      final vacancy = await _repository.getVacancyById(id);
+      if (vacancy == null) {
+        return Response.notFound(jsonEncode({'error': 'Vacancy not found'}), headers: jsonContentHeaders);
+      }
+      final employerId = vacancy['employer_id'] as int?;
+      if (employerId == null || employerId != userId) {
+        return Response.forbidden(jsonEncode({'error': 'You do not have permission to upload files for this vacancy'}), headers: jsonContentHeaders);
+      }
+
+      final contentType = request.headers['Content-Type'];
+      if (contentType == null || !contentType.startsWith('multipart/form-data')) {
+        return Response.badRequest(body: jsonEncode({'error': 'Content-Type must be multipart/form-data'}), headers: jsonContentHeaders);
+      }
+
+      final mediaType = MediaType.parse(contentType);
+      final boundary = mediaType.parameters['boundary'];
+      if (boundary == null) {
+        return Response.badRequest(body: jsonEncode({'error': 'Missing boundary in Content-Type'}), headers: jsonContentHeaders);
+      }
+
+      final bodyBytes = <int>[];
+      await for (final chunk in request.read()) {
+        bodyBytes.addAll(chunk);
+      }
+
+      final boundaryMarker = '--$boundary';
+      final boundaryBytes = utf8.encode(boundaryMarker);
+      final parts = <Map<String, dynamic>>[];
+
+      int searchStart = 0;
+      while (true) {
+        final boundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+        if (boundaryIndex == -1) break;
+        searchStart = boundaryIndex + boundaryBytes.length;
+        if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 13) searchStart++;
+        if (searchStart < bodyBytes.length && bodyBytes[searchStart] == 10) searchStart++;
+        final nextBoundaryIndex = _indexOfBytes(bodyBytes, boundaryBytes, searchStart);
+        final partEnd = nextBoundaryIndex == -1 ? bodyBytes.length : nextBoundaryIndex;
+        if (partEnd > searchStart) {
+          final partBytes = bodyBytes.sublist(searchStart, partEnd);
+          final partData = _parseMultipartPart(partBytes);
+          if (partData != null) parts.add(partData);
+        }
+        if (nextBoundaryIndex == -1) break;
+        searchStart = nextBoundaryIndex;
+      }
+
+      final imageUrls = <String>[];
+      final publicDir = Directory('public');
+      if (!await publicDir.exists()) await publicDir.create(recursive: true);
+      final jobsDir = Directory('public/jobs');
+      if (!await jobsDir.exists()) await jobsDir.create(recursive: true);
+      final vacanciesDir = Directory('public/jobs/vacancies');
+      if (!await vacanciesDir.exists()) await vacanciesDir.create(recursive: true);
+      final vacancyDir = Directory('public/jobs/vacancies/$id');
+      if (!await vacancyDir.exists()) await vacancyDir.create(recursive: true);
+
+      for (final part in parts) {
+        final contentDisposition = part['content-disposition'] as String?;
+        if (contentDisposition == null) continue;
+        if (!RegExp('name=["\']?images').hasMatch(contentDisposition)) continue;
+        final imageData = part['data'] as List<int>?;
+        if (imageData == null || imageData.isEmpty) continue;
+        if (imageData.length > 5 * 1024 * 1024) {
+          return Response.badRequest(body: jsonEncode({'error': 'File size exceeds 5MB limit'}), headers: jsonContentHeaders);
+        }
+        String extension = 'jpg';
+        final partContentType = part['content-type'] as String?;
+        if (partContentType != null) {
+          final partMediaType = MediaType.parse(partContentType);
+          final subtype = partMediaType.subtype;
+          if (subtype == 'jpeg' || subtype == 'jpg') extension = 'jpg';
+          else if (subtype == 'png') extension = 'png';
+          else if (subtype == 'webp') extension = 'webp';
+          else if (subtype == 'pdf') extension = 'pdf';
+          else if (subtype == 'msword') extension = 'doc';
+          else if (subtype == 'vnd.openxmlformats-officedocument.wordprocessingml.document') extension = 'docx';
+          else if (subtype == 'vnd.ms-excel') extension = 'xls';
+          else if (subtype == 'vnd.openxmlformats-officedocument.spreadsheetml.sheet') extension = 'xlsx';
+        }
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final random = DateTime.now().microsecondsSinceEpoch % 1000000;
+        final fileName = 'additional.$timestamp.$random.$extension';
+        final file = File('public/jobs/vacancies/$id/$fileName');
+        await file.writeAsBytes(imageData);
+        imageUrls.add('jobs/vacancies/$id/$fileName');
+      }
+
+      if (imageUrls.isEmpty) {
+        return Response.badRequest(body: jsonEncode({'error': 'No files provided'}), headers: jsonContentHeaders);
+      }
+
+      final existingRaw = vacancy['additional_image_urls'];
+      final existingUrls = <String>[];
+      if (existingRaw is String && existingRaw.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(existingRaw);
+          if (decoded is List) existingUrls.addAll(decoded.map((e) => e.toString()));
+        } catch (_) {}
+      } else if (existingRaw is List) {
+        existingUrls.addAll(existingRaw.map((e) => e.toString()));
+      }
+
+      final updatedUrls = [...existingUrls, ...imageUrls];
+      final updated = await _repository.updateVacancy(
+        vacancyId: id,
+        employerId: userId,
+        additionalImageUrls: updatedUrls,
+      );
+
+      if (updated == null) {
+        return Response.internalServerError(body: jsonEncode({'error': 'Failed to update vacancy'}), headers: jsonContentHeaders);
       }
 
       return Response.ok(jsonEncode({'urls': imageUrls}), headers: jsonContentHeaders);
